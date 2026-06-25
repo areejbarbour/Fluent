@@ -1,4 +1,4 @@
-const String baseUrl = 'http://10.138.85.93:8000';
+const String baseUrl = 'http://192.168.10.220:8000';
 
 const String onboardingRoute = '/';
 const String loginRoute = '/login';
@@ -10,3 +10,14 @@ const String setNewPasswordRoute = '/set-new-password';
 const String homeRoute = '/home';
 const String streakRoute = '/streak';
 const String placementTestRoute = '/placement-test';
+// ✅ Routes جديدة حسب الدور
+const String studentHomeRoute = '/student/home';
+const String teacherHomeRoute = '/teacher/home';
+
+// ✅ API Endpoints (نفس نمط الـ routes)
+const String apiRegister = '/api/register';
+const String apiLogin = '/api/login';
+const String apiLogout = '/api/logout';
+const String apiVerifyOtp = '/api/verifyOtp';
+const String apiResendOtp = '/api/resendOtp';
+const String apiCurrentUser = '/api/user';

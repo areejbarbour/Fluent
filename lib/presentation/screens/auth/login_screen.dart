@@ -1,13 +1,18 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/constants/strings.dart'; // تم إضافة هذا الاستيراد
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/login/login_cubit.dart';
+import 'package:fluent/cubit/auth/login/login_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? email; // ✅ إضافة parameter اختياري
+
+  const LoginScreen({super.key, this.email});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -16,6 +21,42 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
+
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ ملء الإيميل تلقائياً إذا تم تمريره
+    if (widget.email != null && widget.email!.isNotEmpty) {
+      _emailController.text = widget.email!;
+      print("📧 [LoginScreen] Email pre-filled: ${widget.email}");
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // ✅ جلب أول خطأ من الباك اند لـ field معين
+  String? _getError(LoginState state, String field) {
+    if (state is LoginFailure && state.errors != null) {
+      final fieldErrors = state.errors![field];
+      if (fieldErrors != null) {
+        if (fieldErrors is List && fieldErrors.isNotEmpty) {
+          return fieldErrors.first.toString();
+        }
+        if (fieldErrors is String && fieldErrors.isNotEmpty) {
+          return fieldErrors;
+        }
+      }
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,24 +101,92 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Column(
-                children: [
-                  SizedBox(height: 20.h),
-                  _buildTopBar(),
-                  SizedBox(height: 30.h),
-                  _buildLogoAndTitle(),
-                  SizedBox(height: 40.h),
-                  _glassLoginForm(),
-                  SizedBox(height: 24.h),
-                  _googleButton(),
-                  SizedBox(height: 28.h),
-                  _signUpLink(),
-                  SizedBox(height: 40.h),
-                ],
-              ),
+            child: BlocConsumer<LoginCubit, LoginState>(
+              listener: (context, state) {
+                if (state is LoginSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: AppColors.sky,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                    ),
+                  );
+
+                  // ✅ التوجيه حسب الدور
+                  final roles = state.roles;
+                  String targetRoute = homeRoute; // default
+
+                  if (roles.isNotEmpty) {
+                    final role = roles.first;
+                    String roleName = '';
+
+                    if (role is Map) {
+                      roleName = role['name'] ?? role['title'] ?? '';
+                    } else {
+                      roleName = role.toString();
+                    }
+
+                    if (roleName == 'teacher') {
+                      targetRoute = teacherHomeRoute;
+                    } else {
+                      targetRoute = studentHomeRoute;
+                    }
+                  }
+
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    targetRoute,
+                    (route) => false,
+                  );
+                } else if (state is LoginFailure) {
+                  // ✅ عرض رسالة الخطأ العامة
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.error),
+                      backgroundColor: Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              },
+              builder: (context, state) {
+                final isLoading = state is LoginLoading;
+
+                // ✅ جلب الأخطاء من الباك اند
+                final emailError = _getError(state, 'email');
+                final passwordError = _getError(state, 'password');
+
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20.h),
+                      _buildTopBar(),
+                      SizedBox(height: 30.h),
+                      _buildLogoAndTitle(),
+                      SizedBox(height: 40.h),
+                      _glassLoginForm(
+                        isLoading: isLoading,
+                        emailError: emailError,
+                        passwordError: passwordError,
+                      ),
+                      SizedBox(height: 24.h),
+                      _googleButton(),
+                      SizedBox(height: 28.h),
+                      _signUpLink(),
+                      SizedBox(height: 40.h),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -294,7 +403,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _glassLoginForm() {
+  Widget _glassLoginForm({
+    required bool isLoading,
+    String? emailError,
+    String? passwordError,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(35.r),
       child: BackdropFilter(
@@ -313,19 +426,26 @@ class _LoginScreenState extends State<LoginScreen> {
             key: _formKey,
             child: Column(
               children: [
-                _buildInputField("Email Address", Icons.email_outlined),
+                _buildInputField(
+                  "Email Address",
+                  Icons.email_outlined,
+                  controller: _emailController,
+                  errorText: emailError,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 SizedBox(height: 15.h),
                 _buildInputField(
                   "Password",
                   Icons.lock_outline,
+                  controller: _passwordController,
                   isPassword: true,
+                  errorText: passwordError,
                 ),
                 SizedBox(height: 14.h),
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: () {
-                      // الانتقال إلى شاشة نسيت كلمة المرور
                       Navigator.pushNamed(context, forgotPasswordRoute);
                     },
                     child: Text(
@@ -339,7 +459,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: 25.h),
-                _buildLoginButton(),
+                _buildLoginButton(isLoading),
               ],
             ),
           ),
@@ -351,82 +471,129 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildInputField(
     String hint,
     IconData icon, {
+    required TextEditingController controller,
+    String? errorText,
     bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
   }) {
-    return Focus(
-      key: ValueKey(hint),
-      child: Builder(
-        builder: (context) {
-          final bool hasFocus = Focus.of(context).hasFocus;
-          return TextFormField(
-                obscureText: isPassword ? _obscurePassword : false,
+    final bool hasError = errorText != null && errorText.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Focus(
+          key: ValueKey(hint),
+          child: Builder(
+            builder: (context) {
+              final bool hasFocus = Focus.of(context).hasFocus;
+              return TextFormField(
+                    controller: controller,
+                    obscureText: isPassword ? _obscurePassword : false,
+                    keyboardType: keyboardType,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 15.sp,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(.14),
+                      hintText: hint,
+                      hintStyle: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.65),
+                      ),
+                      prefixIcon: Icon(
+                        icon,
+                        color: Colors.white.withOpacity(0.85),
+                      ),
+                      suffixIcon: isPassword
+                          ? IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.white.withOpacity(0.85),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            )
+                          : null,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 18.h,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.r),
+                        borderSide: BorderSide(
+                          color: hasError ? Colors.redAccent : AppColors.sky,
+                          width: 1.8,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.r),
+                        borderSide: BorderSide(
+                          color: hasError ? Colors.redAccent : AppColors.sky,
+                          width: 2.2,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.r),
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 1.8,
+                        ),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.r),
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 2.2,
+                        ),
+                      ),
+                    ),
+                  )
+                  .animate(
+                    onInit: (controller) => hasFocus
+                        ? controller.stop()
+                        : controller.repeat(reverse: true),
+                    onPlay: (controller) => hasFocus
+                        ? controller.stop()
+                        : controller.repeat(reverse: true),
+                  )
+                  .scale(
+                    begin: const Offset(0.98, 0.98),
+                    end: const Offset(1.02, 1.02),
+                    duration: 1800.ms,
+                    curve: Curves.easeInOut,
+                  );
+            },
+          ),
+        ),
+        // ✅ عرض الخطأ تحت الحقل - يتكيف مع عرض الشاشة
+        if (hasError)
+          Padding(
+            padding: EdgeInsets.only(top: 8.h, left: 8.w, right: 8.w),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                errorText!,
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 15.sp,
+                  color: Colors.redAccent,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
                 ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(.14),
-                  hintText: hint,
-                  hintStyle: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(0.65),
-                  ),
-                  prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.85)),
-                  suffixIcon: isPassword
-                      ? IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.white.withOpacity(0.85),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        )
-                      : null,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20.w,
-                    vertical: 18.h,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20.r),
-                    borderSide: const BorderSide(
-                      color: AppColors.sky,
-                      width: 1.8,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20.r),
-                    borderSide: const BorderSide(
-                      color: AppColors.sky,
-                      width: 2.2,
-                    ),
-                  ),
-                ),
-              )
-              .animate(
-                onInit: (controller) => hasFocus
-                    ? controller.stop()
-                    : controller.repeat(reverse: true),
-                onPlay: (controller) => hasFocus
-                    ? controller.stop()
-                    : controller.repeat(reverse: true),
-              )
-              .scale(
-                begin: const Offset(0.98, 0.98),
-                end: const Offset(1.02, 1.02),
-                duration: 1800.ms,
-                curve: Curves.easeInOut,
-              );
-        },
-      ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildLoginButton(bool isLoading) {
     return Container(
           padding: EdgeInsets.all(4.r),
           decoration: BoxDecoration(
@@ -438,13 +605,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           child: InkWell(
-            onTap: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                streakRoute,
-                (route) => false,
-              );
-            },
+            onTap: isLoading
+                ? null
+                : () {
+                    context.read<LoginCubit>().login(
+                      email: _emailController.text.trim(),
+                      password: _passwordController.text,
+                    );
+                  },
             borderRadius: BorderRadius.circular(20.r),
             child: Ink(
               width: double.infinity,
@@ -463,15 +631,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               child: Center(
-                child: Text(
-                  "LOG IN",
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontSize: 23.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
-                  ),
-                ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 24.w,
+                        height: 24.w,
+                        child: CircularProgressIndicator(
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.black,
+                          ),
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Text(
+                        "LOG IN",
+                        style: GoogleFonts.poppins(
+                          color: Colors.black,
+                          fontSize: 23.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -488,8 +667,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _googleButton() {
     return InkWell(
       onTap: () {
-        // الانتقال إلى الشاشة الرئيسية
-        Navigator.pushNamedAndRemoveUntil(context, homeRoute, (route) => false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google login coming soon')),
+        );
       },
       borderRadius: BorderRadius.circular(20.r),
       child: Container(
@@ -515,13 +695,16 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Image.asset("assets/images/onboarding/google.png", width: 24.w),
             SizedBox(width: 12.w),
-            Text(
-              "CONTINUE WITH GOOGLE",
-              style: GoogleFonts.poppins(
-                color: Colors.black87,
-                fontWeight: FontWeight.w700,
-                fontSize: 14.sp,
-                letterSpacing: 0.5,
+            Flexible(
+              child: Text(
+                "CONTINUE WITH GOOGLE",
+                style: GoogleFonts.poppins(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.sp,
+                  letterSpacing: 0.5,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -533,7 +716,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _signUpLink() {
     return GestureDetector(
       onTap: () {
-        // الانتقال إلى شاشة إنشاء حساب جديد
         Navigator.pushNamed(context, registerRoute);
       },
       child: Text.rich(

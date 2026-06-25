@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/constants/strings.dart'; // تم إضافة هذا الاستيراد
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
+import 'package:fluent/cubit/auth/sign_up/sign_up_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,6 +20,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   final _formKey = GlobalKey<FormState>();
+
+  // ✅ Controllers
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  // ✅ Helper: جلب أول خطأ من الباك اند لـ field معين
+  String? _getError(SignUpState state, String field) {
+    if (state is SignUpFailure && state.errors != null) {
+      print("🔍 [_getError] Checking errors for field: $field");
+      print("🔍 [_getError] State errors: ${state.errors}");
+
+      final fieldErrors = state.errors![field];
+      print(" [_getError] Field errors for '$field': $fieldErrors");
+
+      if (fieldErrors != null) {
+        if (fieldErrors is List && fieldErrors.isNotEmpty) {
+          final errorMsg = fieldErrors.first.toString();
+          print("🔍 [_getError] Returning: $errorMsg");
+          return errorMsg;
+        }
+        if (fieldErrors is String && fieldErrors.isNotEmpty) {
+          print("🔍 [_getError] Returning string: $fieldErrors");
+          return fieldErrors;
+        }
+      }
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,24 +105,112 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Column(
-                children: [
-                  SizedBox(height: 20.h),
-                  _buildTopBar(),
-                  SizedBox(height: 30.h),
-                  _buildLogoAndTitle(),
-                  SizedBox(height: 40.h),
-                  _glassForm(),
-                  SizedBox(height: 24.h),
-                  _googleButton(),
-                  SizedBox(height: 28.h),
-                  _loginLink(),
-                  SizedBox(height: 40.h),
-                ],
-              ),
+            child: BlocConsumer<SignUpCubit, SignUpState>(
+              listener: (context, state) {
+                if (state is SignUpSuccess) {
+                  // ✅ نجاح التسجيل - الانتقال إلى OTP
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: AppColors.sky,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                    ),
+                  );
+                  Navigator.pushReplacementNamed(
+                    context,
+                    otpRoute,
+                    arguments: _emailController.text.trim(),
+                  );
+                } else if (state is SignUpFailure) {
+                  // ✅ التحقق إذا كان الخطأ بسبب وجود الإيميل مسبقاً
+                  final emailError = state.errors?['email'];
+                  final isEmailTaken =
+                      emailError != null &&
+                      emailError.any((error) {
+                        final errorMsg = error.toString().toLowerCase();
+                        return errorMsg.contains('already been taken') ||
+                            errorMsg.contains('already exists') ||
+                            errorMsg.contains('taken');
+                      });
+
+                  if (isEmailTaken) {
+                    // ✅ توجيه إلى Login مع تمرير الإيميل
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'This email is already registered. Please login instead.',
+                        ),
+                        backgroundColor: AppColors.yellow,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        duration: const Duration(seconds: 3),
+                        action: SnackBarAction(
+                          label: 'Login',
+                          textColor: Colors.black,
+                          //  fontWeight: FontWeight.w700,
+                          onPressed: () {
+                            Navigator.pushReplacementNamed(
+                              context,
+                              loginRoute,
+                              arguments: _emailController.text.trim(),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+
+                    // ✅ الانتقال التلقائي بعد 1.5 ثانية
+                    Future.delayed(const Duration(milliseconds: 1500), () {
+                      Navigator.pushReplacementNamed(
+                        context,
+                        loginRoute,
+                        arguments: _emailController.text.trim(),
+                      );
+                    });
+                  }
+                  // ✅ الأخطاء الأخرى ستظهر تحت الحقول تلقائياً عبر _getError
+                }
+              },
+              builder: (context, state) {
+                final isLoading = state is SignUpLoading;
+
+                // ✅ جلب الأخطاء من الباك اند لكل field
+                final firstNameError = _getError(state, 'first_name');
+                final lastNameError = _getError(state, 'last_name');
+                final emailError = _getError(state, 'email');
+                final passwordError = _getError(state, 'password');
+
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20.h),
+                      _buildTopBar(),
+                      SizedBox(height: 30.h),
+                      _buildLogoAndTitle(),
+                      SizedBox(height: 40.h),
+                      _glassForm(
+                        isLoading: isLoading,
+                        firstNameError: firstNameError,
+                        lastNameError: lastNameError,
+                        emailError: emailError,
+                        passwordError: passwordError,
+                      ),
+                      SizedBox(height: 24.h),
+                      _googleButton(),
+                      SizedBox(height: 28.h),
+                      _loginLink(),
+                      SizedBox(height: 40.h),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -294,7 +426,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _glassForm() {
+  Widget _glassForm({
+    required bool isLoading,
+    String? firstNameError,
+    String? lastNameError,
+    String? emailError,
+    String? passwordError,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(35.r),
       child: BackdropFilter(
@@ -313,26 +451,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
             key: _formKey,
             child: Column(
               children: [
-                _buildInputField("First Name", Icons.person),
+                _buildInputField(
+                  "First Name",
+                  Icons.person,
+                  controller: _firstNameController,
+                  errorText: firstNameError,
+                ),
                 SizedBox(height: 15.h),
-                _buildInputField("Last Name", Icons.people),
+                _buildInputField(
+                  "Last Name",
+                  Icons.people,
+                  controller: _lastNameController,
+                  errorText: lastNameError,
+                ),
                 SizedBox(height: 15.h),
-                _buildInputField("Email Address", Icons.email_outlined),
+                _buildInputField(
+                  "Email Address",
+                  Icons.email_outlined,
+                  controller: _emailController,
+                  errorText: emailError,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 SizedBox(height: 15.h),
                 _buildInputField(
                   "Password",
                   Icons.lock_outline,
+                  controller: _passwordController,
                   isPassword: true,
+                  errorText: passwordError,
                 ),
                 SizedBox(height: 15.h),
                 _buildInputField(
                   "Confirm Password",
                   Icons.lock_outline,
+                  controller: _confirmPasswordController,
                   isPassword: true,
                   isConfirm: true,
                 ),
                 SizedBox(height: 25.h),
-                _buildSignUpButton(),
+                _buildSignUpButton(isLoading),
               ],
             ),
           ),
@@ -344,18 +501,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildInputField(
     String hint,
     IconData icon, {
+    required TextEditingController controller,
+    String? errorText,
     bool isPassword = false,
     bool isConfirm = false,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     bool obscure = isConfirm ? _obscureConfirmPassword : _obscurePassword;
+    final bool hasError = errorText != null && errorText.isNotEmpty;
 
-    return Focus(
-      key: ValueKey(hint),
-      child: Builder(
-        builder: (context) {
-          final bool hasFocus = Focus.of(context).hasFocus;
-          return TextFormField(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Focus(
+          key: ValueKey(hint),
+          child: Builder(
+            builder: (context) {
+              final bool hasFocus = Focus.of(context).hasFocus;
+              return TextFormField(
+                controller: controller,
                 obscureText: isPassword ? obscure : false,
+                keyboardType: keyboardType,
                 style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontSize: 15.sp,
@@ -392,48 +559,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.r),
-                    borderSide: const BorderSide(
-                      color: AppColors.sky,
+                    borderSide: BorderSide(
+                      color: hasError ? Colors.redAccent : AppColors.sky,
                       width: 1.8,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.r),
+                    borderSide: BorderSide(
+                      color: hasError ? Colors.redAccent : AppColors.sky,
+                      width: 2.2,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.r),
                     borderSide: const BorderSide(
-                      color: AppColors.sky,
+                      color: Colors.redAccent,
+                      width: 1.8,
+                    ),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.r),
+                    borderSide: const BorderSide(
+                      color: Colors.redAccent,
                       width: 2.2,
                     ),
                   ),
                 ),
-              )
-              .animate(
-                onInit: (controller) {
-                  if (hasFocus) {
-                    controller.stop();
-                  } else {
-                    controller.repeat(reverse: true);
-                  }
-                },
-                onPlay: (controller) {
-                  if (hasFocus) {
-                    controller.stop();
-                  } else {
-                    controller.repeat(reverse: true);
-                  }
-                },
-              )
-              .scale(
-                begin: const Offset(0.98, 0.98),
-                end: const Offset(1.02, 1.02),
-                duration: 1800.ms,
-                curve: Curves.easeInOut,
               );
-        },
-      ),
+            },
+          ),
+        ),
+        // ✅ عرض الخطأ تحت الحقل - يتكيف مع عرض الشاشة
+        if (hasError)
+          Padding(
+            padding: EdgeInsets.only(top: 8.h, left: 8.w, right: 8.w),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                errorText!,
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildSignUpButton() {
+  Widget _buildSignUpButton(bool isLoading) {
     return Container(
           padding: EdgeInsets.all(4.r),
           decoration: BoxDecoration(
@@ -445,12 +623,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           child: InkWell(
-            onTap: () {
-              if (_formKey.currentState!.validate()) {
-                // الانتقال إلى شاشة التحقق من OTP
-                Navigator.pushReplacementNamed(context, otpRoute);
-              }
-            },
+            onTap: isLoading
+                ? null
+                : () {
+                    _performSignUp();
+                  },
             borderRadius: BorderRadius.circular(20.r),
             child: Ink(
               width: double.infinity,
@@ -469,15 +646,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ],
               ),
               child: Center(
-                child: Text(
-                  "SIGN UP",
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontSize: 25.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
-                  ),
-                ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 24.w,
+                        height: 24.w,
+                        child: CircularProgressIndicator(
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.black,
+                          ),
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Text(
+                        "SIGN UP",
+                        style: GoogleFonts.poppins(
+                          color: Colors.black,
+                          fontSize: 25.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -494,7 +682,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _googleButton() {
     return InkWell(
       onTap: () {
-        Navigator.pushNamedAndRemoveUntil(context, homeRoute, (route) => false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google login coming soon')),
+        );
       },
       borderRadius: BorderRadius.circular(20.r),
       child: Container(
@@ -518,17 +708,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // تم تصحيح المسار ليطابق login_screen
             Image.asset("assets/images/onboarding/google.png", width: 24.w),
             SizedBox(width: 12.w),
-            // تم تغليف النص بـ Flexible وتصغير الخط لمنع الـ Overflow
             Flexible(
               child: Text(
                 "CONTINUE WITH GOOGLE",
                 style: GoogleFonts.poppins(
                   color: Colors.black87,
                   fontWeight: FontWeight.w700,
-                  fontSize: 12.sp, // تم التصغير من 14 إلى 12
+                  fontSize: 12.sp,
                   letterSpacing: 0.5,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -548,22 +736,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Text.rich(
         TextSpan(
           text: "Already have an account? ",
-          style: GoogleFonts.poppins(
-            color: Colors.white70,
-            fontSize: 13.sp,
-          ), // تم التصغير قليلاً
+          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
           children: [
             TextSpan(
               text: "Log In",
               style: GoogleFonts.poppins(
                 color: AppColors.yellow,
                 fontWeight: FontWeight.w700,
-                fontSize: 15.sp, // تم التصغير قليلاً
+                fontSize: 15.sp,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // ✅ Perform Sign Up - بدون validation محلي
+  void _performSignUp() {
+    context.read<SignUpCubit>().signUp(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      passwordConfirmation: _confirmPasswordController.text,
     );
   }
 }
