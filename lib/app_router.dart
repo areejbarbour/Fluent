@@ -1,6 +1,10 @@
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/presentation/screens/Streak/StreakScreen.dart';
 import 'package:fluent/presentation/screens/auth/OtpVerificationScreen.dart';
+import 'package:fluent/presentation/screens/auth/forget_password_screen.dart';
+import 'package:fluent/presentation/screens/auth/set_new_password_screen.dart';
 import 'package:fluent/presentation/screens/home/student_home_screen.dart';
 import 'package:fluent/presentation/screens/home/teacher_home_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
@@ -47,15 +51,46 @@ class AppRouter {
         );
 
       case otpRoute:
-        final email = settings.arguments as String?;
+        final args = settings.arguments;
+        String email = '';
+        String type = OtpType.register;
+
+        if (args is String) {
+          email = args;
+        } else if (args is Map<String, dynamic>) {
+          email = args['email'] as String? ?? '';
+          type = args['type'] as String? ?? OtpType.register;
+        }
+
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => VerifyOtpCubit(authRepository)),
               BlocProvider(create: (_) => ResendOtpCubit(authRepository)),
             ],
-            child: OtpVerificationScreen(email: email ?? ''),
+            child: OtpVerificationScreen(email: email, type: type),
           ),
+        );
+
+      case forgotPasswordRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => ForgotPasswordCubit(authRepository),
+            child: const ForgetPasswordScreen(),
+          ),
+        );
+
+      case setNewPasswordRoute:
+        final email = settings.arguments as String?;
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => ResetPasswordCubit(authRepository),
+            child:
+                const SetNewPasswordScreen(), // ✅ إزالة email من الـ constructor
+          ),
+          settings: RouteSettings(
+            arguments: email,
+          ), // ✅ تمرير email عبر settings
         );
 
       case streakRoute:

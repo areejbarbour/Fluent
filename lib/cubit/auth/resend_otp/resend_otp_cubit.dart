@@ -1,20 +1,17 @@
-// lib/presentation/cubits/auth/resend_otp/resend_otp_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../../../data/repository/auth_repository.dart';
 import 'resend_otp_state.dart';
 
 class ResendOtpCubit extends Cubit<ResendOtpState> {
   final AuthRepository authRepository;
-
   ResendOtpCubit(this.authRepository) : super(ResendOtpInitial());
 
-  Future<void> resendOtp({required String email}) async {
+  Future<void> resendOtp({required String email, required String type}) async {
     emit(ResendOtpLoading());
-    print("🟡 [ResendOtpCubit] Resending OTP to: $email");
+    print("🟡 [ResendOtpCubit] Resending OTP to: $email, type: $type");
 
     try {
-      final data = await authRepository.resendOtp(email: email);
+      final data = await authRepository.resendOtp(email: email, type: type);
 
       final success = data['success'] as bool? ?? false;
       final message = data['message'] as String? ?? '';

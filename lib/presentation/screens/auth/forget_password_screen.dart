@@ -1,9 +1,17 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/constants/strings.dart'; // تم إضافة هذا الاستيراد
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_state.dart';
+import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
+import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
+import 'package:fluent/cubit/auth/resend_otp/resend_otp_cubit.dart';
+import 'package:fluent/cubit/auth/resend_otp/resend_otp_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -24,6 +32,11 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   final FocusNode _emailFocusNode = FocusNode();
   final List<FocusNode> _otpFocusNodes = List.generate(6, (_) => FocusNode());
 
+  bool _isOtpSent = false;
+  int _remainingSeconds = 60;
+  Timer? _timer;
+  bool _canResend = false;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -34,7 +47,26 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     for (var node in _otpFocusNodes) {
       node.dispose();
     }
+    _timer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdown() {
+    _canResend = false;
+    _remainingSeconds = 60;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        setState(() {
+          _canResend = true;
+        });
+        _timer?.cancel();
+      }
+    });
   }
 
   void _onOtpChanged(String value, int index) {
@@ -46,66 +78,179 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     }
   }
 
+  String _getFullOtp() {
+    return _otpControllers.map((c) => c.text).join();
+  }
+
+  void _clearOtpFields() {
+    for (var controller in _otpControllers) {
+      controller.clear();
+    }
+    if (_otpFocusNodes.isNotEmpty) {
+      _otpFocusNodes[0].requestFocus();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.dark, AppColors.primary, AppColors.sky],
-              ),
-            ),
+      body: MultiBlocListener(
+        listeners: [
+          // ✅ Listener لـ ForgotPasswordCubit
+          BlocListener<ForgotPasswordCubit, ForgotPasswordState>(
+            listener: (context, state) {
+              if (state is ForgotPasswordSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.sky,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+                setState(() {
+                  _isOtpSent = true;
+                });
+                _startCountdown();
+              } else if (state is ForgotPasswordFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
-          Positioned(
-            top: -140.h,
-            left: -90.w,
-            child: _glowingCircle(AppColors.yellow, 320.w)
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .move(
-                  begin: Offset.zero,
-                  end: const Offset(15, 10),
-                  duration: 5000.ms,
-                  curve: Curves.easeInOut,
-                ),
+          // ✅ Listener لـ VerifyOtpCubit
+          BlocListener<VerifyOtpCubit, VerifyOtpState>(
+            listener: (context, state) {
+              if (state is VerifyOtpSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.sky,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+                // ✅ الانتقال إلى SetNewPasswordScreen مع تمرير الإيميل
+                Navigator.pushReplacementNamed(
+                  context,
+                  setNewPasswordRoute,
+                  arguments: _emailController.text.trim(),
+                );
+              } else if (state is VerifyOtpFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+                _clearOtpFields();
+              }
+            },
           ),
-          Positioned(
-            bottom: -160.h,
-            right: -110.w,
-            child: _glowingCircle(AppColors.sky, 380.w)
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .move(
-                  begin: Offset.zero,
-                  end: const Offset(-20, -15),
-                  duration: 6000.ms,
-                  curve: Curves.easeInOut,
-                ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Column(
-                children: [
-                  SizedBox(height: 20.h),
-                  _buildTopBar(),
-                  SizedBox(height: 30.h),
-                  _buildLogoAndTitle(),
-                  SizedBox(height: 40.h),
-                  _glassForgetPasswordForm(),
-                  SizedBox(height: 40.h),
-                ],
-              ),
-            ),
+          // ✅ Listener لـ ResendOtpCubit
+          BlocListener<ResendOtpCubit, ResendOtpState>(
+            listener: (context, state) {
+              if (state is ResendOtpSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.sky,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+                _startCountdown();
+              } else if (state is ResendOtpFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
         ],
+        child: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.dark, AppColors.primary, AppColors.sky],
+                ),
+              ),
+            ),
+            Positioned(
+              top: -140.h,
+              left: -90.w,
+              child: _glowingCircle(AppColors.yellow, 320.w)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                  )
+                  .move(
+                    begin: Offset.zero,
+                    end: const Offset(15, 10),
+                    duration: 5000.ms,
+                    curve: Curves.easeInOut,
+                  ),
+            ),
+            Positioned(
+              bottom: -160.h,
+              right: -110.w,
+              child: _glowingCircle(AppColors.sky, 380.w)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                  )
+                  .move(
+                    begin: Offset.zero,
+                    end: const Offset(-20, -15),
+                    duration: 6000.ms,
+                    curve: Curves.easeInOut,
+                  ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Column(
+                  children: [
+                    SizedBox(height: 20.h),
+                    _buildTopBar(),
+                    SizedBox(height: 30.h),
+                    _buildLogoAndTitle(),
+                    SizedBox(height: 40.h),
+                    _glassForgetPasswordForm(),
+                    SizedBox(height: 40.h),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -348,38 +493,49 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 30.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(
                     6,
-                    (index) => _buildSingleOtpField(index),
+                    (index) => _buildSingleOtpField(index, enabled: _isOtpSent),
                   ),
                 ),
-                SizedBox(height: 24.h),
+                // SizedBox(height: 0.h),
                 GestureDetector(
-                  onTap: () {
-                    // يمكن إضافة كود إعادة إرسال الإيميل هنا
-                  },
+                  onTap: _canResend && _isOtpSent
+                      ? () {
+                          context.read<ResendOtpCubit>().resendOtp(
+                            email: _emailController.text.trim(),
+                            type: OtpType.forgotPassword,
+                          );
+                        }
+                      : null,
                   child: Text(
                     "Resend Code",
                     style: GoogleFonts.poppins(
-                      color: AppColors.yellow,
+                      color: (_canResend && _isOtpSent)
+                          ? AppColors.yellow
+                          : Colors.white.withOpacity(0.4),
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 1.h),
                 Text(
-                  "Resend in 0:59",
+                  _isOtpSent
+                      ? (_canResend
+                            ? "You can resend now"
+                            : "Resend in 0:${_remainingSeconds.toString().padLeft(2, '0')}")
+                      : "",
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(0.6),
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 30.h),
+                SizedBox(height: 10.h),
                 _buildResetButton(),
                 SizedBox(height: 24.h),
                 _backToLoginLink(),
@@ -420,6 +576,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   controller: _emailController,
                   focusNode: _emailFocusNode,
                   keyboardType: TextInputType.emailAddress,
+                  enabled: !_isOtpSent, // ✅ تعطيل الحقل بعد إرسال OTP
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 15.sp,
@@ -455,6 +612,17 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                       ),
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
                 ),
               )
               .animate(
@@ -476,7 +644,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     );
   }
 
-  Widget _buildSingleOtpField(int index) {
+  Widget _buildSingleOtpField(int index, {bool enabled = true}) {
     return Focus(
       key: ValueKey("OtpField_$index"),
       child: Builder(
@@ -488,7 +656,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 height: 72.h,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: hasFocus
+                  boxShadow: hasFocus && enabled
                       ? [
                           BoxShadow(
                             color: AppColors.sky.withOpacity(0.6),
@@ -506,6 +674,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 child: TextFormField(
                   controller: _otpControllers[index],
                   focusNode: _otpFocusNodes[index],
+                  enabled: enabled,
                   onChanged: (value) => _onOtpChanged(value, index),
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
@@ -524,8 +693,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     contentPadding: EdgeInsets.zero,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16.r),
-                      borderSide: const BorderSide(
-                        color: AppColors.sky,
+                      borderSide: BorderSide(
+                        color: enabled
+                            ? AppColors.sky.withOpacity(0.45)
+                            : Colors.white.withOpacity(0.2),
                         width: 1.8,
                       ),
                     ),
@@ -540,10 +711,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 ),
               )
               .animate(
-                onInit: (controller) => hasFocus
+                onInit: (controller) => hasFocus && enabled
                     ? controller.stop()
                     : controller.repeat(reverse: true),
-                onPlay: (controller) => hasFocus
+                onPlay: (controller) => hasFocus && enabled
                     ? controller.stop()
                     : controller.repeat(reverse: true),
               )
@@ -559,66 +730,114 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   }
 
   Widget _buildResetButton() {
-    return Container(
-          padding: EdgeInsets.all(4.r),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24.r),
-            color: AppColors.yellow,
-            border: Border.all(
-              color: AppColors.yellow.withOpacity(0.4),
-              width: 2,
-            ),
-          ),
-          child: InkWell(
-            onTap: () {
-              if (_formKey.currentState!.validate()) {
-                Navigator.pushReplacementNamed(context, setNewPasswordRoute);
-              }
-            },
-            borderRadius: BorderRadius.circular(20.r),
-            child: Ink(
-              width: double.infinity,
-              height: 62.h,
+    return BlocBuilder<ForgotPasswordCubit, ForgotPasswordState>(
+      builder: (context, forgotState) {
+        return BlocBuilder<VerifyOtpCubit, VerifyOtpState>(
+          builder: (context, verifyState) {
+            final isLoading =
+                forgotState is ForgotPasswordLoading ||
+                verifyState is VerifyOtpLoading;
+            final buttonText = _isOtpSent ? "VERIFY CODE" : "SEND OTP CODE";
+
+            return Container(
+              padding: EdgeInsets.all(4.r),
               decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24.r),
+                color: AppColors.yellow,
+                border: Border.all(
+                  color: AppColors.yellow.withOpacity(0.4),
+                  width: 2,
+                ),
+              ),
+              child: InkWell(
+                onTap: isLoading
+                    ? null
+                    : () {
+                        if (_isOtpSent) {
+                          // ✅ التحقق من OTP
+                          String otpCode = _getFullOtp();
+                          if (otpCode.length == 6) {
+                            context.read<VerifyOtpCubit>().verifyOtp(
+                              email: _emailController.text.trim(),
+                              otp: otpCode,
+                              type: OtpType.forgotPassword,
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please enter the complete 6-digit code',
+                                ),
+                                backgroundColor: Colors.redAccent,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          // ✅ إرسال OTP
+                          if (_formKey.currentState!.validate()) {
+                            context.read<ForgotPasswordCubit>().forgotPassword(
+                              email: _emailController.text.trim(),
+                            );
+                          }
+                        }
+                      },
                 borderRadius: BorderRadius.circular(20.r),
-                gradient: const LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.5),
-                    blurRadius: 20,
-                    offset: const Offset(0, 5),
+                child: Ink(
+                  width: double.infinity,
+                  height: 62.h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.r),
+                    gradient: const LinearGradient(
+                      colors: [AppColors.orange, AppColors.yellow],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.yellow.withOpacity(.5),
+                        blurRadius: 20,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  "RESET PASSWORD",
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontSize: 21.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
+                  child: Center(
+                    child: isLoading
+                        ? SizedBox(
+                            width: 24.w,
+                            height: 24.w,
+                            child: CircularProgressIndicator(
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            buttonText,
+                            style: GoogleFonts.poppins(
+                              color: Colors.black,
+                              fontSize: 21.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
                   ),
                 ),
               ),
-            ),
-          ),
-        )
-        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.5))
-        .scale(
-          end: const Offset(1.02, 1.02),
-          duration: 1200.ms,
-          curve: Curves.easeInOut,
+            );
+          },
         );
+      },
+    );
   }
 
   Widget _backToLoginLink() {
     return GestureDetector(
       onTap: () {
-        // العودة إلى شاشة تسجيل الدخول
         Navigator.pushReplacementNamed(context, loginRoute);
       },
       child: Text.rich(

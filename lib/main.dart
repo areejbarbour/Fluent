@@ -1,7 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
+import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
 import 'package:fluent/cubit/auth/logout/logout_cubit.dart';
 import 'package:fluent/cubit/auth/resend_otp/resend_otp_cubit.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
@@ -87,6 +90,15 @@ class _MyAppState extends State<MyApp> {
                 create: (_) => ResendOtpCubit(widget.authRepository),
               ),
               BlocProvider(create: (_) => LogoutCubit(widget.authRepository)),
+
+              BlocProvider(
+                create: (_) => ForgotPasswordCubit(widget.authRepository),
+              ),
+              BlocProvider(
+                create: (_) => ResetPasswordCubit(widget.authRepository),
+              ),
+
+              BlocProvider(create: (_) => GoogleLoginCubit(widget.authRepository)),
             ],
             child: MaterialApp(
               title: 'Fluent',

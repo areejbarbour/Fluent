@@ -1,12 +1,9 @@
-// lib/data/repository/auth_repository.dart
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../services/auth_service.dart';
 
 class AuthRepository {
   final AuthService authService;
-
   AuthRepository(this.authService);
 
   // 🟢 Save token helper
@@ -28,7 +25,6 @@ class AuthRepository {
   }
 
   // 🟢 Register
-  // في method register فقط - غيرنا طريقة استخراج errors
   Future<Map<String, dynamic>> register({
     required String firstName,
     required String lastName,
@@ -44,7 +40,6 @@ class AuthRepository {
         password: password,
         passwordConfirmation: passwordConfirmation,
       );
-
       print("✅ Register Response Status: ${response.statusCode}");
       print("✅ Register Response Data: ${response.data}");
 
@@ -63,7 +58,6 @@ class AuthRepository {
           'message': errorData is Map
               ? errorData['message'] ?? 'Registration failed.'
               : 'Registration failed.',
-          // ✅ حفظ الـ errors كما هي بدون cast
           'errors': errorData is Map ? errorData['errors'] : null,
         };
       }
@@ -75,27 +69,30 @@ class AuthRepository {
         'message': errorData is Map
             ? errorData['message'] ?? 'Registration failed.'
             : e.message ?? 'Something went wrong.',
-        // ✅ حفظ الـ errors كما هي
         'errors': errorData is Map ? errorData['errors'] : null,
       };
     }
   }
 
-  // 🟢 Verify OTP (يحفظ التوكن بعد التحقق الناجح)
+  // 🟢 Verify OTP - مع type parameter
   Future<Map<String, dynamic>> verifyOtp({
     required String email,
     required String otp,
+    required String type,
   }) async {
     try {
-      final response = await authService.verifyOtp(email: email, otp: otp);
-
+      final response = await authService.verifyOtp(
+        email: email,
+        otp: otp,
+        type: type,
+      );
       print("✅ VerifyOTP Response Status: ${response.statusCode}");
       print("✅ VerifyOTP Response Data: ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
 
-        // ✅ حفظ التوكن إذا موجود
+        // ✅ حفظ التوكن إذا موجود (فقط في حالة REGISTER)
         if (data is Map && data.containsKey('token')) {
           await _saveToken(data['token']);
         }
@@ -132,11 +129,13 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Resend OTP
-  Future<Map<String, dynamic>> resendOtp({required String email}) async {
+  // 🟢 Resend OTP - مع type parameter
+  Future<Map<String, dynamic>> resendOtp({
+    required String email,
+    required String type,
+  }) async {
     try {
-      final response = await authService.resendOtp(email: email);
-
+      final response = await authService.resendOtp(email: email, type: type);
       print("✅ Resend OTP Response Status: ${response.statusCode}");
       print("✅ Resend OTP Response Data: ${response.data}");
 
@@ -172,7 +171,7 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Login (يحفظ التوكن)
+  // 🟢 Login - MODIFIED
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -182,7 +181,6 @@ class AuthRepository {
         email: email,
         password: password,
       );
-
       print("✅ Login Response Status: ${response.statusCode}");
       print("✅ Login Response Data: ${response.data}");
 
@@ -194,13 +192,18 @@ class AuthRepository {
           await _saveToken(data['token']);
         }
 
+        // ✅ استخراج roles من user
+        final user = data is Map ? data['user'] as Map<String, dynamic>? : null;
+        final roles = user?['roles'] as List<dynamic>? ?? [];
+
         return {
           'success': true,
           'message': data is Map
               ? data['message'] ?? 'Login successful'
               : 'Login successful',
           'token': data is Map ? data['token'] : null,
-          'roles': data is Map ? data['role'] : null,
+          'user': user,
+          'roles': roles, // ✅ استخدام roles من user
           'data': data,
         };
       } else {
@@ -230,13 +233,11 @@ class AuthRepository {
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
       final token = await _getToken();
-
       if (token == null) {
         return {'success': false, 'message': 'No token found. Please login.'};
       }
 
       final response = await authService.getCurrentUser(token);
-
       print("✅ GetCurrentUser Response Status: ${response.statusCode}");
       print("✅ GetCurrentUser Response Data: ${response.data}");
 
@@ -264,7 +265,6 @@ class AuthRepository {
   Future<Map<String, dynamic>> logout() async {
     try {
       final token = await _getToken();
-
       print('🔑 Logout token: $token');
 
       if (token == null) {
@@ -272,7 +272,6 @@ class AuthRepository {
       }
 
       final response = await authService.logout(token);
-
       print("✅ Logout Response Status: ${response.statusCode}");
       print("✅ Logout Response Data: ${response.data}");
 
@@ -288,7 +287,7 @@ class AuthRepository {
         };
       } else {
         return {
-          'success': true, // نعتبرها ناجحة لأننا مسحنا التوكن محلياً
+          'success': true,
           'message': response.data is Map
               ? response.data['message'] ?? 'Logged out locally'
               : 'Logged out locally',
@@ -296,18 +295,147 @@ class AuthRepository {
       }
     } on DioException catch (e) {
       print('❌ Logout DioException: ${e.response?.data}');
-
-      // ✅ مسح التوكن محلياً حتى لو فشل الطلب
       await _clearToken();
-
       return {
-        'success': true, // نعتبرها ناجحة لأننا مسحنا التوكن محلياً
+        'success': true,
         'message': 'Logged out locally (server unreachable)',
       };
     } catch (e) {
       print('❌ Unexpected logout error: $e');
       await _clearToken();
       return {'success': true, 'message': 'Logged out locally'};
+    }
+  }
+
+  // 🟢 Forgot Password - جديد
+  Future<Map<String, dynamic>> forgotPassword({required String email}) async {
+    try {
+      final response = await authService.forgotPassword(email: email);
+      print("✅ Forgot Password Response Status: ${response.statusCode}");
+      print("✅ Forgot Password Response Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        return {
+          'success': true,
+          'message': data is Map
+              ? data['message'] ?? 'OTP sent successfully'
+              : 'OTP sent successfully',
+          'data': data,
+        };
+      } else {
+        final errorData = response.data;
+        return {
+          'success': false,
+          'message': errorData is Map
+              ? errorData['message'] ?? 'Failed to send OTP'
+              : 'Failed to send OTP',
+          'errors': errorData is Map ? errorData['errors'] : null,
+        };
+      }
+    } on DioException catch (e) {
+      print("❌ Forgot Password DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return {
+        'success': false,
+        'message': errorData is Map
+            ? errorData['message'] ?? 'Failed to send OTP'
+            : e.message ?? 'Something went wrong.',
+        'errors': errorData is Map ? errorData['errors'] : null,
+      };
+    }
+  }
+
+  // 🟢 Reset Password - جديد
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final response = await authService.resetPassword(
+        email: email,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      print("✅ Reset Password Response Status: ${response.statusCode}");
+      print("✅ Reset Password Response Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        return {
+          'success': true,
+          'message': data is Map
+              ? data['message'] ?? 'Password reset successfully'
+              : 'Password reset successfully',
+          'data': data,
+        };
+      } else {
+        final errorData = response.data;
+        return {
+          'success': false,
+          'message': errorData is Map
+              ? errorData['message'] ?? 'Failed to reset password'
+              : 'Failed to reset password',
+          'errors': errorData is Map ? errorData['errors'] : null,
+        };
+      }
+    } on DioException catch (e) {
+      print("❌ Reset Password DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return {
+        'success': false,
+        'message': errorData is Map
+            ? errorData['message'] ?? 'Failed to reset password'
+            : e.message ?? 'Something went wrong.',
+        'errors': errorData is Map ? errorData['errors'] : null,
+      };
+    }
+  }
+
+  // 🟢 Google Login - MODIFIED
+  Future<Map<String, dynamic>> googleLogin({required String token}) async {
+    try {
+      final response = await authService.loginWithGoogleToken(token);
+
+      print("✅ Google Login Response Status: ${response.statusCode}");
+      print("✅ Google Login Response Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+
+        // ✅ الباك يرجع array فيها object واحد
+        if (data is List && data.isNotEmpty) {
+          final responseData = data.first as Map<String, dynamic>;
+
+          if (responseData.containsKey('token')) {
+            await _saveToken(responseData['token']);
+          }
+
+          // ✅ استخراج roles من user
+          final user = responseData['user'] as Map<String, dynamic>?;
+          final roles = user?['roles'] as List<dynamic>? ?? [];
+
+          return {
+            'success': true,
+            'token': responseData['token'],
+            'user': user,
+            'roles': roles,
+            'data': responseData,
+          };
+        } else {
+          return {'success': false, 'message': 'Invalid response format'};
+        }
+      } else {
+        return response.data is Map
+            ? response.data
+            : {'success': false, 'message': 'Something went wrong'};
+      }
+    } on DioException catch (e) {
+      print("❌ Google Login Error: ${e.response?.data}");
+      return e.response?.data is Map
+          ? e.response?.data
+          : {'success': false, 'message': 'Something went wrong'};
     }
   }
 }

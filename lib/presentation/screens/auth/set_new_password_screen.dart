@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/constants/strings.dart'; // تم إضافة هذا الاستيراد
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -25,6 +28,19 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   final FocusNode _newPasswordFocusNode = FocusNode();
   final FocusNode _confirmPasswordFocusNode = FocusNode();
 
+  // ✅ استقبال الإيميل من الـ arguments
+  String? _email;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) {
+      _email = args;
+      print("📧 [SetNewPasswordScreen] Email received: $_email");
+    }
+  }
+
   @override
   void dispose() {
     _newPasswordController.dispose();
@@ -34,66 +50,117 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     super.dispose();
   }
 
+  // ✅ التحقق من تطابق كلمات المرور
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please confirm your password';
+    }
+    if (value != _newPasswordController.text) {
+      return 'Passwords do not match';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.dark, AppColors.primary, AppColors.sky],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -140.h,
-            left: -90.w,
-            child: _glowingCircle(AppColors.yellow, 320.w)
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .move(
-                  begin: Offset.zero,
-                  end: const Offset(15, 10),
-                  duration: 5000.ms,
-                  curve: Curves.easeInOut,
+      body: BlocConsumer<ResetPasswordCubit, ResetPasswordState>(
+        listener: (context, state) {
+          if (state is ResetPasswordSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.sky,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-          ),
-          Positioned(
-            bottom: -160.h,
-            right: -110.w,
-            child: _glowingCircle(AppColors.sky, 380.w)
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .move(
-                  begin: Offset.zero,
-                  end: const Offset(-20, -15),
-                  duration: 6000.ms,
-                  curve: Curves.easeInOut,
-                ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Column(
-                children: [
-                  SizedBox(height: 20.h),
-                  _buildTopBar(),
-                  SizedBox(height: 30.h),
-                  _buildLogoAndTitle(),
-                  SizedBox(height: 40.h),
-                  _glassSetPasswordForm(),
-                  SizedBox(height: 40.h),
-                ],
               ),
-            ),
-          ),
-        ],
+            );
+            // ✅ الانتقال إلى شاشة تسجيل الدخول مع مسح كامل للسجل
+            Future.delayed(const Duration(milliseconds: 500), () {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                loginRoute,
+                (route) => false,
+              );
+            });
+          } else if (state is ResetPasswordFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.error),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state is ResetPasswordLoading;
+
+          return Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.dark, AppColors.primary, AppColors.sky],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: -140.h,
+                left: -90.w,
+                child: _glowingCircle(AppColors.yellow, 320.w)
+                    .animate(
+                      onPlay: (controller) => controller.repeat(reverse: true),
+                    )
+                    .move(
+                      begin: Offset.zero,
+                      end: const Offset(15, 10),
+                      duration: 5000.ms,
+                      curve: Curves.easeInOut,
+                    ),
+              ),
+              Positioned(
+                bottom: -160.h,
+                right: -110.w,
+                child: _glowingCircle(AppColors.sky, 380.w)
+                    .animate(
+                      onPlay: (controller) => controller.repeat(reverse: true),
+                    )
+                    .move(
+                      begin: Offset.zero,
+                      end: const Offset(-20, -15),
+                      duration: 6000.ms,
+                      curve: Curves.easeInOut,
+                    ),
+              ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20.h),
+                      _buildTopBar(),
+                      SizedBox(height: 30.h),
+                      _buildLogoAndTitle(),
+                      SizedBox(height: 40.h),
+                      _glassSetPasswordForm(isLoading: isLoading),
+                      SizedBox(height: 40.h),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -305,7 +372,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     );
   }
 
-  Widget _glassSetPasswordForm() {
+  Widget _glassSetPasswordForm({required bool isLoading}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(35.r),
       child: BackdropFilter(
@@ -342,9 +409,10 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                   onToggle: () => setState(
                     () => _obscureConfirmPassword = !_obscureConfirmPassword,
                   ),
+                  validator: _validateConfirmPassword,
                 ),
                 SizedBox(height: 35.h),
-                _buildConfirmButton(),
+                _buildConfirmButton(isLoading: isLoading),
                 SizedBox(height: 24.h),
                 _backToLoginLink(),
               ],
@@ -361,6 +429,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     required String hint,
     required bool isObscured,
     required VoidCallback onToggle,
+    String? Function(String?)? validator,
   }) {
     return Focus(
       child: Builder(
@@ -388,6 +457,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                   controller: controller,
                   focusNode: focusNode,
                   obscureText: isObscured,
+                  validator: validator,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 15.sp,
@@ -454,7 +524,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     );
   }
 
-  Widget _buildConfirmButton() {
+  Widget _buildConfirmButton({required bool isLoading}) {
     return Container(
       width: double.infinity,
       height: 62.h,
@@ -472,16 +542,32 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            // الانتقال إلى شاشة تسجيل الدخول مع مسح كامل للسجل
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              loginRoute,
-              (route) => false,
-            );
-          }
-        },
+        onPressed: isLoading
+            ? null
+            : () {
+                if (_formKey.currentState!.validate()) {
+                  if (_email == null || _email!.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Email not found. Please try again.'),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // ✅ استدعاء ResetPasswordCubit
+                  context.read<ResetPasswordCubit>().resetPassword(
+                    email: _email!,
+                    password: _newPasswordController.text,
+                    passwordConfirmation: _confirmPasswordController.text,
+                  );
+                }
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -490,15 +576,27 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
           ),
         ),
         child: Center(
-          child: Text(
-            "CONFIRM PASSWORD",
-            style: GoogleFonts.poppins(
-              color: AppColors.dark,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
-          ),
+          child: isLoading
+              ? SizedBox(
+                  width: 24.w,
+                  height: 24.w,
+                  child: CircularProgressIndicator(
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.black,
+                    ),
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    "CONFIRM PASSWORD",
+                    style: GoogleFonts.poppins(
+                      color: AppColors.dark,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
         ),
       ),
     );

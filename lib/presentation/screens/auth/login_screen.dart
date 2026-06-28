@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
+import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
 import 'package:fluent/cubit/auth/login/login_state.dart';
 import 'package:flutter/material.dart';
@@ -665,51 +667,125 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _googleButton() {
-    return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google login coming soon')),
-        );
-      },
-      borderRadius: BorderRadius.circular(20.r),
-      child: Container(
-        width: double.infinity,
-        height: 62.h,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(
-            color: AppColors.orange.withOpacity(0.6),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.yellow.withOpacity(.25),
-              blurRadius: 15,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset("assets/images/onboarding/google.png", width: 24.w),
-            SizedBox(width: 12.w),
-            Flexible(
-              child: Text(
-                "CONTINUE WITH GOOGLE",
-                style: GoogleFonts.poppins(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.sp,
-                  letterSpacing: 0.5,
-                ),
-                overflow: TextOverflow.ellipsis,
+    return BlocConsumer<GoogleLoginCubit, GoogleLoginState>(
+      listener: (context, state) {
+        if (state is GoogleLoginSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Google login successful!'),
+              backgroundColor: AppColors.sky,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.r),
               ),
             ),
-          ],
-        ),
-      ),
+          );
+
+          // ✅ استخراج roles من state
+          final roles = state.roles;
+          String targetRoute = homeRoute;
+
+          if (roles.isNotEmpty) {
+            final role = roles.first;
+            String roleName = '';
+
+            if (role is Map) {
+              roleName = role['name'] ?? role['title'] ?? '';
+            } else {
+              roleName = role.toString();
+            }
+
+            if (roleName == 'teacher') {
+              targetRoute = teacherHomeRoute;
+            } else {
+              targetRoute = studentHomeRoute;
+            }
+          }
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            targetRoute,
+            (route) => false,
+          );
+        } else if (state is GoogleLoginFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message), // ✅ message وليس error
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is GoogleLoginLoading;
+
+        return InkWell(
+          onTap: isLoading
+              ? null
+              : () {
+                  context.read<GoogleLoginCubit>().loginWithGoogle();
+                },
+          borderRadius: BorderRadius.circular(20.r),
+          child: Container(
+            width: double.infinity,
+            height: 62.h,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(
+                color: AppColors.orange.withOpacity(0.6),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.yellow.withOpacity(.25),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: CircularProgressIndicator(
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.black,
+                      ),
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                else ...[
+                  Image.asset(
+                    "assets/images/onboarding/google.png",
+                    width: 24.w,
+                  ),
+                  SizedBox(width: 12.w),
+                  Flexible(
+                    child: Text(
+                      "CONTINUE WITH GOOGLE",
+                      style: GoogleFonts.poppins(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.sp,
+                        letterSpacing: 0.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

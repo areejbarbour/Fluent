@@ -15,8 +15,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
+  final String type; // ✅ إضافة type parameter
 
-  const OtpVerificationScreen({super.key, required this.email});
+  const OtpVerificationScreen({
+    super.key,
+    required this.email,
+    required this.type, // ✅ إضافة type parameter
+  });
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -158,7 +163,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 BlocListener<VerifyOtpCubit, VerifyOtpState>(
                   listener: (context, state) {
                     if (state is VerifyOtpSuccess) {
-                      // ✅ نجاح التحقق - الانتقال للـ Home
+                      // ✅ نجاح التحقق
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(state.message),
@@ -169,12 +174,23 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                       );
-                      // ✅ NEW USER = دائماً يروح لـ Student Home
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        studentHomeRoute, // ✅ التصحيح: studentHomeRoute بدل homeRoute
-                        (route) => false,
-                      );
+
+                      // ✅ التوجيه بناءً على الـ type
+                      if (widget.type == OtpType.register) {
+                        // ✅ NEW USER = دائماً يروح لـ Student Home
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          studentHomeRoute,
+                          (route) => false,
+                        );
+                      } else if (widget.type == OtpType.forgotPassword) {
+                        // ✅ Forgot Password = يروح لـ SetNewPasswordScreen
+                        Navigator.pushReplacementNamed(
+                          context,
+                          setNewPasswordRoute,
+                          arguments: widget.email,
+                        );
+                      }
                     } else if (state is VerifyOtpFailure) {
                       // ✅ فشل التحقق - عرض رسالة + مسح الخانات
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -563,8 +579,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 GestureDetector(
                   onTap: _canResend && !isResending
                       ? () {
+                          // ✅ استخدام widget.type بدلاً من OtpType.register
                           context.read<ResendOtpCubit>().resendOtp(
                             email: widget.email,
+                            type: widget.type,
                           );
                         }
                       : null,
@@ -708,9 +726,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 : () {
                     String otpCode = _getFullOtp();
                     if (otpCode.length == 6) {
+                      // ✅ استخدام widget.type بدلاً من OtpType.register
                       context.read<VerifyOtpCubit>().verifyOtp(
                         email: widget.email,
                         otp: otpCode,
+                        type: widget.type,
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
