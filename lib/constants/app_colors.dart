@@ -12,4 +12,10 @@ class AppColors {
   static const Color lightOrange = Color(0xffFFBA42);
 
   static const Color yellow = Color(0xffFFD35B);
+
+    //static const Color skyLight = Color(0xFFA8E8F9); // فاتح سماوي
+
+      //static const Color yellowMid = Color(0xFFFFBA42); // أصفر-برتقالي
+
+
 }
