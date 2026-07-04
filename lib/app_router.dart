@@ -20,7 +20,7 @@ import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/onboarding/onboarding_screen.dart';
-
+import 'presentation/screens/courses/level_courses_screen.dart';
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -109,6 +109,20 @@ class AppRouter {
       // ✅ Route للمعلم
       case teacherHomeRoute:
         return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
+
+        case levelCoursesRoute:
+  final args = settings.arguments as Map<String, dynamic>;
+  return MaterialPageRoute(
+    builder: (_) => LevelCoursesScreen(
+      userName: args['userName'] as String? ?? "Rasha",
+      xp: args['xp'] as int? ?? 12540,
+      streakDays: args['streakDays'] as int? ?? 15,
+      level: args['level'] as int? ?? 8,
+      levelProgress: args['levelProgress'] as double? ?? 0.78,
+      levelTitle: args['levelTitle'] as String? ?? "Level 8",
+      levelSubtitle: args['levelSubtitle'] as String? ?? "Grammar Mastery",
+    ),
+  );
 
       default:
         return MaterialPageRoute(

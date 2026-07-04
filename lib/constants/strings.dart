@@ -13,7 +13,8 @@ const String streakRoute = '/streak';
 const String placementTestRoute = '/placement-test';
 const String studentHomeRoute = '/student/home';
 const String teacherHomeRoute = '/teacher/home';
-
+const String levelCoursesRoute = '/level-courses';
+// Add this
 // ✅ API Endpoints
 const String apiRegister = '/api/register';
 const String apiLogin = '/api/login';

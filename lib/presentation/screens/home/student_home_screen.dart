@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/constants/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -23,6 +24,7 @@ class LevelPathData {
     required this.icon,
   });
 }
+
 class StudentHomeScreen extends StatefulWidget {
   final String userName;
   final int xp;
@@ -104,6 +106,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ✅ نتأكد إن ScreenUtil مهيّأ حسب حجم الشاشة الحالي (يشتغل صح مع أي جهاز/دوران)
     return Scaffold(
       backgroundColor: AppColors.dark,
       body: Stack(
@@ -111,29 +114,46 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           _buildBackground(),
           _TwinklingStars(count: 45),
           _FloatingClouds(),
-
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopBar(),
-                  SizedBox(height: 22.h),
-                  _buildStatsRow(),
-                  SizedBox(height: 20.h),
-                  _buildDailyChallengeAndLeaders(),
-                  SizedBox(height: 14.h),
-                  _PathTransition(),
-                  SizedBox(height: 6.h),
-                  _LevelsPath(
-                    levels: _levels,
-                    flowController: _pathFlowController,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 10.h,
                   ),
-                  SizedBox(height: 110.h),
-                ],
-              ),
+                  child: ConstrainedBox(
+                    // ✅ بيضمن إنو أي محتوى داخلي ما بينكسر لو الشاشة صغيرة/كبيرة جداً
+                    constraints: BoxConstraints(
+                      minWidth: constraints.maxWidth,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTopBar(),
+                        SizedBox(height: 22.h),
+                        _buildStatsRow(),
+                        SizedBox(height: 20.h),
+                        _buildDailyChallengeAndLeaders(),
+                        SizedBox(height: 14.h),
+                        _PathTransition(),
+                        SizedBox(height: 6.h),
+                        _LevelsPath(
+                          levels: _levels,
+                          flowController: _pathFlowController,
+                          userName: widget.userName,
+                          xp: widget.xp,
+                          streakDays: widget.streakDays,
+                          level: widget.level,
+                          levelProgress: widget.levelProgress,
+                        ),
+                        SizedBox(height: 110.h),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -142,13 +162,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-  // ============================================================
-  // BACKGROUND ATMOSPHERE
-  // ============================================================
   Widget _buildBackground() {
     return Stack(
       children: [
-        // ✅ تدرج غني متعدد الطبقات لإحساس عمق
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -165,7 +181,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             ),
           ),
         ),
-        // ✅ دوائر ضوئية متحركة بأحجام وأماكن مختلفة
         Positioned(
           top: -120.h,
           right: -80.w,
@@ -282,7 +297,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 size: 26.sp,
               ),
             ),
-            // التاج فوق الأفاتار
             Positioned(
               top: -10.h,
               child: Icon(
@@ -291,7 +305,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 size: 18.sp,
                 shadows: [
                   Shadow(color: AppColors.orange, blurRadius: 10),
-                  Shadow(color: AppColors.yellow.withOpacity(.6), blurRadius: 18),
+                  Shadow(
+                      color: AppColors.yellow.withOpacity(.6), blurRadius: 18),
                 ],
               )
                   .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -313,11 +328,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 children: [
                   Text("👋", style: TextStyle(fontSize: 15.sp)),
                   SizedBox(width: 6.w),
-                  Text(
-                    "Good evening,",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.75),
-                      fontSize: 13.sp,
+                  Flexible(
+                    child: Text(
+                      "Good evening,",
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.75),
+                        fontSize: 13.sp,
+                      ),
                     ),
                   ),
                 ],
@@ -328,6 +346,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 ).createShader(bounds),
                 child: Text(
                   widget.userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 21.sp,
@@ -587,7 +607,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                             ),
                           ),
                         ),
-                        // ✅ تأثير لمعان متحرك على الـ progress bar
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment(
@@ -666,12 +685,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     color: AppColors.orange, size: 14.sp),
               ),
               SizedBox(width: 6.w),
-              Text(
-                "Daily Challenge",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.sp,
+              Flexible(
+                child: Text(
+                  "Daily Challenge",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.sp,
+                  ),
                 ),
               ),
             ],
@@ -679,6 +702,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           SizedBox(height: 10.h),
           Text(
             "Complete 10 new words",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.85),
               fontSize: 11.sp,
@@ -712,7 +737,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   ),
                 ),
               ),
-              // ✅ لمعة متحركة على الـ progress bar
               Positioned.fill(
                 child: Align(
                   alignment: const Alignment(0.2, 0),
@@ -765,7 +789,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           Row(
             children: [
               Icon(Icons.card_giftcard_rounded,
-                  color: AppColors.yellow, size: 15.sp)
+                      color: AppColors.yellow, size: 15.sp)
                   .animate(onPlay: (c) => c.repeat(reverse: true))
                   .scale(
                     begin: const Offset(1, 1),
@@ -787,12 +811,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     Icon(Icons.star_rounded,
                         color: AppColors.yellow, size: 11.sp),
                     SizedBox(width: 2.w),
-                    Text(
-                      "250 XP",
-                      style: GoogleFonts.poppins(
-                        color: AppColors.yellow,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w800,
+                    Flexible(
+                      child: Text(
+                        "250 XP",
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: AppColors.yellow,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -910,14 +937,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         ),
                         Row(
                           children: [
-                            Text(
-                              xp,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(.65),
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              child: Text(
+                                xp,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(.65),
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                             SizedBox(width: 2.w),
@@ -938,18 +967,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             );
           }),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.poppins(
-        color: Colors.white,
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w800,
-        letterSpacing: .3,
       ),
     );
   }
@@ -1021,12 +1038,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                               child: AnimatedContainer(
                                 duration: 250.ms,
                                 curve: Curves.easeOut,
-                                padding: EdgeInsets.symmetric(vertical: 10.h),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 10.h, horizontal: 2.w),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // ✅ أيقونة مع badge اختياري (refresh على HOME)
                                     Stack(
                                       clipBehavior: Clip.none,
                                       children: [
@@ -1111,23 +1128,26 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                       ],
                                     ),
                                     SizedBox(height: 4.h),
-                                    AnimatedDefaultTextStyle(
-                                      duration: 250.ms,
-                                      style: GoogleFonts.poppins(
-                                        color: selected
-                                            ? AppColors.yellow
-                                            : Colors.white.withOpacity(.7),
-                                        fontSize: selected ? 9.sp : 8.5.sp,
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w500,
-                                        letterSpacing: .3,
-                                      ),
-                                      child: Text(
-                                        label,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
+                                    // ✅ FittedBox بيمنع أي overflow للنص على الشاشات الضيقة
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: 250.ms,
+                                        style: GoogleFonts.poppins(
+                                          color: selected
+                                              ? AppColors.yellow
+                                              : Colors.white.withOpacity(.7),
+                                          fontSize: selected ? 9.sp : 8.5.sp,
+                                          fontWeight: selected
+                                              ? FontWeight.w800
+                                              : FontWeight.w500,
+                                          letterSpacing: .3,
+                                        ),
+                                        child: Text(
+                                          label,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1137,7 +1157,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           );
                         }),
                       ),
-                      // ✅ نجمة زخرفية على اليمين
                       Positioned(
                         right: 10,
                         top: 8,
@@ -1221,6 +1240,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     return buffer.toString();
   }
 }
+
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});
@@ -1331,10 +1351,9 @@ class _PathTransition extends StatelessWidget {
                   color: i.isEven ? AppColors.yellow : Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: (i.isEven
-                              ? AppColors.yellow
-                              : Colors.white)
-                          .withOpacity(.7),
+                      color:
+                          (i.isEven ? AppColors.yellow : Colors.white)
+                              .withOpacity(.7),
                       blurRadius: 6,
                       spreadRadius: 1,
                     ),
@@ -1433,6 +1452,7 @@ class _FloatingClouds extends StatelessWidget {
     );
   }
 }
+
 class _AnimatedBorderPainter extends CustomPainter {
   final double animationValue; // 0..1 — بيدور 360° كل دورة
   final double radius;
@@ -1514,7 +1534,6 @@ class _AnimatedBorderPainter extends CustomPainter {
 class _MountainsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // الجبال البعيدة
     final farPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -1564,29 +1583,52 @@ class _MountainsPainter extends CustomPainter {
   bool shouldRepaint(covariant _MountainsPainter old) => false;
 }
 
+/// ✅ =========================================================
+/// المسار (Levels Path) — تم تحويل كل الأرقام الثابتة (Hard-coded)
+/// إلى وحدات ScreenUtil (.w / .h / .r / .sp) مع Clamp حماية
+/// عشان الواجهة تتكيف مع أي حجم شاشة موبايل من غير ما تنكسر
+/// أو تتراكب العناصر فوق بعضها.
+/// =========================================================
 class _LevelsPath extends StatelessWidget {
   final List<LevelPathData> levels;
   final AnimationController flowController;
+  final String userName;
+  final int xp;
+  final int streakDays;
+  final int level;
+  final double levelProgress;
 
   const _LevelsPath({
     required this.levels,
     required this.flowController,
+    required this.userName,
+    required this.xp,
+    required this.streakDays,
+    required this.level,
+    required this.levelProgress,
   });
 
   @override
   Widget build(BuildContext context) {
-    const double nodeSpacing = 165;
+    // ✅ متحول (مش const) عشان نقدر نستخدم .h المرتبط بحجم الشاشة
+    final double nodeSpacing = 165.h;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final totalHeight = levels.length * nodeSpacing + 80;
+        final totalHeight = levels.length * nodeSpacing + 80.h;
 
-        // ✅ توليد نقاط منحنى S-Curve عضوي
+        // ✅ هامش أمان حسب عرض الشاشة الفعلي، بيمنع خروج الـ node عن حدود الشاشة
+        // على الشاشات الضيقة جداً (فولد/شاشات صغيرة) أو الواسعة (تابلت)
+        final double edgeFraction = (60.w / width).clamp(0.10, 0.22);
+        final double minFraction = edgeFraction;
+        final double maxFraction = 1 - edgeFraction;
+
+        // ✅ توليد نقاط منحنى S-Curve عضوي، مع clamp ديناميكي حسب عرض الشاشة
         final points = List.generate(levels.length, (i) {
           final xFraction = 0.5 + 0.30 * math.sin(i * 2.05 + 1.0);
-          final dx = width * xFraction.clamp(0.12, 0.88);
-          final dy = 40 + i * nodeSpacing;
+          final dx = width * xFraction.clamp(minFraction, maxFraction);
+          final dy = 40.h + i * nodeSpacing;
           return Offset(dx, dy);
         });
 
@@ -1614,12 +1656,17 @@ class _LevelsPath extends StatelessWidget {
                 return Positioned(
                   left: 0,
                   right: 0,
-                  top: point.dy - 60,
+                  top: point.dy - 60.h,
                   child: _LevelRow(
                     level: level,
                     nodeDx: point.dx,
                     containerWidth: width,
                     index: i,
+                    userName: userName,
+                    xp: xp,
+                    streakDays: streakDays,
+                    levelNum: level,
+                    levelProgress: levelProgress,
                   ),
                 );
               }),
@@ -1689,7 +1736,7 @@ class _PathPainter extends CustomPainter {
       Paint()
         ..shader = LinearGradient(colors: gradientColors).createShader(bounds)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 28
+        ..strokeWidth = 28.w
         ..strokeCap = StrokeCap.round
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
     );
@@ -1699,7 +1746,7 @@ class _PathPainter extends CustomPainter {
       Paint()
         ..shader = LinearGradient(colors: gradientColors).createShader(bounds)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 14
+        ..strokeWidth = 14.w
         ..strokeCap = StrokeCap.round,
     );
 
@@ -1708,23 +1755,22 @@ class _PathPainter extends CustomPainter {
       Paint()
         ..color = Colors.white.withOpacity(.6)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
+        ..strokeWidth = 4.w
         ..strokeCap = StrokeCap.round,
     );
 
     final metrics = path.computeMetrics().toList();
     for (final metric in metrics) {
-      const spacing = 28.0;
+      final double spacing = 28.w;
       // ✅ الـ offset بيتحرك مع flowValue عشان يعطي إحساس تدفق
       final baseOffset = (flowValue * spacing) % spacing;
       double distance = baseOffset;
       while (distance < metric.length) {
         final tangent = metric.getTangentForOffset(distance);
         if (tangent != null) {
-          // هالة حول الخرزة
           canvas.drawCircle(
             tangent.position,
-            5,
+            5.w,
             Paint()
               ..color = Colors.white.withOpacity(.35)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
@@ -1732,7 +1778,7 @@ class _PathPainter extends CustomPainter {
           // الخرزة نفسها
           canvas.drawCircle(
             tangent.position,
-            2.5,
+            2.5.w,
             Paint()..color = Colors.white,
           );
         }
@@ -1767,28 +1813,41 @@ class _PathPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PathPainter oldDelegate) =>
-      oldDelegate.flowValue != flowValue ||
-      oldDelegate.points != points;
+      oldDelegate.flowValue != flowValue || oldDelegate.points != points;
 }
+
 class _LevelRow extends StatelessWidget {
   final LevelPathData level;
   final double nodeDx;
   final double containerWidth;
   final int index;
+  final String userName;
+  final int xp;
+  final int streakDays;
+  final LevelPathData levelNum;
+  final double levelProgress;
 
   const _LevelRow({
     required this.level,
     required this.nodeDx,
     required this.containerWidth,
     required this.index,
+    required this.userName,
+    required this.xp,
+    required this.streakDays,
+    required this.levelNum,
+    required this.levelProgress,
   });
 
   @override
   Widget build(BuildContext context) {
-    const double cardWidth = 158;
-    const double nodeHalf = 39;
-    const double gap = 12;
-    const double edgePadding = 4;
+    // ✅ عرض الكرت بيتكيف مع عرض الشاشة الفعلي بدل رقم ثابت،
+    // مع حد أدنى وأقصى عشان يضل مقروء على أي حجم شاشة
+    final double cardWidth =
+        (containerWidth * 0.42).clamp(130.w, 175.w);
+    final double nodeHalf = 39.w;
+    final double gap = 12.w;
+    final double edgePadding = 4.w;
 
     final spaceOnRight = containerWidth - nodeDx;
     final spaceOnLeft = nodeDx;
@@ -1803,29 +1862,41 @@ class _LevelRow extends StatelessWidget {
         edgePadding, maxLeft < edgePadding ? edgePadding : maxLeft);
 
     return SizedBox(
-      height: 165,
+      height: 165.h,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           if (level.status == LevelStatus.current)
             Positioned(
-              left: nodeDx - 35,
-              top: -2,
+              left: (nodeDx - 35.w).clamp(0.0, containerWidth - 70.w),
+              top: -2.h,
               child: const _CurrentRibbon(),
             ),
-
-          // ✅ العقدة
           Positioned(
-            left: nodeDx - 40,
-            top: 24,
-            child: _LevelNode(level: level, index: index),
+            left: nodeDx - 40.w,
+            top: 24.h,
+            child: _LevelNode(
+              level: level,
+              index: index,
+              userName: userName,
+              xp: xp,
+              streakDays: streakDays,
+              levelNum: levelNum,
+              levelProgress: levelProgress,
+            ),
           ),
-
-          // ✅ بطاقة المعلومات
           Positioned(
             left: clampedLeft,
-            top: 28,
-            child: _LevelInfoCard(level: level, width: cardWidth),
+            top: 28.h,
+            child: _LevelInfoCard(
+              level: level,
+              width: cardWidth,
+              userName: userName,
+              xp: xp,
+              streakDays: streakDays,
+              levelNum: levelNum,
+              levelProgress: levelProgress,
+            ),
           ),
         ],
       ),
@@ -1839,12 +1910,12 @@ class _CurrentRibbon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppColors.orange, AppColors.yellow],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         boxShadow: [
           BoxShadow(
             color: AppColors.yellow.withOpacity(.7),
@@ -1856,14 +1927,14 @@ class _CurrentRibbon extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.flag_rounded, color: Colors.black, size: 11),
-          const SizedBox(width: 3),
+          Icon(Icons.flag_rounded, color: Colors.black, size: 11.sp),
+          SizedBox(width: 3.w),
           Text(
             "Current",
             style: GoogleFonts.poppins(
               color: Colors.black,
               fontWeight: FontWeight.w800,
-              fontSize: 9.5,
+              fontSize: 9.5.sp,
               letterSpacing: .5,
             ),
           ),
@@ -1883,10 +1954,25 @@ class _CurrentRibbon extends StatelessWidget {
         );
   }
 }
+
 class _LevelNode extends StatelessWidget {
   final LevelPathData level;
   final int index;
-  const _LevelNode({required this.level, required this.index});
+  final String userName;
+  final int xp;
+  final int streakDays;
+  final LevelPathData levelNum;
+  final double levelProgress;
+
+  const _LevelNode({
+    required this.level,
+    required this.index,
+    required this.userName,
+    required this.xp,
+    required this.streakDays,
+    required this.levelNum,
+    required this.levelProgress,
+  });
 
   void _handleTap(BuildContext context) {
     final isLocked = level.status == LevelStatus.locked;
@@ -1900,8 +1986,8 @@ class _LevelNode extends StatelessWidget {
               const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8.w),
               const Expanded(
-                child: Text(
-                    "Finish the previous level to unlock this one! 💪"),
+                child:
+                    Text("Finish the previous level to unlock this one! 💪"),
               ),
             ],
           ),
@@ -1915,7 +2001,19 @@ class _LevelNode extends StatelessWidget {
       );
     } else {
       HapticFeedback.lightImpact();
-      // TODO: Navigator.pushNamed(context, levelDetailsRoute, arguments: level);
+      Navigator.pushNamed(
+        context,
+        levelCoursesRoute,
+        arguments: {
+          'userName': userName,
+          'xp': xp,
+          'streakDays': streakDays,
+          'level': 8 - index, // Adjust level based on index
+          'levelProgress': levelProgress,
+          'levelTitle': level.title,
+          'levelSubtitle': level.subtitle,
+        },
+      );
     }
   }
 
@@ -1926,11 +2024,17 @@ class _LevelNode extends StatelessWidget {
     final isBoss = level.status == LevelStatus.boss;
     final isCompleted = level.status == LevelStatus.completed;
 
-    final size = isBoss ? 82.0 : (isCurrent ? 80.0 : 72.0);
+    // ✅ حجم الـ node بيتكيف مع الشاشة (.w) مع حد أدنى وأقصى يمنع
+    // ما يصير عملاق على تابلت أو صغير جداً على شاشة ضيقة
+    final double size =
+        (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(58.0, 92.0);
 
     List<Color> gradientColors;
     if (isLocked) {
-      gradientColors = [Colors.white.withOpacity(.12), Colors.white.withOpacity(.04)];
+      gradientColors = [
+        Colors.white.withOpacity(.12),
+        Colors.white.withOpacity(.04)
+      ];
     } else if (isBoss) {
       gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
     } else if (isCurrent) {
@@ -1942,8 +2046,8 @@ class _LevelNode extends StatelessWidget {
     Widget aura = const SizedBox.shrink();
     if (isCurrent) {
       aura = Container(
-        width: size + 30,
-        height: size + 30,
+        width: size + 30.w,
+        height: size + 30.w,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
@@ -1964,8 +2068,8 @@ class _LevelNode extends StatelessWidget {
     Widget rotatingRing = const SizedBox.shrink();
     if (isCurrent) {
       rotatingRing = Container(
-        width: size + 18,
-        height: size + 18,
+        width: size + 18.w,
+        height: size + 18.w,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
@@ -1992,14 +2096,14 @@ class _LevelNode extends StatelessWidget {
     Widget bossCrown = const SizedBox.shrink();
     if (isBoss) {
       bossCrown = Positioned(
-        top: -8,
+        top: -8.h,
         child: Icon(
           Icons.workspace_premium_rounded,
           color: const Color(0xFFFFD35B),
-          size: 18,
-          shadows: [
-            const Shadow(color: Color(0xffB861F5), blurRadius: 12),
-            const Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+          size: 18.sp,
+          shadows: const [
+            Shadow(color: Color(0xffB861F5), blurRadius: 12),
+            Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
           ],
         )
             .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -2014,7 +2118,7 @@ class _LevelNode extends StatelessWidget {
     Widget node = Container(
       width: size,
       height: size,
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -2040,9 +2144,10 @@ class _LevelNode extends StatelessWidget {
         ),
         child: Center(
           child: isLocked
-              ? Icon(Icons.lock_rounded, color: Colors.white54, size: 28)
+              ? Icon(Icons.lock_rounded, color: Colors.white54, size: 28.sp)
               : Icon(level.icon,
-                  color: Colors.white, size: isBoss ? 34 : (isCurrent ? 32 : 28)),
+                  color: Colors.white,
+                  size: isBoss ? 34.sp : (isCurrent ? 32.sp : 28.sp)),
         ),
       ),
     );
@@ -2053,10 +2158,10 @@ class _LevelNode extends StatelessWidget {
         children: [
           node,
           Positioned(
-            bottom: -2,
-            right: -2,
+            bottom: -2.h,
+            right: -2.w,
             child: Container(
-              padding: const EdgeInsets.all(3),
+              padding: EdgeInsets.all(3.r),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
@@ -2070,7 +2175,7 @@ class _LevelNode extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
+              child: Icon(Icons.check_rounded, size: 12.sp, color: Colors.white),
             ),
           ),
         ],
@@ -2091,8 +2196,8 @@ class _LevelNode extends StatelessWidget {
     return GestureDetector(
       onTap: () => _handleTap(context),
       child: SizedBox(
-        width: size + 30,
-        height: size + 30,
+        width: size + 30.w,
+        height: size + 30.w,
         child: Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -2107,13 +2212,31 @@ class _LevelNode extends StatelessWidget {
     )
         .animate()
         .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
-        .scale(begin: const Offset(.7, .7), end: const Offset(1, 1), curve: Curves.easeOutBack);
+        .scale(
+            begin: const Offset(.7, .7),
+            end: const Offset(1, 1),
+            curve: Curves.easeOutBack);
   }
 }
+
 class _LevelInfoCard extends StatelessWidget {
   final LevelPathData level;
   final double width;
-  const _LevelInfoCard({required this.level, required this.width});
+  final String userName;
+  final int xp;
+  final int streakDays;
+  final LevelPathData levelNum;
+  final double levelProgress;
+
+  const _LevelInfoCard({
+    required this.level,
+    required this.width,
+    required this.userName,
+    required this.xp,
+    required this.streakDays,
+    required this.levelNum,
+    required this.levelProgress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2147,11 +2270,11 @@ class _LevelInfoCard extends StatelessWidget {
     return SizedBox(
       width: width,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -2171,7 +2294,7 @@ class _LevelInfoCard extends StatelessWidget {
                             Colors.white.withOpacity(.04),
                           ],
               ),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(
                 color: isCurrent
                     ? AppColors.yellow.withOpacity(.6)
@@ -2209,10 +2332,12 @@ class _LevelInfoCard extends StatelessWidget {
                     ).createShader(bounds),
                     child: Text(
                       "🔥 Boss Level",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         letterSpacing: .3,
                       ),
                     ),
@@ -2220,54 +2345,72 @@ class _LevelInfoCard extends StatelessWidget {
                 else
                   Text(
                     level.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       letterSpacing: .2,
                     ),
                   ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2.h),
                 Text(
                   level.subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(.72),
-                    fontSize: 10.5,
+                    fontSize: 10.5.sp,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8.h),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(statusIcon, size: 13, color: statusColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      statusText,
-                      style: GoogleFonts.poppins(
-                        color: statusColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                    Icon(statusIcon, size: 13.sp, color: statusColor),
+                    SizedBox(width: 4.w),
+                    Flexible(
+                      child: Text(
+                        statusText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: statusColor,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 if (isCurrent) ...[
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.mediumImpact();
-                      // TODO: Navigator.pushNamed(context, levelDetailsRoute);
+                      Navigator.pushNamed(
+                        context,
+                        levelCoursesRoute,
+                        arguments: {
+                          'userName': userName,
+                          'xp': xp,
+                          'streakDays': streakDays,
+                          'level': 8, // Current level
+                          'levelProgress': levelProgress,
+                          'levelTitle': level.title,
+                          'levelSubtitle': level.subtitle,
+                        },
+                      );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 14.w, vertical: 7.h),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [AppColors.orange, AppColors.yellow],
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.yellow.withOpacity(.6),
@@ -2284,12 +2427,12 @@ class _LevelInfoCard extends StatelessWidget {
                             style: GoogleFonts.poppins(
                               color: Colors.black,
                               fontWeight: FontWeight.w800,
-                              fontSize: 11,
+                              fontSize: 11.sp,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.play_arrow_rounded,
-                              color: Colors.black, size: 14),
+                          SizedBox(width: 4.w),
+                          Icon(Icons.play_arrow_rounded,
+                              color: Colors.black, size: 14.sp),
                         ],
                       ),
                     ),
