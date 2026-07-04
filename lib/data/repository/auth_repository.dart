@@ -192,9 +192,24 @@ class AuthRepository {
           await _saveToken(data['token']);
         }
 
-        // ✅ استخراج roles من user
+        // ✅ استخراج roles من عدة أماكن محتملة في الـ response
+        // الـ API ممكن يرجّع role بأشكال مختلفة
+        List<dynamic> roles = [];
+        if (data['roles'] != null && (data['roles'] as List).isNotEmpty) {
+          roles = data['roles'] as List<dynamic>;
+        } else if (data['role'] != null) {
+          final r = data['role'];
+          roles = r is List ? r as List<dynamic> : [r];
+        } else if (data['user']?['roles'] != null) {
+          roles = data['user']['roles'] as List<dynamic>;
+        } else if (data['data']?['role'] != null) {
+          final r = data['data']['role'];
+          roles = r is List ? r as List<dynamic> : [r];
+        }
+
+        print("🎭 [AuthRepository] Login - Extracted roles: $roles");
+
         final user = data is Map ? data['user'] as Map<String, dynamic>? : null;
-        final roles = user?['roles'] as List<dynamic>? ?? [];
 
         return {
           'success': true,
@@ -203,7 +218,7 @@ class AuthRepository {
               : 'Login successful',
           'token': data is Map ? data['token'] : null,
           'user': user,
-          'roles': roles, // ✅ استخدام roles من user
+          'roles': roles,
           'data': data,
         };
       } else {

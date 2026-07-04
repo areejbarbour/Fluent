@@ -25,7 +25,27 @@ class LoginCubit extends Cubit<LoginState> {
 
       if (success) {
         final token = data['token'] as String?;
-        final roles = data['roles'] as List<dynamic>? ?? [];
+
+        // ✅ استخراج الـ role من عدة أماكن محتملة
+        // الـ API بيرجّع role بأشكال مختلفة:
+        // - data['roles'] = ["student"]
+        // - data['role'] = ["student"]
+        // - data['user']['roles'] = [{"name": "student"}]
+        // - data['data']['role'] = ["student"]
+        List<dynamic> roles = [];
+        if (data['roles'] != null && (data['roles'] as List).isNotEmpty) {
+          roles = data['roles'] as List<dynamic>;
+        } else if (data['role'] != null) {
+          final r = data['role'];
+          roles = r is List ? r as List<dynamic> : [r];
+        } else if (data['user']?['roles'] != null) {
+          roles = data['user']['roles'] as List<dynamic>;
+        } else if (data['data']?['role'] != null) {
+          final r = data['data']['role'];
+          roles = r is List ? r as List<dynamic> : [r];
+        }
+
+        print("🎭 [LoginCubit] Extracted roles: $roles");
 
         // ✅ حفظ التوكن + الدور
         if (token != null && token.isNotEmpty) {
@@ -47,6 +67,10 @@ class LoginCubit extends Cubit<LoginState> {
 
             await prefs.setString('user_role', roleName);
             print("🎭 [LoginCubit] User role saved: $roleName");
+          } else {
+            // ✅ default student لو ما طلع role
+            await prefs.setString('user_role', 'student');
+            print("🎭 [LoginCubit] No role found, defaulting to 'student'");
           }
 
           print("🔑 [LoginCubit] Token saved");

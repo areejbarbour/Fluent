@@ -719,7 +719,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           Navigator.pushNamedAndRemoveUntil(
             context,
-            targetRoute,
+
+            placementTestDialogRoute, // ← الـ route الجديد
+
             (route) => false,
           );
         } else if (state is GoogleLoginFailure) {

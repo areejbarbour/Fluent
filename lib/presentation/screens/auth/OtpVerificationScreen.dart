@@ -6,6 +6,7 @@ import 'package:fluent/cubit/auth/resend_otp/resend_otp_cubit.dart';
 import 'package:fluent/cubit/auth/resend_otp/resend_otp_state.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
+import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -183,6 +184,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           studentHomeRoute,
                           (route) => false,
                         );
+                        Future.delayed(Duration(milliseconds: 500), () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => PlacementTestDialog(),
+                          );
+                        });
                       } else if (widget.type == OtpType.forgotPassword) {
                         // ✅ Forgot Password = يروح لـ SetNewPasswordScreen
                         Navigator.pushReplacementNamed(

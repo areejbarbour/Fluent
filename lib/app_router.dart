@@ -7,6 +7,7 @@ import 'package:fluent/presentation/screens/auth/forget_password_screen.dart';
 import 'package:fluent/presentation/screens/auth/set_new_password_screen.dart';
 import 'package:fluent/presentation/screens/home/student_home_screen.dart';
 import 'package:fluent/presentation/screens/home/teacher_home_screen.dart';
+import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,6 +22,7 @@ import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/onboarding/onboarding_screen.dart';
 import 'presentation/screens/courses/level_courses_screen.dart';
+
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -97,6 +99,11 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const StreakScreen());
 
       case placementTestRoute:
+        return MaterialPageRoute(
+          builder: (_) => const PlacementTestScreen(showIntro: true),
+        );
+
+      case placementTestDialogRoute:
         return MaterialPageRoute(builder: (_) => const PlacementTestDialog());
 
       case homeRoute:
@@ -110,19 +117,20 @@ class AppRouter {
       case teacherHomeRoute:
         return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
 
-        case levelCoursesRoute:
-  final args = settings.arguments as Map<String, dynamic>;
-  return MaterialPageRoute(
-    builder: (_) => LevelCoursesScreen(
-      userName: args['userName'] as String? ?? "Rasha",
-      xp: args['xp'] as int? ?? 12540,
-      streakDays: args['streakDays'] as int? ?? 15,
-      level: args['level'] as int? ?? 8,
-      levelProgress: args['levelProgress'] as double? ?? 0.78,
-      levelTitle: args['levelTitle'] as String? ?? "Level 8",
-      levelSubtitle: args['levelSubtitle'] as String? ?? "Grammar Mastery",
-    ),
-  );
+      case levelCoursesRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => LevelCoursesScreen(
+            userName: args['userName'] as String? ?? "Rasha",
+            xp: args['xp'] as int? ?? 12540,
+            streakDays: args['streakDays'] as int? ?? 15,
+            level: args['level'] as int? ?? 8,
+            levelProgress: args['levelProgress'] as double? ?? 0.78,
+            levelTitle: args['levelTitle'] as String? ?? "Level 8",
+            levelSubtitle:
+                args['levelSubtitle'] as String? ?? "Grammar Mastery",
+          ),
+        );
 
       default:
         return MaterialPageRoute(

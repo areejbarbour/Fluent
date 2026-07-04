@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/presentation/screens/placementTestDialog.dart';
+import 'package:fluent/constants/strings.dart';
 import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:flutter/material.dart';
 
@@ -94,14 +94,13 @@ class StreakScreen extends StatelessWidget {
                   const Spacer(flex: 1),
 
                   _ActionButton(
-                    label: 'SEE YOUR JOURNEY SO FAR',
+                    label: 'CONTINUE TO YOUR JOURNEY',
                     onPressed: () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          return const PlacementTestDialog();
-                        },
+                      // ✅ الانتقال لصفحة الطالب الرئيسية
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        studentHomeRoute,
+                        (route) => false,
                       );
                     },
                   ),

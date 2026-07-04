@@ -1,4 +1,5 @@
-const String baseUrl = 'http://172.20.10.2:8000';
+// const String baseUrl = 'http://10.0.0.2:8000';
+const String baseUrl = 'http://192.168.10.220:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -10,6 +11,7 @@ const String resetPasswordRoute = '/reset-password';
 const String setNewPasswordRoute = '/set-new-password';
 const String homeRoute = '/home';
 const String streakRoute = '/streak';
+const String placementTestDialogRoute = '/placement-test-dialog';
 const String placementTestRoute = '/placement-test';
 const String studentHomeRoute = '/student/home';
 const String teacherHomeRoute = '/teacher/home';

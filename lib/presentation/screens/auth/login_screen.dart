@@ -118,6 +118,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
 
                   // ✅ التوجيه حسب الدور
+                  // - الطالب: يروح على StreakScreen أولاً
+                  // - الأستاذ: يروح مباشرة على TeacherHome (بدون streak)
                   final roles = state.roles;
                   String targetRoute = homeRoute; // default
 
@@ -132,9 +134,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
 
                     if (roleName == 'teacher') {
+                      // ✅ الأستاذ يروح مباشرة للـ TeacherHome
                       targetRoute = teacherHomeRoute;
                     } else {
-                      targetRoute = studentHomeRoute;
+                      // ✅ الطالب يروح على StreakScreen أولاً
+                      targetRoute = streakRoute;
                     }
                   }
 
@@ -696,9 +700,11 @@ class _LoginScreenState extends State<LoginScreen> {
             }
 
             if (roleName == 'teacher') {
+              // ✅ الأستاذ يروح مباشرة للـ TeacherHome
               targetRoute = teacherHomeRoute;
             } else {
-              targetRoute = studentHomeRoute;
+              // ✅ الطالب يروح على StreakScreen أولاً
+              targetRoute = streakRoute;
             }
           }
 
