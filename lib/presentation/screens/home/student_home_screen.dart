@@ -51,6 +51,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   late final AnimationController _pathFlowController;
   late final AnimationController _borderFlowController;
 
+  late final ScrollController _scrollController;
+  final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
+
   final List<LevelPathData> _levels = const [
     LevelPathData(
       title: "Level 8",
@@ -95,18 +98,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+    _scrollController = ScrollController()
+      ..addListener(() {
+        _scrollOffset.value = _scrollController.offset;
+      });
   }
 
   @override
   void dispose() {
     _pathFlowController.dispose();
     _borderFlowController.dispose();
+    _scrollController.dispose();
+    _scrollOffset.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ نتأكد إن ScreenUtil مهيّأ حسب حجم الشاشة الحالي (يشتغل صح مع أي جهاز/دوران)
     return Scaffold(
       backgroundColor: AppColors.dark,
       body: Stack(
@@ -118,24 +126,24 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
+                  controller: _scrollController,
                   physics: const BouncingScrollPhysics(),
                   padding: EdgeInsets.symmetric(
                     horizontal: 20.w,
                     vertical: 10.h,
                   ),
                   child: ConstrainedBox(
-                    // ✅ بيضمن إنو أي محتوى داخلي ما بينكسر لو الشاشة صغيرة/كبيرة جداً
                     constraints: BoxConstraints(
                       minWidth: constraints.maxWidth,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildTopBar(),
-                        SizedBox(height: 22.h),
-                        _buildStatsRow(),
+                        _buildHeroGreetingCard(),
                         SizedBox(height: 20.h),
                         _buildDailyChallengeAndLeaders(),
+                        SizedBox(height: 16.h),
+                        _buildJourneyOverview(),
                         SizedBox(height: 14.h),
                         _PathTransition(),
                         SizedBox(height: 6.h),
@@ -162,6 +170,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
+  Widget _parallax(double factor, Widget child) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffset,
+      child: child,
+      builder: (context, offset, child) {
+        final double shift = (offset * factor).clamp(-40.0, 40.0);
+        return Transform.translate(offset: Offset(0, -shift), child: child);
+      },
+    );
+  }
+
   Widget _buildBackground() {
     return Stack(
       children: [
@@ -184,47 +203,58 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         Positioned(
           top: -120.h,
           right: -80.w,
-          child: _glowCircle(AppColors.yellow, 300.w, 160, 40)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(-15, 10),
-                duration: 5500.ms,
-                curve: Curves.easeInOut,
-              ),
+          child: _parallax(
+            0.18,
+            _glowCircle(AppColors.yellow, 300.w, 160, 40)
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .move(
+                  begin: Offset.zero,
+                  end: const Offset(-15, 10),
+                  duration: 5500.ms,
+                  curve: Curves.easeInOut,
+                ),
+          ),
         ),
         Positioned(
           top: 380.h,
           left: -100.w,
-          child: _glowCircle(AppColors.sky, 260.w, 150, 30)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(20, 15),
-                duration: 6500.ms,
-                curve: Curves.easeInOut,
-              ),
+          child: _parallax(
+            0.12,
+            _glowCircle(AppColors.sky, 260.w, 150, 30)
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .move(
+                  begin: Offset.zero,
+                  end: const Offset(20, 15),
+                  duration: 6500.ms,
+                  curve: Curves.easeInOut,
+                ),
+          ),
         ),
         Positioned(
           top: 700.h,
           right: -60.w,
-          child: _glowCircle(AppColors.orange, 220.w, 130, 25)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(-10, -8),
-                duration: 7000.ms,
-                curve: Curves.easeInOut,
-              ),
+          child: _parallax(
+            0.09,
+            _glowCircle(AppColors.orange, 220.w, 130, 25)
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .move(
+                  begin: Offset.zero,
+                  end: const Offset(-10, -8),
+                  duration: 7000.ms,
+                  curve: Curves.easeInOut,
+                ),
+          ),
         ),
-        // ✅ silhouettes جبال بالأسفل
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
-          child: CustomPaint(
-            size: Size(double.infinity, 240.h),
-            painter: _MountainsPainter(),
+          child: _parallax(
+            0.05,
+            CustomPaint(
+              size: Size(double.infinity, 240.h),
+              painter: _MountainsPainter(),
+            ),
           ),
         ),
       ],
@@ -249,124 +279,183 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-  Widget _buildTopBar() {
-    return Row(
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            // الإطار الدوّار
-            Container(
-              width: 60.w,
-              height: 60.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const SweepGradient(
-                  colors: [
-                    AppColors.yellow,
-                    AppColors.orange,
-                    AppColors.sky,
-                    AppColors.yellow,
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.45),
-                    blurRadius: 18,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ).animate(onPlay: (c) => c.repeat()).rotate(
-                  duration: 8.seconds,
-                  curve: Curves.linear,
-                ),
-            // الصورة
-            Container(
-              width: 50.w,
-              height: 50.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.sky.withOpacity(.25),
-                border: Border.all(color: AppColors.dark, width: 2.5),
-              ),
-              child: Icon(
-                Icons.person_rounded,
-                color: Colors.white,
-                size: 26.sp,
-              ),
+    Widget _buildHeroGreetingCard() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.10),
+                Colors.white.withOpacity(.03),
+              ],
             ),
-            Positioned(
-              top: -10.h,
-              child: Icon(
-                Icons.workspace_premium_rounded,
-                color: AppColors.yellow,
-                size: 18.sp,
-                shadows: [
-                  Shadow(color: AppColors.orange, blurRadius: 10),
-                  Shadow(
-                      color: AppColors.yellow.withOpacity(.6), blurRadius: 18),
-                ],
-              )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(
-                    begin: const Offset(1, 1),
-                    end: const Offset(1.12, 1.12),
-                    duration: 1600.ms,
-                    curve: Curves.easeInOut,
-                  ),
-            ),
-          ],
-        ),
-        SizedBox(width: 12.w),
-        Expanded(
+            border: Border.all(color: Colors.white.withOpacity(.16)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.sky.withOpacity(.14),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Text("👋", style: TextStyle(fontSize: 15.sp)),
-                  SizedBox(width: 6.w),
-                  Flexible(
-                    child: Text(
-                      "Good evening,",
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.75),
-                        fontSize: 13.sp,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 60.w,
+                        height: 60.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const SweepGradient(
+                            colors: [
+                              AppColors.yellow,
+                              AppColors.orange,
+                              AppColors.sky,
+                              AppColors.yellow,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.yellow.withOpacity(.45),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      ).animate(onPlay: (c) => c.repeat()).rotate(
+                            duration: 8.seconds,
+                            curve: Curves.linear,
+                          ),
+                      Container(
+                        width: 50.w,
+                        height: 50.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.sky.withOpacity(.25),
+                          border: Border.all(color: AppColors.dark, width: 2.5),
+                        ),
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 26.sp,
+                        ),
                       ),
+                      Positioned(
+                        top: -10.h,
+                        child: Icon(
+                          Icons.workspace_premium_rounded,
+                          color: AppColors.yellow,
+                          size: 18.sp,
+                          shadows: [
+                            Shadow(color: AppColors.orange, blurRadius: 10),
+                            Shadow(
+                                color: AppColors.yellow.withOpacity(.6),
+                                blurRadius: 18),
+                          ],
+                        )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(1, 1),
+                              end: const Offset(1.12, 1.12),
+                              duration: 1600.ms,
+                              curve: Curves.easeInOut,
+                            ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text("👋", style: TextStyle(fontSize: 15.sp)),
+                            SizedBox(width: 6.w),
+                            Flexible(
+                              child: Text(
+                                "Good evening,",
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(.75),
+                                  fontSize: 13.sp,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Colors.white, AppColors.sky],
+                          ).createShader(bounds),
+                          child: Text(
+                            widget.userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 21.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .3,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  _circleIconButton(
+                    icon: Icons.notifications_rounded,
+                    badgeCount: 3,
+                    onTap: () {},
+                  ),
+                  SizedBox(width: 8.w),
+                  _circleIconButton(icon: Icons.settings_rounded, onTap: () {}),
                 ],
               ),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Colors.white, AppColors.sky],
-                ).createShader(bounds),
-                child: Text(
-                  widget.userName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 21.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .3,
+              SizedBox(height: 16.h),
+              Container(height: 1, color: Colors.white.withOpacity(.10)),
+              SizedBox(height: 14.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statPill(
+                      icon: Icons.star_rounded,
+                      iconColor: AppColors.yellow,
+                      label: "XP",
+                      value: widget.xp,
+                    ),
                   ),
-                ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: _statPill(
+                      icon: Icons.local_fire_department_rounded,
+                      iconColor: AppColors.orange,
+                      label: "Streak",
+                      value: widget.streakDays,
+                      suffix: "d",
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(child: _levelPill()),
+                ],
               ),
             ],
           ),
         ),
-        _circleIconButton(
-          icon: Icons.notifications_rounded,
-          badgeCount: 3,
-          onTap: () {},
-        ),
-        SizedBox(width: 10.w),
-        _circleIconButton(icon: Icons.settings_rounded, onTap: () {}),
-      ],
+      ),
     ).animate().fadeIn(duration: 500.ms).moveY(begin: -10, end: 0);
   }
 
@@ -442,39 +531,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-  Widget _buildStatsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _statPill(
-            icon: Icons.star_rounded,
-            iconColor: AppColors.yellow,
-            label: "XP",
-            value: _formatNumber(widget.xp),
-          ),
-        ),
-        SizedBox(width: 8.w),
-        Expanded(
-          child: _statPill(
-            icon: Icons.local_fire_department_rounded,
-            iconColor: AppColors.orange,
-            label: "Streak",
-            value: "${widget.streakDays}d",
-          ),
-        ),
-        SizedBox(width: 8.w),
-        Expanded(
-          child: _levelPill(),
-        ),
-      ],
-    ).animate().fadeIn(delay: 150.ms, duration: 500.ms).moveY(begin: 10, end: 0);
-  }
-
   Widget _statPill({
     required IconData icon,
     required Color iconColor,
     required String label,
-    required String value,
+    required int value,
+    String suffix = "",
   }) {
     return _glassContainer(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 11.h),
@@ -514,13 +576,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.sp,
+                  child: TweenAnimationBuilder<int>(
+                    tween: IntTween(begin: 0, end: value),
+                    duration: 1100.ms,
+                    curve: Curves.easeOutCubic,
+                    builder: (context, v, _) => Text(
+                      "${_formatNumber(v)}$suffix",
+                      maxLines: 1,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.sp,
+                      ),
                     ),
                   ),
                 ),
@@ -655,6 +722,42 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 500.ms).moveY(begin: 10, end: 0);
   }
 
+  /// أيقونة التحدي اليومي صارت محاطة بحلقة تقدّم (70%) بدل دائرة تلوين ثابتة
+  Widget _dailyChallengeRingIcon() {
+    return SizedBox(
+      width: 30.w,
+      height: 30.w,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox.expand(
+            child: CircularProgressIndicator(
+              value: 1,
+              strokeWidth: 2.6.w,
+              valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(.12)),
+            ),
+          ),
+          SizedBox.expand(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 0.7),
+              duration: 1200.ms,
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) => CircularProgressIndicator(
+                value: v,
+                strokeWidth: 2.6.w,
+                strokeCap: StrokeCap.round,
+                valueColor: const AlwaysStoppedAnimation(AppColors.orange),
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+          ),
+          Icon(Icons.local_fire_department_rounded,
+              color: AppColors.orange, size: 14.sp),
+        ],
+      ),
+    );
+  }
+
   Widget _dailyChallengeCard() {
     return _glassContainer(
       padding: EdgeInsets.all(14.w),
@@ -669,21 +772,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(5.r),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.orange.withOpacity(.25),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.orange.withOpacity(.5),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.local_fire_department_rounded,
-                    color: AppColors.orange, size: 14.sp),
-              ),
+              _dailyChallengeRingIcon(),
               SizedBox(width: 6.w),
               Flexible(
                 child: Text(
@@ -832,6 +921,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
+  /// لوحة المتصدّرين بشكل "منصة تتويج" (Podium): صاحب المركز الأول
+  /// بالنص وأطول قاعدة + تاج، والثاني يسار، الثالث يمين — بدل ليستة
+  /// أسماء مسطّحة. البيانات نفسها بالضبط، بس العرض أوضح وأجمل.
   Widget _topLearnersCard() {
     final leaders = [
       ("Omar", "18,200", AppColors.yellow, "1"),
@@ -840,7 +932,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     ];
 
     return _glassContainer(
-      padding: EdgeInsets.all(14.w),
+      padding: EdgeInsets.fromLTRB(12.w, 14.w, 12.w, 10.w),
       radius: 22.r,
       gradientColors: [
         AppColors.sky.withOpacity(.15),
@@ -881,94 +973,192 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               ),
             ],
           ),
-          SizedBox(height: 10.h),
-          ...List.generate(leaders.length, (i) {
-            final (name, xp, color, rank) = leaders[i];
-            return Padding(
-              padding:
-                  EdgeInsets.only(bottom: i == leaders.length - 1 ? 0 : 8.h),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 22.w,
-                    height: 22.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          color,
-                          color.withOpacity(.6),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(.5),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        rank,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 10.5.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                xp,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.65),
-                                  fontSize: 9.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 2.w),
-                            Text(
-                              "XP",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(.5),
-                                fontSize: 8.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+          SizedBox(height: 14.h),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _podiumSlot(leaders[1], pedestalHeight: 46.h, avatarSize: 30.w),
+              SizedBox(width: 4.w),
+              _podiumSlot(leaders[0],
+                  pedestalHeight: 62.h, avatarSize: 38.w, crown: true),
+              SizedBox(width: 4.w),
+              _podiumSlot(leaders[2], pedestalHeight: 36.h, avatarSize: 26.w),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Widget _podiumSlot(
+    (String, String, Color, String) leader, {
+    required double pedestalHeight,
+    required double avatarSize,
+    bool crown = false,
+  }) {
+    final (name, xp, color, rank) = leader;
+
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (crown)
+            Icon(Icons.emoji_events_rounded, color: AppColors.yellow, size: 15.sp)
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 1200.ms,
+                  curve: Curves.easeInOut,
+                )
+          else
+            SizedBox(height: 15.sp),
+          SizedBox(height: 4.h),
+          Container(
+            width: avatarSize,
+            height: avatarSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: [color, color.withOpacity(.6)]),
+              border: Border.all(color: Colors.white.withOpacity(.5), width: 1.2),
+              boxShadow: [
+                BoxShadow(color: color.withOpacity(.55), blurRadius: 10),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                name.isNotEmpty ? name[0] : "?",
+                style: GoogleFonts.poppins(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: avatarSize * 0.42,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            "$xp XP",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(.6),
+              fontSize: 8.sp,
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Container(
+            width: double.infinity,
+            height: pedestalHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [color.withOpacity(.55), color.withOpacity(.12)],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(10.r)),
+              border: Border.all(color: color.withOpacity(.45)),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              rank,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// شريط ملخّص "رحلتك" فوق المسار مباشرة: كم مستوى مكتمل من الإجمالي
+  /// + نقاط صغيرة ملوّنة بترتيب المستويات، بتعطي نظرة سريعة على التقدّم
+  /// العام قبل ما تنزل تتصفح المسار بالتفصيل.
+  Widget _buildJourneyOverview() {
+    final completed =
+        _levels.where((l) => l.status == LevelStatus.completed).length;
+    final total = _levels.length;
+
+    Color dotColor(LevelStatus status) {
+      switch (status) {
+        case LevelStatus.completed:
+          return const Color(0xFF4ADE80);
+        case LevelStatus.current:
+          return AppColors.yellow;
+        case LevelStatus.boss:
+          return const Color(0xffFF6FB5);
+        case LevelStatus.locked:
+          return Colors.white.withOpacity(.25);
+      }
+    }
+
+    return _glassContainer(
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      radius: 18.r,
+      gradientColors: [
+        Colors.white.withOpacity(.08),
+        Colors.white.withOpacity(.03),
+      ],
+      child: Row(
+        children: [
+          Icon(Icons.route_rounded, color: AppColors.sky, size: 16.sp),
+          SizedBox(width: 8.w),
+          Text(
+            "Your Journey",
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 12.5.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: List.generate(total, (i) {
+              final color = dotColor(_levels[i].status);
+              final isLocked = _levels[i].status == LevelStatus.locked;
+              return Padding(
+                padding: EdgeInsets.only(left: 5.w),
+                child: Container(
+                  width: 7.w,
+                  height: 7.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color,
+                    boxShadow: isLocked
+                        ? []
+                        : [BoxShadow(color: color.withOpacity(.7), blurRadius: 5)],
+                  ),
+                ),
+              );
+            }),
+          ),
+          SizedBox(width: 8.w),
+          Text(
+            "$completed/$total",
+            style: GoogleFonts.poppins(
+              color: AppColors.yellow,
+              fontSize: 11.5.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 300.ms, duration: 500.ms).moveY(begin: 8, end: 0);
   }
 
   Widget _buildBottomNav() {
@@ -1128,7 +1318,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                       ],
                                     ),
                                     SizedBox(height: 4.h),
-                                    // ✅ FittedBox بيمنع أي overflow للنص على الشاشات الضيقة
                                     FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: AnimatedDefaultTextStyle(
@@ -1583,12 +1772,9 @@ class _MountainsPainter extends CustomPainter {
   bool shouldRepaint(covariant _MountainsPainter old) => false;
 }
 
-/// ✅ =========================================================
-/// المسار (Levels Path) — تم تحويل كل الأرقام الثابتة (Hard-coded)
-/// إلى وحدات ScreenUtil (.w / .h / .r / .sp) مع Clamp حماية
-/// عشان الواجهة تتكيف مع أي حجم شاشة موبايل من غير ما تنكسر
-/// أو تتراكب العناصر فوق بعضها.
-/// =========================================================
+/// المسار (Levels Path) — أرقام ScreenUtil (.w / .h / .r / .sp) مع
+/// Clamp حماية عشان الواجهة تتكيف مع أي حجم شاشة موبايل من غير ما
+/// تنكسر أو تتراكب العناصر فوق بعضها.
 class _LevelsPath extends StatelessWidget {
   final List<LevelPathData> levels;
   final AnimationController flowController;
@@ -1610,7 +1796,6 @@ class _LevelsPath extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ متحول (مش const) عشان نقدر نستخدم .h المرتبط بحجم الشاشة
     final double nodeSpacing = 165.h;
 
     return LayoutBuilder(
@@ -1618,13 +1803,10 @@ class _LevelsPath extends StatelessWidget {
         final width = constraints.maxWidth;
         final totalHeight = levels.length * nodeSpacing + 80.h;
 
-        // ✅ هامش أمان حسب عرض الشاشة الفعلي، بيمنع خروج الـ node عن حدود الشاشة
-        // على الشاشات الضيقة جداً (فولد/شاشات صغيرة) أو الواسعة (تابلت)
         final double edgeFraction = (60.w / width).clamp(0.10, 0.22);
         final double minFraction = edgeFraction;
         final double maxFraction = 1 - edgeFraction;
 
-        // ✅ توليد نقاط منحنى S-Curve عضوي، مع clamp ديناميكي حسب عرض الشاشة
         final points = List.generate(levels.length, (i) {
           final xFraction = 0.5 + 0.30 * math.sin(i * 2.05 + 1.0);
           final dx = width * xFraction.clamp(minFraction, maxFraction);
@@ -1762,7 +1944,6 @@ class _PathPainter extends CustomPainter {
     final metrics = path.computeMetrics().toList();
     for (final metric in metrics) {
       final double spacing = 28.w;
-      // ✅ الـ offset بيتحرك مع flowValue عشان يعطي إحساس تدفق
       final baseOffset = (flowValue * spacing) % spacing;
       double distance = baseOffset;
       while (distance < metric.length) {
@@ -1775,7 +1956,6 @@ class _PathPainter extends CustomPainter {
               ..color = Colors.white.withOpacity(.35)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
           );
-          // الخرزة نفسها
           canvas.drawCircle(
             tangent.position,
             2.5.w,
@@ -1841,10 +2021,7 @@ class _LevelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ عرض الكرت بيتكيف مع عرض الشاشة الفعلي بدل رقم ثابت،
-    // مع حد أدنى وأقصى عشان يضل مقروء على أي حجم شاشة
-    final double cardWidth =
-        (containerWidth * 0.42).clamp(130.w, 175.w);
+    final double cardWidth = (containerWidth * 0.42).clamp(130.w, 175.w);
     final double nodeHalf = 39.w;
     final double gap = 12.w;
     final double edgePadding = 4.w;
@@ -2024,8 +2201,6 @@ class _LevelNode extends StatelessWidget {
     final isBoss = level.status == LevelStatus.boss;
     final isCompleted = level.status == LevelStatus.completed;
 
-    // ✅ حجم الـ node بيتكيف مع الشاشة (.w) مع حد أدنى وأقصى يمنع
-    // ما يصير عملاق على تابلت أو صغير جداً على شاشة ضيقة
     final double size =
         (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(58.0, 92.0);
 
@@ -2270,7 +2445,7 @@ class _LevelInfoCard extends StatelessWidget {
     return SizedBox(
       width: width,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(20.r),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
@@ -2294,7 +2469,7 @@ class _LevelInfoCard extends StatelessWidget {
                             Colors.white.withOpacity(.04),
                           ],
               ),
-              borderRadius: BorderRadius.circular(18.r),
+              borderRadius: BorderRadius.circular(20.r),
               border: Border.all(
                 color: isCurrent
                     ? AppColors.yellow.withOpacity(.6)
