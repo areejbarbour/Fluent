@@ -14,14 +14,31 @@ const String streakRoute = '/streak';
 const String placementTestDialogRoute = '/placement-test-dialog';
 const String placementTestRoute = '/placement-test';
 const String studentHomeRoute = '/student/home';
-const String teacherHomeRoute = '/teacher/home';
+//const String teacherHomeRoute = '/teacher/home';
 const String levelCoursesRoute = '/level-courses';
+
+// ✅ Teacher Question routes
+const String questionsListRoute = '/teacher/questions';
+const String questionDetailRoute = '/teacher/questions/detail';
+const String questionCreateRoute = '/teacher/questions/create';
+const String questionEditRoute = '/teacher/questions/edit';
+const String questionStatusRoute = '/teacher/questions/status';
+const String blockingTestsRoute = '/teacher/questions/blocking-tests';
+
 // Add this
 // ✅ API Endpoints
 const String apiRegister = '/api/register';
 const String apiLogin = '/api/login';
 const String apiLogout = '/api/logout';
 const String apiCurrentUser = '/api/user';
+
+// ✅ Question API Endpoints
+const String apiQuestions = '/api/questions';
+const String apiDeprecatedQuestions = '/api/questions/deprecated';
+String apiQuestionDetail(int id) => '/api/questions/$id';
+String apiQuestionCheckStatus(int id) => '/api/questions/$id/checkStatus';
+String apiQuestionDelete(int id) => '/api/questions/$id/delete';
+String apiQuestionBlockingTests(int id) => '/api/questions/$id/blocking-tests';
 
 // ✅ OTP Endpoints - Dynamic with type parameter
 String apiVerifyOtp(String type) => '/api/verifyOtp/$type';

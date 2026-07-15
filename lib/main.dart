@@ -9,7 +9,9 @@ import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
+import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/services/auth_service.dart';
+import 'package:fluent/data/services/question_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -36,26 +38,42 @@ void main() async {
   final authService = AuthService(dioInstance);
   final authRepository = AuthRepository(authService);
 
+  // ✅ Question DI
+  final questionService = QuestionService(dioInstance);
+  final questionRepository = QuestionRepository(questionService);
+
   // ✅ تحديد الـ initialRoute حسب الدور
   String initialRoute = onboardingRoute;
 
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
-      initialRoute = teacherHomeRoute; // 🎓 صفحة المعلم
+      initialRoute = questionsListRoute; // 🎓 صفحة المعلم
     } else {
       initialRoute = studentHomeRoute; // 🎓 صفحة الطالب
     }
   }
 
-  runApp(MyApp(authRepository: authRepository, initialRoute: initialRoute));
+  runApp(
+    MyApp(
+      authRepository: authRepository,
+      questionRepository: questionRepository,
+      initialRoute: initialRoute,
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
   final AuthRepository authRepository;
+  final QuestionRepository questionRepository;
   final String initialRoute;
   late final AppRouter appRouter;
 
-  MyApp({super.key, required this.authRepository, required this.initialRoute}) {
+  MyApp({
+    super.key,
+    required this.authRepository,
+    required this.questionRepository,
+    required this.initialRoute,
+  }) {
     appRouter = AppRouter(authRepository);
   }
 
@@ -78,6 +96,10 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<AuthRepository>.value(
               value: widget.authRepository,
             ),
+            // ✅ Provide QuestionRepository to the whole tree
+            RepositoryProvider<QuestionRepository>.value(
+              value: widget.questionRepository,
+            ),
           ],
           child: MultiBlocProvider(
             providers: [
@@ -98,7 +120,9 @@ class _MyAppState extends State<MyApp> {
                 create: (_) => ResetPasswordCubit(widget.authRepository),
               ),
 
-              BlocProvider(create: (_) => GoogleLoginCubit(widget.authRepository)),
+              BlocProvider(
+                create: (_) => GoogleLoginCubit(widget.authRepository),
+              ),
             ],
             child: MaterialApp(
               title: 'Fluent',

@@ -711,7 +711,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
 
             if (roleName == 'teacher') {
-              targetRoute = teacherHomeRoute;
+              targetRoute = questionsListRoute;
             } else {
               targetRoute = studentHomeRoute;
             }

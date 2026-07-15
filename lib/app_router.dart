@@ -1,6 +1,8 @@
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
+import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
+import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/presentation/screens/Streak/StreakScreen.dart';
 import 'package:fluent/presentation/screens/auth/OtpVerificationScreen.dart';
 import 'package:fluent/presentation/screens/auth/forget_password_screen.dart';
@@ -9,6 +11,7 @@ import 'package:fluent/presentation/screens/home/student_home_screen.dart';
 import 'package:fluent/presentation/screens/home/teacher_home_screen.dart';
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
+import 'package:fluent/presentation/screens/teacher/questions/questions_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -113,9 +116,9 @@ class AppRouter {
       case studentHomeRoute:
         return MaterialPageRoute(builder: (_) => const StudentHomeScreen());
 
-      // ✅ Route للمعلم
-      case teacherHomeRoute:
-        return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
+      // // ✅ Route للمعلم
+      // case teacherHomeRoute:
+      //   return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
 
       case levelCoursesRoute:
         final args = settings.arguments as Map<String, dynamic>;
@@ -131,6 +134,18 @@ class AppRouter {
                 args['levelSubtitle'] as String? ?? "Grammar Mastery",
           ),
         );
+
+         // ✅ Teacher: Questions list
+      case questionsListRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => QuestionListCubit(ctx.read<QuestionRepository>()),
+            child: const QuestionsListScreen(),
+          ),
+        );
+
+
+        
 
       default:
         return MaterialPageRoute(

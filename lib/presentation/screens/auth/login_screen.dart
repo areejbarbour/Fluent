@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     if (roleName == 'teacher') {
                       // ✅ الأستاذ يروح مباشرة للـ TeacherHome
-                      targetRoute = teacherHomeRoute;
+                      targetRoute = questionsListRoute;
                     } else {
                       // ✅ الطالب يروح على StreakScreen أولاً
                       targetRoute = streakRoute;
@@ -701,7 +701,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             if (roleName == 'teacher') {
               // ✅ الأستاذ يروح مباشرة للـ TeacherHome
-              targetRoute = teacherHomeRoute;
+              targetRoute = questionsListRoute;
             } else {
               // ✅ الطالب يروح على StreakScreen أولاً
               targetRoute = streakRoute;
