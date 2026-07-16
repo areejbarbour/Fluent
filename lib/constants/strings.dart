@@ -1,5 +1,5 @@
 // const String baseUrl = 'http://10.0.0.2:8000';
-const String baseUrl = 'http://192.168.10.220:8000';
+const String baseUrl = 'http://172.20.10.2:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -16,6 +16,12 @@ const String placementTestRoute = '/placement-test';
 const String studentHomeRoute = '/student/home';
 //const String teacherHomeRoute = '/teacher/home';
 const String levelCoursesRoute = '/level-courses';
+const String profileRoute = '/profile';
+const String wordBankRoute = '/word_bank';
+const String podcastsRoute = '/podcasts';          
+const String aiConversationRoute = '/ai-conversation'; 
+
+
 
 // ✅ Teacher Question routes
 const String questionsListRoute = '/teacher/questions';

@@ -25,6 +25,13 @@ import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/onboarding/onboarding_screen.dart';
 import 'presentation/screens/courses/level_courses_screen.dart';
+import 'package:fluent/presentation/screens/statics/profile_screen.dart';
+import 'package:fluent/presentation/screens/statics/word_bank_screen.dart';
+import 'package:fluent/presentation/screens/statics/podcasts_screen.dart';
+import 'package:fluent/presentation/screens/statics/ai_conversation_screen.dart';
+
+
+
 
 class AppRouter {
   final AuthRepository authRepository;
@@ -115,6 +122,20 @@ class AppRouter {
       // ✅ Route للطالب
       case studentHomeRoute:
         return MaterialPageRoute(builder: (_) => const StudentHomeScreen());
+
+          case profileRoute:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+
+        case wordBankRoute:                            
+          return MaterialPageRoute(builder: (_) => const WordBankScreen(),);
+
+          case podcastsRoute:                                  
+              return MaterialPageRoute(builder: (_) => const PodcastsScreen());
+
+
+            case aiConversationRoute:                             
+               return MaterialPageRoute(builder: (_) => const AIConversationScreen());
+
 
       // // ✅ Route للمعلم
       // case teacherHomeRoute:

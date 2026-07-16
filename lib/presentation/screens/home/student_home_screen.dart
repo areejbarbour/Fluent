@@ -1220,10 +1220,56 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
                           return Expanded(
                             child: GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedNavIndex = i);
-                              },
+                              // onTap: () {
+                              //      HapticFeedback.selectionClick();
+                              //       setState(() => _selectedNavIndex = i);
+
+                              //     switch (i) {
+                              //      case 0: // HOME
+                              //           break;
+                              //      case 1: // WORD BANK
+                              //        Navigator.pushNamed(context, wordBankRoute);
+                              //          break;
+                              //        case 2: // PODCASTS
+                              //        Navigator.pushNamed(context, podcastsRoute);
+                              //          break;
+                              //        case 3: // AI CONVERSATION
+                              //        Navigator.pushNamed(context, aiConversationRoute);
+                              //          break;
+                              //         case 4: // PROFILE
+                              //        Navigator.pushNamed(context, profileRoute);
+                              //          break;
+                              //                 }},
+
+                              onTap: () async {
+                               HapticFeedback.selectionClick();
+                               setState(() => _selectedNavIndex = i);
+
+                                if (i == 0) return;
+
+                                  Future<void>? navigationFuture;
+                                  switch (i) {
+                                   case 1: // WORD BANK
+                                  navigationFuture = Navigator.pushNamed(context, wordBankRoute);
+                                    break;
+                                   case 2: // PODCASTS
+                                   navigationFuture = Navigator.pushNamed(context, podcastsRoute);
+                                     break;
+                                    case 3: // AI CONVERSATION
+                                   navigationFuture = Navigator.pushNamed(context, aiConversationRoute);
+                                     break;
+                                    case 4: // PROFILE
+                                   navigationFuture = Navigator.pushNamed(context, profileRoute);
+                                        break;
+                                       }
+
+                                    await navigationFuture;
+
+                                     if (mounted) {
+                                     setState(() => _selectedNavIndex = 0);
+                                      }
+                                       },
+                                       
                               behavior: HitTestBehavior.opaque,
                               child: AnimatedContainer(
                                 duration: 250.ms,
