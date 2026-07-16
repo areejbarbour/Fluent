@@ -1220,27 +1220,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
                           return Expanded(
                             child: GestureDetector(
-                              // onTap: () {
-                              //      HapticFeedback.selectionClick();
-                              //       setState(() => _selectedNavIndex = i);
-
-                              //     switch (i) {
-                              //      case 0: // HOME
-                              //           break;
-                              //      case 1: // WORD BANK
-                              //        Navigator.pushNamed(context, wordBankRoute);
-                              //          break;
-                              //        case 2: // PODCASTS
-                              //        Navigator.pushNamed(context, podcastsRoute);
-                              //          break;
-                              //        case 3: // AI CONVERSATION
-                              //        Navigator.pushNamed(context, aiConversationRoute);
-                              //          break;
-                              //         case 4: // PROFILE
-                              //        Navigator.pushNamed(context, profileRoute);
-                              //          break;
-                              //                 }},
-
                               onTap: () async {
                                HapticFeedback.selectionClick();
                                setState(() => _selectedNavIndex = i);
@@ -1264,7 +1243,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                        }
 
                                     await navigationFuture;
-
                                      if (mounted) {
                                      setState(() => _selectedNavIndex = 0);
                                       }

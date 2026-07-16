@@ -1,5 +1,5 @@
 // const String baseUrl = 'http://10.0.0.2:8000';
-const String baseUrl = 'http://172.20.10.2:8000';
+const String baseUrl = 'http://192.168.1.6:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
