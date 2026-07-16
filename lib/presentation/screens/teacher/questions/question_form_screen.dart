@@ -64,6 +64,7 @@ class _FormViewState extends State<_FormView> {
   final _titleEn = TextEditingController();
   final _titleAr = TextEditingController();
   final _textQuestion = TextEditingController();
+  final _scoreController = TextEditingController(text: '1');
 
   QuestionType _type = QuestionType.mcq;
   QuestionDifficulty _difficulty = QuestionDifficulty.easy;
@@ -89,6 +90,7 @@ class _FormViewState extends State<_FormView> {
     _titleEn.dispose();
     _titleAr.dispose();
     _textQuestion.dispose();
+    _scoreController.dispose();
     super.dispose();
   }
 
@@ -127,6 +129,7 @@ class _FormViewState extends State<_FormView> {
     _type = q.type;
     _difficulty = q.difficulty;
     _score = q.score;
+    _scoreController.text = _score.toString();
 
     // 👇 ضيف هالسطرين هون (بعد _score = q.score;)
     _existingImageUrl = (q.imageUrl != null && q.imageUrl!.isNotEmpty)
@@ -551,7 +554,7 @@ class _FormViewState extends State<_FormView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Question Text (with blanks like ____)",
+            "Question Text",
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
               fontSize: 12.sp,
@@ -559,15 +562,236 @@ class _FormViewState extends State<_FormView> {
               letterSpacing: 0.5,
             ),
           ),
+          SizedBox(height: 4.h),
+          // Text(
+          //   "Use {1} for the first blank, {2} for the second, etc.",
+          //   style: GoogleFonts.poppins(
+          //     color: Colors.white.withOpacity(0.55),
+          //     fontSize: 10.sp,
+          //     fontStyle: FontStyle.italic,
+          //   ),
+          // ),
           SizedBox(height: 10.h),
           TextFormField(
             controller: _textQuestion,
             maxLines: 4,
+            onChanged: (_) => setState(() {}), // 🔄 refresh preview live
             style: GoogleFonts.poppins(color: Colors.white, fontSize: 14.sp),
-            decoration: _inputDecoration("e.g. The capital of France is ____."),
+            decoration: _inputDecoration("e.g. The capital of France is {1}."),
           ),
+          SizedBox(height: 14.h),
+          // ─── Live preview ──────────────────────────
+          _buildLiveFillPreview(),
         ],
       ),
+    );
+  }
+
+  /// Shows how the fill question will look to the student,
+  /// updating live as the teacher types the text and answers.
+  Widget _buildLiveFillPreview() {
+    final text = _textQuestion.text.trim();
+    final hasBlanks = RegExp(r'\{\d+\}').hasMatch(text);
+    final hasAnswers = _answers.any((a) => a.text.trim().isNotEmpty);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.orange.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.visibility_outlined,
+                color: AppColors.orange,
+                size: 14.sp,
+              ),
+              SizedBox(width: 5.w),
+              Text(
+                "Live Preview",
+                style: GoogleFonts.poppins(
+                  color: AppColors.orange,
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          if (text.isEmpty)
+            Text(
+              "Start typing to see a preview...",
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 12.sp,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else if (!hasBlanks)
+            // No {n} tokens yet -> render as plain text + helper hint
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.white38,
+                      size: 12.sp,
+                    ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: Text(
+                        "Tip: add {1}, {2}, ... to create blanks.",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white38,
+                          fontSize: 10.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            // ✅ Real blanks — rendered inline (no separate widget)
+            _renderFillRichPreview(text, hasAnswers),
+        ],
+      ),
+    );
+  }
+
+  /// Inlines {1} {2} ... as visual blank chips for the live preview,
+  /// pulling the per-blank answer from `_answers` (1-based blankOrder).
+  Widget _renderFillRichPreview(String text, bool hasAnswers) {
+    final baseStyle = GoogleFonts.poppins(
+      color: Colors.white,
+      fontSize: 13.sp,
+      height: 1.6,
+    );
+    final blankColor = AppColors.orange;
+    final regex = RegExp(r'\{(\d+)\}');
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    String? answerFor(int blankNumber) {
+      for (final a in _answers) {
+        if (a.text.trim().isEmpty) continue;
+        // Use blankOrder if set, else fall back to the list index.
+        final n = a.blankOrder > 0 ? a.blankOrder : 1;
+        if (n == blankNumber) return a.text;
+      }
+      return null;
+    }
+
+    for (final m in regex.allMatches(text)) {
+      if (m.start > lastEnd) {
+        spans.add(
+          TextSpan(text: text.substring(lastEnd, m.start), style: baseStyle),
+        );
+      }
+      final n = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (n > 0) {
+        final answer = hasAnswers ? answerFor(n) : null;
+        final hasAns = answer != null && answer.isNotEmpty;
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    margin: EdgeInsets.only(top: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
+                    constraints: BoxConstraints(minWidth: 60.w),
+                    decoration: BoxDecoration(
+                      color: hasAns
+                          ? blankColor.withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border(
+                        bottom: BorderSide(color: blankColor, width: 1.6),
+                      ),
+                    ),
+                    child: Text(
+                      hasAns ? answer : '   ',
+                      style: baseStyle.copyWith(
+                        color: hasAns ? Colors.white : Colors.white54,
+                        fontWeight: hasAns ? FontWeight.w600 : FontWeight.w400,
+                        fontStyle: hasAns ? FontStyle.normal : FontStyle.italic,
+                        fontSize: 12.sp,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Positioned(
+                    top: -2,
+                    left: -2,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4.w,
+                        vertical: 1.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: blankColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: blankColor.withOpacity(0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '$n',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd), style: baseStyle));
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+      textDirection: TextDirection.ltr,
     );
   }
 
@@ -693,17 +917,21 @@ class _FormViewState extends State<_FormView> {
                       _difficulty = v;
                       if (_score < v.minScore) _score = v.minScore;
                       if (_score > v.maxScore) _score = v.maxScore;
+                      _scoreController.text = _score.toString();
                     });
+                    // يعيد تشغيل التحقق فوراً حتى تنعكس حدود الصعوبة الجديدة
+                    _formKey.currentState?.validate();
                   },
                 ),
               ),
               SizedBox(width: 10.w),
               Expanded(
                 child: TextFormField(
-                  initialValue: _score.toString(),
+                  controller: _scoreController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   textAlign: TextAlign.center,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 14.sp,
@@ -738,8 +966,23 @@ class _FormViewState extends State<_FormView> {
                       borderRadius: BorderRadius.circular(12.r),
                       borderSide: const BorderSide(color: Colors.redAccent),
                     ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: const BorderSide(color: Colors.redAccent),
+                    ),
                   ),
-
+                  // ✅ نفس شرط الباك بالضبط:
+                  // EASY: 1-2 | MEDIUM: 3-5 | HARD: 6-10
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    if (n == null) {
+                      return 'Score is required';
+                    }
+                    if (n < _difficulty.minScore || n > _difficulty.maxScore) {
+                      return '${_difficulty.displayName}: ${_difficulty.minScore}-${_difficulty.maxScore} only';
+                    }
+                    return null;
+                  },
                   onChanged: (v) {
                     final n = int.tryParse(v);
                     if (n != null) _score = n;
@@ -1286,6 +1529,23 @@ class _FormViewState extends State<_FormView> {
 
   // ─── Submit ─────────────────────────────────────
   void _submit() async {
+    // ✅ يمنع الإرسال إذا كانت النقاط خارج المدى المسموح لهذه الصعوبة
+    // (نفس شرط الباك إند: EASY 1-2 / MEDIUM 3-5 / HARD 6-10)
+    if (!(_formKey.currentState?.validate() ?? true)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Please fix the Score field (${_difficulty.displayName}: "
+            "${_difficulty.minScore}-${_difficulty.maxScore}) before submitting.",
+            style: GoogleFonts.poppins(fontSize: 13.sp),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final formData = FormData();
 
     formData.fields.add(MapEntry('type', _type.value));

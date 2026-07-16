@@ -51,6 +51,7 @@ Future<void> setupDio() async {
     print('🔑 [Dio] Adding Authorization header with token: $token');
     dio.options.headers['Authorization'] = 'Bearer $token';
   } else {
+    dio.options.headers.remove('Authorization'); // ✅ هاد الناقص
     print('⚠️ [Dio] No token found, Authorization header not added');
   }
 }

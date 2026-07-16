@@ -3,9 +3,12 @@ import 'dart:ui';
 
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/auth/logout/logout_cubit.dart';
+import 'package:fluent/cubit/auth/logout/logout_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -78,60 +81,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    // ✅ الـ LogoutCubit عام (Provided) على مستوى التطبيق كامل، فمنصفّر حالته
+    // كل ما تفتح هالشاشة حتى ما يضل في أثر لعملية logout سابقة.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<LogoutCubit>().reset();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final data = _progressData[_selectedPeriod]!;
 
     return Scaffold(
       backgroundColor: AppColors.dark,
-      body: Stack(
-        children: [
-          _buildBackground(),
-          _TwinklingStars(count: 32),
-          SafeArea(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate.fixed([
-                      _buildTopBar(),
-                      SizedBox(height: 24.h),
-                      _buildHeroProfile(),
-                      SizedBox(height: 22.h),
-                      _buildStatsRow(),
-                      SizedBox(height: 26.h),
-                      _buildSectionHeader(
-                        title: "Account",
-                        icon: Icons.person_rounded,
-                        color: AppColors.sky,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildAccountInfoCard(),
-                      SizedBox(height: 14.h),
-                      _buildSecurityCard(),
-                      SizedBox(height: 14.h),
-                      _buildPreferencesCard(),
-                      SizedBox(height: 26.h),
-                      _buildSectionHeader(
-                        title: "Activity",
-                        icon: Icons.insights_rounded,
-                        color: AppColors.yellow,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildProgressCard(data),
-                      SizedBox(height: 26.h),
-                      _buildLogoutButton(),
-                      SizedBox(height: 16.h),
-                      _buildFooter(),
-                      SizedBox(height: 24.h),
-                    ]),
-                  ),
+      body: BlocListener<LogoutCubit, LogoutState>(
+        listener: (context, state) {
+          if (state is LogoutSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  state.message.isNotEmpty
+                      ? state.message
+                      : "Logged out successfully",
+                  style: GoogleFonts.poppins(fontSize: 13.sp),
                 ),
-              ],
+                backgroundColor: AppColors.sky,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+              ),
+            );
+
+            // ✅ نفس منطق التوجيه المستخدم بعد اللوجن، بس بالاتجاه المعاكس:
+            // نمسح الـ stack بالكامل ونرجّع المستخدم لصفحة تسجيل الدخول
+            // حتى ما يقدر يرجع بزر الـ back لصفحات محمية بعد ما سجل خروج.
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              loginRoute,
+              (route) => false,
+            );
+          } else if (state is LogoutFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  state.error.isNotEmpty
+                      ? state.error
+                      : "Failed to log out. Please try again.",
+                  style: GoogleFonts.poppins(fontSize: 13.sp),
+                ),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+              ),
+            );
+          }
+        },
+        child: Stack(
+          children: [
+            _buildBackground(),
+            _TwinklingStars(count: 32),
+            SafeArea(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 10.h,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate.fixed([
+                        _buildTopBar(),
+                        SizedBox(height: 24.h),
+                        _buildHeroProfile(),
+                        SizedBox(height: 22.h),
+                        _buildStatsRow(),
+                        SizedBox(height: 26.h),
+                        _buildSectionHeader(
+                          title: "Account",
+                          icon: Icons.person_rounded,
+                          color: AppColors.sky,
+                        ),
+                        SizedBox(height: 12.h),
+                        _buildAccountInfoCard(),
+                        SizedBox(height: 14.h),
+                        _buildSecurityCard(),
+                        SizedBox(height: 14.h),
+                        _buildPreferencesCard(),
+                        SizedBox(height: 26.h),
+                        _buildSectionHeader(
+                          title: "Activity",
+                          icon: Icons.insights_rounded,
+                          color: AppColors.yellow,
+                        ),
+                        SizedBox(height: 12.h),
+                        _buildProgressCard(data),
+                        SizedBox(height: 26.h),
+                        _buildLogoutButton(),
+                        SizedBox(height: 16.h),
+                        _buildFooter(),
+                        SizedBox(height: 24.h),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -361,20 +423,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(
                   width: 122.w,
                   height: 122.w,
-                  child: CustomPaint(
-                    painter: _GradientRingPainter(
-                      progress: xpProgress,
-                      colors: const [
-                        AppColors.yellow,
-                        AppColors.orange,
-                        AppColors.sky,
-                        AppColors.yellow,
-                      ],
-                      strokeWidth: 3.5,
-                    ),
-                  )
-                      .animate(onPlay: (c) => c.repeat())
-                      .rotate(duration: 14.seconds, curve: Curves.linear),
+                  child:
+                      CustomPaint(
+                            painter: _GradientRingPainter(
+                              progress: xpProgress,
+                              colors: const [
+                                AppColors.yellow,
+                                AppColors.orange,
+                                AppColors.sky,
+                                AppColors.yellow,
+                              ],
+                              strokeWidth: 3.5,
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat())
+                          .rotate(duration: 14.seconds, curve: Curves.linear),
                 ),
                 // الأفاتار الفعلي
                 Container(
@@ -504,10 +567,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               SizedBox(width: 8.w),
               Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 8.w,
-                  vertical: 3.h,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xffB388FF), Color(0xff7C4DFF)],
@@ -677,9 +737,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: List.generate(stats.length, (i) {
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              right: i == stats.length - 1 ? 0 : 10.w,
-            ),
+            padding: EdgeInsets.only(right: i == stats.length - 1 ? 0 : 10.w),
             child: _statCard(stats[i])
                 .animate(delay: (120 * i).ms)
                 .fadeIn(duration: 500.ms)
@@ -971,58 +1029,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ============================================================
   Widget _buildSecurityCard() {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.10),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.10),
+                Colors.white.withOpacity(.04),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _securityTile(
-            icon: Icons.lock_outline_rounded,
-            iconColor: AppColors.sky,
-            title: "Password",
-            subtitle: "Last changed 30 days ago",
-            trailing: "Update",
-            onTap: _showChangePasswordSheet,
+          child: Column(
+            children: [
+              _securityTile(
+                icon: Icons.lock_outline_rounded,
+                iconColor: AppColors.sky,
+                title: "Password",
+                subtitle: "Last changed 30 days ago",
+                trailing: "Update",
+                onTap: _showChangePasswordSheet,
+              ),
+              _tileDivider(),
+              _securityTile(
+                icon: Icons.fingerprint_rounded,
+                iconColor: AppColors.yellow,
+                title: "Biometric Login",
+                subtitle: "Use fingerprint to sign in",
+                trailing: "Off",
+                isSwitch: true,
+                switchValue: false,
+                onTap: () {},
+              ),
+              _tileDivider(),
+              _securityTile(
+                icon: Icons.devices_rounded,
+                iconColor: const Color(0xffB388FF),
+                title: "Active Sessions",
+                subtitle: "2 devices logged in",
+                isLast: true,
+                onTap: () {},
+              ),
+            ],
           ),
-          _tileDivider(),
-          _securityTile(
-            icon: Icons.fingerprint_rounded,
-            iconColor: AppColors.yellow,
-            title: "Biometric Login",
-            subtitle: "Use fingerprint to sign in",
-            trailing: "Off",
-            isSwitch: true,
-            switchValue: false,
-            onTap: () {},
-          ),
-          _tileDivider(),
-          _securityTile(
-            icon: Icons.devices_rounded,
-            iconColor: const Color(0xffB388FF),
-            title: "Active Sessions",
-            subtitle: "2 devices logged in",
-            isLast: true,
-            onTap: () {},
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 100.ms, duration: 500.ms).moveY(begin: 12, end: 0);
+        )
+        .animate()
+        .fadeIn(delay: 100.ms, duration: 500.ms)
+        .moveY(begin: 12, end: 0);
   }
 
   Widget _securityTile({
@@ -1129,7 +1190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _miniSwitch({required bool value, required ValueChanged<bool> onChanged}) {
+  Widget _miniSwitch({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -1160,10 +1224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: BoxShape.circle,
               color: value ? Colors.black : Colors.white,
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.3),
-                  blurRadius: 4,
-                ),
+                BoxShadow(color: Colors.black.withOpacity(.3), blurRadius: 4),
               ],
             ),
           ),
@@ -1177,52 +1238,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ============================================================
   Widget _buildPreferencesCard() {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.10),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.12)),
-      ),
-      child: Column(
-        children: [
-          _securityTile(
-            icon: Icons.notifications_active_rounded,
-            iconColor: AppColors.orange,
-            title: "Notifications",
-            subtitle: "Daily reminders & updates",
-            isSwitch: true,
-            switchValue: true,
-            onTap: () {},
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.10),
+                Colors.white.withOpacity(.04),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.12)),
           ),
-          _tileDivider(),
-          _securityTile(
-            icon: Icons.language_rounded,
-            iconColor: AppColors.sky,
-            title: "Language",
-            subtitle: "English (US)",
-            trailing: "Change",
-            onTap: () {},
+          child: Column(
+            children: [
+              _securityTile(
+                icon: Icons.notifications_active_rounded,
+                iconColor: AppColors.orange,
+                title: "Notifications",
+                subtitle: "Daily reminders & updates",
+                isSwitch: true,
+                switchValue: true,
+                onTap: () {},
+              ),
+              _tileDivider(),
+              _securityTile(
+                icon: Icons.language_rounded,
+                iconColor: AppColors.sky,
+                title: "Language",
+                subtitle: "English (US)",
+                trailing: "Change",
+                onTap: () {},
+              ),
+              _tileDivider(),
+              _securityTile(
+                icon: Icons.dark_mode_rounded,
+                iconColor: const Color(0xffB388FF),
+                title: "Appearance",
+                subtitle: "Dark mode",
+                isLast: true,
+                isSwitch: true,
+                switchValue: true,
+                onTap: () {},
+              ),
+            ],
           ),
-          _tileDivider(),
-          _securityTile(
-            icon: Icons.dark_mode_rounded,
-            iconColor: const Color(0xffB388FF),
-            title: "Appearance",
-            subtitle: "Dark mode",
-            isLast: true,
-            isSwitch: true,
-            switchValue: true,
-            onTap: () {},
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 150.ms, duration: 500.ms).moveY(begin: 12, end: 0);
+        )
+        .animate()
+        .fadeIn(delay: 150.ms, duration: 500.ms)
+        .moveY(begin: 12, end: 0);
   }
 
   // ============================================================
@@ -1230,66 +1294,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ============================================================
   Widget _buildProgressCard(_ChartData data) {
     return Container(
-      padding: EdgeInsets.all(18.w),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.10),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _periodTabs(),
-          SizedBox(height: 18.h),
-          Row(
-            children: [
-              Expanded(
-                child: _miniStat(
-                  icon: Icons.menu_book_rounded,
-                  value: data.total.toStringAsFixed(0),
-                  label: data.totalLabel,
-                  color: AppColors.sky,
-                ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: _miniStat(
-                  icon: Icons.trending_up_rounded,
-                  value: data.average.toStringAsFixed(1),
-                  label: "average",
-                  color: AppColors.yellow,
-                ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: _miniStat(
-                  icon: Icons.local_fire_department_rounded,
-                  value: "$_streakDays",
-                  label: "day streak",
-                  color: AppColors.orange,
-                ),
+          padding: EdgeInsets.all(18.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.10),
+                Colors.white.withOpacity(.04),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          SizedBox(height: 20.h),
-          _BarChart(key: ValueKey(_selectedPeriod), data: data),
-        ],
-      ),
-    ).animate().fadeIn(delay: 200.ms, duration: 500.ms).moveY(begin: 12, end: 0);
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _periodTabs(),
+              SizedBox(height: 18.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: _miniStat(
+                      icon: Icons.menu_book_rounded,
+                      value: data.total.toStringAsFixed(0),
+                      label: data.totalLabel,
+                      color: AppColors.sky,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: _miniStat(
+                      icon: Icons.trending_up_rounded,
+                      value: data.average.toStringAsFixed(1),
+                      label: "average",
+                      color: AppColors.yellow,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: _miniStat(
+                      icon: Icons.local_fire_department_rounded,
+                      value: "$_streakDays",
+                      label: "day streak",
+                      color: AppColors.orange,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20.h),
+              _BarChart(key: ValueKey(_selectedPeriod), data: data),
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(delay: 200.ms, duration: 500.ms)
+        .moveY(begin: 12, end: 0);
   }
 
   Widget _miniStat({
@@ -1304,10 +1371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(.18),
-            color.withOpacity(.05),
-          ],
+          colors: [color.withOpacity(.18), color.withOpacity(.05)],
         ),
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: color.withOpacity(.30)),
@@ -1392,8 +1456,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   style: GoogleFonts.poppins(
-                    color:
-                        selected ? Colors.black : Colors.white.withOpacity(.65),
+                    color: selected
+                        ? Colors.black
+                        : Colors.white.withOpacity(.65),
                     fontSize: 11.5.sp,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -1410,51 +1475,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // LOGOUT
   // ============================================================
   Widget _buildLogoutButton() {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        _showLogoutConfirmDialog();
-      },
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 16.h),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18.r),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              Colors.redAccent.withOpacity(.18),
-              Colors.redAccent.withOpacity(.10),
-            ],
-          ),
-          border: Border.all(color: Colors.redAccent.withOpacity(.40)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.redAccent.withOpacity(.15),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18.sp),
-            SizedBox(width: 10.w),
-            Text(
-              "Log Out",
-              style: GoogleFonts.poppins(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.w700,
-                fontSize: 14.sp,
-                letterSpacing: 0.3,
+    return BlocBuilder<LogoutCubit, LogoutState>(
+      builder: (context, state) {
+        final isLoading = state is LogoutLoading;
+
+        return GestureDetector(
+              onTap: isLoading
+                  ? null
+                  : () {
+                      HapticFeedback.mediumImpact();
+                      _showLogoutConfirmDialog();
+                    },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18.r),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.redAccent.withOpacity(isLoading ? .10 : .18),
+                      Colors.redAccent.withOpacity(isLoading ? .06 : .10),
+                    ],
+                  ),
+                  border: Border.all(color: Colors.redAccent.withOpacity(.40)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.redAccent.withOpacity(.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isLoading)
+                      SizedBox(
+                        width: 16.sp,
+                        height: 16.sp,
+                        child: const CircularProgressIndicator(
+                          color: Colors.redAccent,
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.logout_rounded,
+                        color: Colors.redAccent,
+                        size: 18.sp,
+                      ),
+                    SizedBox(width: 10.w),
+                    Text(
+                      isLoading ? "Logging Out..." : "Log Out",
+                      style: GoogleFonts.poppins(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 250.ms, duration: 500.ms).moveY(begin: 12, end: 0);
+            )
+            .animate()
+            .fadeIn(delay: 250.ms, duration: 500.ms)
+            .moveY(begin: 12, end: 0);
+      },
+    );
   }
 
   Widget _buildFooter() {
@@ -1644,8 +1734,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (v == null || v.trim().isEmpty) {
                         return "Please enter your email";
                       }
-                      final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[\w\-]{2,4}$');
-                      if (!regex.hasMatch(v.trim())) return "Enter a valid email";
+                      final regex = RegExp(
+                        r'^[\w\.\-]+@([\w\-]+\.)+[\w\-]{2,4}$',
+                      );
+                      if (!regex.hasMatch(v.trim()))
+                        return "Enter a valid email";
                       return null;
                     },
                   ),
@@ -1748,9 +1841,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.white54,
                             size: 18.sp,
                           ),
-                          onPressed: () => setSheetState(
-                            () => obscureNew = !obscureNew,
-                          ),
+                          onPressed: () =>
+                              setSheetState(() => obscureNew = !obscureNew),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
@@ -1783,7 +1875,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           if (v == null || v.isEmpty) {
                             return "Please confirm your password";
                           }
-                          if (v != newCtrl.text) return "Passwords do not match";
+                          if (v != newCtrl.text)
+                            return "Passwords do not match";
                           return null;
                         },
                       ),
@@ -1942,11 +2035,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: (iconColor ?? AppColors.sky).withOpacity(.15),
             borderRadius: BorderRadius.circular(8.r),
           ),
-          child: Icon(
-            icon,
-            color: iconColor ?? AppColors.sky,
-            size: 16.sp,
-          ),
+          child: Icon(icon, color: iconColor ?? AppColors.sky, size: 16.sp),
         ),
         suffixIcon: suffixIcon,
         contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
@@ -1971,7 +2060,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _sheetSubmitButton({required String label, required VoidCallback onTap}) {
+  Widget _sheetSubmitButton({
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -2093,15 +2185,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: GestureDetector(
                             onTap: () {
                               Navigator.pop(context);
+                              // ✅ نفس نمط التطبيق: نسكر الـ dialog الأول
+                              // وبعدين ننادي الـ Cubit (متل حذف السؤال بالضبط)
+                              context.read<LogoutCubit>().logout();
                             },
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 13.h),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [
-                                    Colors.redAccent,
-                                    Color(0xFFFF6B6B),
-                                  ],
+                                  colors: [Colors.redAccent, Color(0xFFFF6B6B)],
                                 ),
                                 borderRadius: BorderRadius.circular(14.r),
                                 boxShadow: [
@@ -2192,13 +2284,7 @@ class _GradientRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..shader = gradient;
 
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      fgPaint,
-    );
+    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress, false, fgPaint);
   }
 
   @override
@@ -2363,11 +2449,11 @@ class _BarChart extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: (isPeak
-                                              ? AppColors.yellow
-                                              : AppColors.sky)
-                                          .withOpacity(
-                                              isPeak ? .55 : .25),
+                                      color:
+                                          (isPeak
+                                                  ? AppColors.yellow
+                                                  : AppColors.sky)
+                                              .withOpacity(isPeak ? .55 : .25),
                                       blurRadius: isPeak ? 14 : 8,
                                       spreadRadius: isPeak ? 0.5 : 0,
                                     ),
@@ -2418,7 +2504,9 @@ class _BarChart extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
-                  color: isPeak ? AppColors.yellow : Colors.white.withOpacity(.6),
+                  color: isPeak
+                      ? AppColors.yellow
+                      : Colors.white.withOpacity(.6),
                   fontSize: 9.5.sp,
                   fontWeight: isPeak ? FontWeight.w700 : FontWeight.w400,
                 ),
@@ -2442,7 +2530,10 @@ class _BarChart extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(20.r),
                 boxShadow: [
-                  BoxShadow(color: AppColors.yellow.withOpacity(.6), blurRadius: 8),
+                  BoxShadow(
+                    color: AppColors.yellow.withOpacity(.6),
+                    blurRadius: 8,
+                  ),
                 ],
               ),
               child: Row(
@@ -2463,7 +2554,11 @@ class _BarChart extends StatelessWidget {
             ),
             ClipPath(
               clipper: _TriangleClipper(),
-              child: Container(width: 8.w, height: 5.h, color: AppColors.yellow),
+              child: Container(
+                width: 8.w,
+                height: 5.h,
+                color: AppColors.yellow,
+              ),
             ),
           ],
         )
@@ -2508,32 +2603,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),
