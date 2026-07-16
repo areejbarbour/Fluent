@@ -141,7 +141,7 @@ class _QuestionDetailView extends StatelessWidget {
                 _buildHeader(q),
                 SizedBox(height: 18.h),
                 if (q.textQuestion != null && q.textQuestion!.isNotEmpty) ...[
-                  _buildTextQuestion(q.textQuestion!),
+                  _buildTextQuestion(q),
                   SizedBox(height: 18.h),
                 ],
                 if (q.imageUrl != null) ...[
@@ -313,7 +313,15 @@ class _QuestionDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildTextQuestion(String text) {
+  Widget _buildTextQuestion(Question q) {
+    final text = q.textQuestion ?? '';
+    final isFill = q.type == QuestionType.fill;
+    final baseStyle = GoogleFonts.poppins(
+      color: Colors.white,
+      fontSize: 14.sp,
+      height: 1.6,
+    );
+
     return QuestionUI.glass(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,19 +339,165 @@ class _QuestionDetailView extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
+              if (isFill) ...[
+                SizedBox(width: 6.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(
+                      color: AppColors.orange.withOpacity(0.5),
+                    ),
+                  ),
+                  child: Text(
+                    "Fill Mode",
+                    style: GoogleFonts.poppins(
+                      color: AppColors.orange,
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
-          SizedBox(height: 8.h),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 14.sp,
-              height: 1.5,
+          SizedBox(height: 10.h),
+          if (isFill && RegExp(r'\{\d+\}').hasMatch(text))
+            _renderFillRich(text, baseStyle, q.answers)
+          else
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 14.sp,
+                height: 1.5,
+              ),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  /// Inlines {1} {2} ... as visual blank chips directly inside the text.
+  /// Looks up the answer for each blank number from [answers] (1-based).
+  Widget _renderFillRich(
+    String text,
+    TextStyle baseStyle,
+    List<QuestionAnswer> answers,
+  ) {
+    final blankColor = QuestionUI.typeColor(QuestionType.fill.value);
+    final regex = RegExp(r'\{(\d+)\}');
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    String? answerFor(int blankNumber) {
+      for (final a in answers) {
+        if ((a.blankOrder ?? 0) == blankNumber &&
+            a.textAnswer != null &&
+            a.textAnswer!.trim().isNotEmpty) {
+          return a.textAnswer;
+        }
+      }
+      return null;
+    }
+
+    for (final m in regex.allMatches(text)) {
+      if (m.start > lastEnd) {
+        spans.add(
+          TextSpan(text: text.substring(lastEnd, m.start), style: baseStyle),
+        );
+      }
+      final n = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (n > 0) {
+        final answer = answerFor(n);
+        final hasAnswer = answer != null;
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    margin: EdgeInsets.only(top: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
+                    constraints: BoxConstraints(minWidth: 60.w),
+                    decoration: BoxDecoration(
+                      color: hasAnswer
+                          ? blankColor.withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border(
+                        bottom: BorderSide(color: blankColor, width: 1.6),
+                      ),
+                    ),
+                    child: Text(
+                      hasAnswer ? answer : '   ',
+                      style: baseStyle.copyWith(
+                        color: hasAnswer ? Colors.white : Colors.white54,
+                        fontWeight: hasAnswer
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        fontStyle: hasAnswer
+                            ? FontStyle.normal
+                            : FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Positioned(
+                    top: -2,
+                    left: -2,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4.w,
+                        vertical: 1.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: blankColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: blankColor.withOpacity(0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '$n',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      lastEnd = m.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd), style: baseStyle));
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+      textDirection: TextDirection.ltr,
     );
   }
 

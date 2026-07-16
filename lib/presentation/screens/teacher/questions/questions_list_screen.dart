@@ -235,7 +235,7 @@ class _QuestionsListScreenState extends State<QuestionsListScreen>
               ),
               SizedBox(width: 12.w),
               Text(
-                "My Questions",
+                "Questions Bank",
                 style: GoogleFonts.cinzelDecorative(
                   color: Colors.white,
                   fontSize: 22.sp,
