@@ -16,6 +16,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fluent/cubit/student/levels/levels_cubit.dart';
+import 'package:fluent/data/repository/level_repository.dart';
+import 'package:fluent/data/services/level_service.dart';
+
+
+
+
 
 import 'app_router.dart';
 import 'constants/strings.dart';
@@ -28,7 +35,6 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool isUserLoggedIn = prefs.getBool('is_logged_in') ?? false;
 
-  // ✅ قراءة الدور
   final String? userRole = prefs.getString('user_role');
 
   print("🔍 [main] isUserLoggedIn: $isUserLoggedIn");
@@ -38,11 +44,12 @@ void main() async {
   final authService = AuthService(dioInstance);
   final authRepository = AuthRepository(authService);
 
-  // ✅ Question DI
   final questionService = QuestionService(dioInstance);
   final questionRepository = QuestionRepository(questionService);
 
-  // ✅ تحديد الـ initialRoute حسب الدور
+  final levelService = LevelService(dioInstance);
+  final levelRepository = LevelRepository(levelService);
+
   String initialRoute = onboardingRoute;
 
   if (isUserLoggedIn) {
@@ -57,6 +64,7 @@ void main() async {
     MyApp(
       authRepository: authRepository,
       questionRepository: questionRepository,
+      levelRepository: levelRepository, // ✅ جديد
       initialRoute: initialRoute,
     ),
   );
@@ -65,6 +73,7 @@ void main() async {
 class MyApp extends StatefulWidget {
   final AuthRepository authRepository;
   final QuestionRepository questionRepository;
+  final LevelRepository levelRepository;
   final String initialRoute;
   late final AppRouter appRouter;
 
@@ -72,6 +81,7 @@ class MyApp extends StatefulWidget {
     super.key,
     required this.authRepository,
     required this.questionRepository,
+    required this.levelRepository,
     required this.initialRoute,
   }) {
     appRouter = AppRouter(authRepository);
@@ -96,33 +106,34 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<AuthRepository>.value(
               value: widget.authRepository,
             ),
-            // ✅ Provide QuestionRepository to the whole tree
             RepositoryProvider<QuestionRepository>.value(
               value: widget.questionRepository,
             ),
+              RepositoryProvider<LevelRepository>.value(
+                value: widget.levelRepository), // ✅ جديد
+
           ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => SignUpCubit(widget.authRepository)),
               BlocProvider(create: (_) => LoginCubit(widget.authRepository)),
-              BlocProvider(
-                create: (_) => VerifyOtpCubit(widget.authRepository),
-              ),
-              BlocProvider(
-                create: (_) => ResendOtpCubit(widget.authRepository),
-              ),
+              BlocProvider(create: (_) => VerifyOtpCubit(widget.authRepository),),
+              BlocProvider(create: (_) => ResendOtpCubit(widget.authRepository),),
               BlocProvider(create: (_) => LogoutCubit(widget.authRepository)),
 
-              BlocProvider(
-                create: (_) => ForgotPasswordCubit(widget.authRepository),
-              ),
-              BlocProvider(
-                create: (_) => ResetPasswordCubit(widget.authRepository),
-              ),
+              BlocProvider(create: (_) => ForgotPasswordCubit(widget.authRepository),),
+              BlocProvider( create: (_) => ResetPasswordCubit(widget.authRepository), ),
+
+              BlocProvider(create: (_) => GoogleLoginCubit(widget.authRepository),),
 
               BlocProvider(
-                create: (_) => GoogleLoginCubit(widget.authRepository),
+              create: (_) => StudentLevelsCubit(widget.levelRepository),
               ),
+
+              // BlocProvider(
+              // create: (_) => LevelsCubit(widget.levelRepository)..getLevels(), // 👈 أضف ..getLevels()
+              //  ),
+
             ],
             child: MaterialApp(
               title: 'Fluent',

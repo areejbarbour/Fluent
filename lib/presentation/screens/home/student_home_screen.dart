@@ -1,3 +1,4 @@
+
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -6,22 +7,35 @@ import 'package:fluent/constants/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-enum LevelStatus { completed, current, locked, boss }
+import 'package:fluent/cubit/student/levels/levels_cubit.dart';
+import 'package:fluent/cubit/student/levels/levels_state.dart';
+import 'package:fluent/data/models/level_model.dart';
+
+enum LevelStatus { completed, current, locked, boss, available }
 
 class LevelPathData {
+  final int? id;
   final String title;
   final String subtitle;
   final LevelStatus status;
   final IconData icon;
+  final double? price;
+  final int? order;
+  final List<Color>? colors; // ✅ لون مخصص (يُستخدم حالياً للمستويات المتاحة)
 
   const LevelPathData({
+    this.id,
     required this.title,
     required this.subtitle,
     required this.status,
     required this.icon,
+    this.price,
+    this.order,
+    this.colors,
   });
 }
 
@@ -54,38 +68,74 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   late final ScrollController _scrollController;
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
 
-  final List<LevelPathData> _levels = const [
-    LevelPathData(
-      title: "Level 8",
-      subtitle: "Grammar Mastery",
-      status: LevelStatus.current,
-      icon: Icons.auto_awesome_rounded,
-    ),
-    LevelPathData(
-      title: "Level 7",
-      subtitle: "Daily Life",
-      status: LevelStatus.completed,
-      icon: Icons.diamond_rounded,
-    ),
-    LevelPathData(
-      title: "Boss Level",
-      subtitle: "Challenge Time!",
-      status: LevelStatus.boss,
-      icon: Icons.workspace_premium_rounded,
-    ),
-    LevelPathData(
-      title: "Level 6",
-      subtitle: "Travel & Places",
-      status: LevelStatus.completed,
-      icon: Icons.flight_takeoff_rounded,
-    ),
-    LevelPathData(
-      title: "Level 5",
-      subtitle: "Food & Drinks",
-      status: LevelStatus.locked,
-      icon: Icons.lock_rounded,
-    ),
+  List<LevelPathData> _levels = [];
+
+  static const List<IconData> _decorativeIcons = [
+    Icons.auto_awesome_rounded,
+    Icons.diamond_rounded,
+    Icons.flight_takeoff_rounded,
+    Icons.restaurant_rounded,
+    Icons.public_rounded,
+    Icons.school_rounded,
   ];
+
+  IconData _iconForOrder(int order) =>
+      _decorativeIcons[order % _decorativeIcons.length];
+
+  static const List<List<Color>> _availableGradients = [
+    [Color(0xff4FACFE), Color(0xff2E6BE6)], // أزرق
+    [Color(0xffB388FF), Color(0xff7C4DFF)], // موف
+    [Color(0xff36D1C4), Color(0xff1FA2A6)], // فيروزي
+    [Color(0xffFF8FD9), Color(0xffD6409F)], // وردي
+  ];
+
+  List<Color> _availableColorsFor(int availableIndex) =>
+      _availableGradients[availableIndex % _availableGradients.length];
+
+  LevelPathData _toPathData(
+    LevelModel level,
+    LevelStatus status, {
+    List<Color>? colors,
+  }) {
+    return LevelPathData(
+      id: level.id,
+      title: level.name,
+      subtitle: "${level.minimumScore}-${level.maximumScore} pts",
+      status: status,
+      icon: _iconForOrder(level.order),
+      price: level.priceValue,
+      order: level.order,
+      colors: colors,
+    );
+  }
+
+  List<LevelPathData> _mapLevels(StudentLevelsModel data) {
+    final list = <LevelPathData>[];
+
+    final completed = [...data.completedLevels]
+      ..sort((a, b) => a.order.compareTo(b.order));
+    list.addAll(completed.map((l) => _toPathData(l, LevelStatus.completed)));
+
+    if (data.currentLevel != null) {
+      list.add(_toPathData(data.currentLevel!, LevelStatus.current));
+    }
+
+    final available = [...data.availableLevels]
+      ..sort((a, b) => a.order.compareTo(b.order));
+    for (int i = 0; i < available.length; i++) {
+      list.add(_toPathData(
+        available[i],
+        LevelStatus.available,
+        colors: _availableColorsFor(i),
+      ));
+    }
+
+    final locked = [...data.lockedLevels]
+      ..sort((a, b) => a.order.compareTo(b.order));
+    list.addAll(locked.map((l) => _toPathData(l, LevelStatus.locked)));
+
+    return list;
+  }
 
   @override
   void initState() {
@@ -102,6 +152,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       ..addListener(() {
         _scrollOffset.value = _scrollController.offset;
       });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cubit = context.read<StudentLevelsCubit>();
+      if (cubit.state is StudentLevelsInitial) {
+        cubit.fetchStudentLevels();
+      }
+    });
   }
 
   @override
@@ -147,14 +204,32 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         SizedBox(height: 14.h),
                         _PathTransition(),
                         SizedBox(height: 6.h),
-                        _LevelsPath(
-                          levels: _levels,
-                          flowController: _pathFlowController,
-                          userName: widget.userName,
-                          xp: widget.xp,
-                          streakDays: widget.streakDays,
-                          level: widget.level,
-                          levelProgress: widget.levelProgress,
+                        BlocBuilder<StudentLevelsCubit, StudentLevelsState>(
+                          builder: (context, state) {
+                            if (state is StudentLevelsLoading ||
+                                state is StudentLevelsInitial) {
+                              return _levelsLoadingCard();
+                            }
+
+                            if (state is StudentLevelsFailure) {
+                              return _levelsErrorCard(state.message);
+                            }
+
+                            if (state is StudentLevelsSuccess) {
+                              _levels = _mapLevels(state.data);
+                              return _LevelsPath(
+                                levels: _levels,
+                                flowController: _pathFlowController,
+                                userName: widget.userName,
+                                xp: widget.xp,
+                                streakDays: widget.streakDays,
+                                level: widget.level,
+                                levelProgress: widget.levelProgress,
+                              );
+                            }
+
+                            return const SizedBox.shrink();
+                          },
                         ),
                         SizedBox(height: 110.h),
                       ],
@@ -167,6 +242,58 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _levelsLoadingCard() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 50.h),
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator(color: AppColors.yellow),
+    );
+  }
+
+  Widget _levelsErrorCard(String message) {
+    return _glassContainer(
+      padding: EdgeInsets.all(16.w),
+      radius: 20.r,
+      child: Column(
+        children: [
+          Icon(Icons.wifi_off_rounded,
+              color: Colors.white.withOpacity(.7), size: 28.sp),
+          SizedBox(height: 8.h),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(.85),
+              fontSize: 12.sp,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          GestureDetector(
+            onTap: () =>
+                context.read<StudentLevelsCubit>().fetchStudentLevels(),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.orange, AppColors.yellow],
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Text(
+                "Retry",
+                style: GoogleFonts.poppins(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11.sp,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1092,7 +1219,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   Widget _buildJourneyOverview() {
     final completed =
         _levels.where((l) => l.status == LevelStatus.completed).length;
-    final total = _levels.length;
+    final total = _levels.isNotEmpty ? _levels.length : 1;
 
     Color dotColor(LevelStatus status) {
       switch (status) {
@@ -1102,6 +1229,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           return AppColors.yellow;
         case LevelStatus.boss:
           return const Color(0xffFF6FB5);
+        case LevelStatus.available:
+          return AppColors.sky;
         case LevelStatus.locked:
           return Colors.white.withOpacity(.25);
       }
@@ -1128,7 +1257,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           ),
           const Spacer(),
           Row(
-            children: List.generate(total, (i) {
+            children: List.generate(_levels.length, (i) {
               final color = dotColor(_levels[i].status);
               final isLocked = _levels[i].status == LevelStatus.locked;
               return Padding(
@@ -1820,6 +1949,10 @@ class _LevelsPath extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (levels.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final double nodeSpacing = 165.h;
 
     return LayoutBuilder(
@@ -2177,6 +2310,7 @@ class _LevelNode extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     final isLocked = level.status == LevelStatus.locked;
+    final isAvailable = level.status == LevelStatus.available;
 
     if (isLocked) {
       HapticFeedback.mediumImpact();
@@ -2200,22 +2334,126 @@ class _LevelNode extends StatelessWidget {
           duration: const Duration(seconds: 2),
         ),
       );
-    } else {
-      HapticFeedback.lightImpact();
-      Navigator.pushNamed(
-        context,
-        levelCoursesRoute,
-        arguments: {
-          'userName': userName,
-          'xp': xp,
-          'streakDays': streakDays,
-          'level': 8 - index, // Adjust level based on index
-          'levelProgress': levelProgress,
-          'levelTitle': level.title,
-          'levelSubtitle': level.subtitle,
-        },
-      );
+      return;
     }
+
+    if (isAvailable) {
+      HapticFeedback.lightImpact();
+      _showPurchaseSheet(context);
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    Navigator.pushNamed(
+      context,
+      levelCoursesRoute,
+      arguments: {
+        'userName': userName,
+        'xp': xp,
+        'streakDays': streakDays,
+        'level': level.order ?? (8 - index),
+        'levelProgress': levelProgress,
+        'levelTitle': level.title,
+        'levelSubtitle': level.subtitle,
+        'levelId': level.id,
+      },
+    );
+  }
+
+  // ✅ TODO: اربطي هون API الدفع/الشراء لما يجهز عندك بالباك
+  void _showPurchaseSheet(BuildContext context) {
+    final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: AppColors.dark.withOpacity(.9),
+              border: Border.all(color: Colors.white.withOpacity(.15)),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 14.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.3),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.lock_open_rounded,
+                        color: sheetColors.first, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        level.title,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  level.subtitle,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.7),
+                    fontSize: 12.sp,
+                  ),
+                ),
+                SizedBox(height: 18.h),
+                GestureDetector(
+                  onTap: () {
+                    // TODO: نداء API الدفع/الشراء هون
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: sheetColors),
+                      borderRadius: BorderRadius.circular(16.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: sheetColors.first.withOpacity(.5),
+                          blurRadius: 14,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -2224,6 +2462,7 @@ class _LevelNode extends StatelessWidget {
     final isLocked = level.status == LevelStatus.locked;
     final isBoss = level.status == LevelStatus.boss;
     final isCompleted = level.status == LevelStatus.completed;
+    final isAvailable = level.status == LevelStatus.available;
 
     final double size =
         (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(58.0, 92.0);
@@ -2238,8 +2477,12 @@ class _LevelNode extends StatelessWidget {
       gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
     } else if (isCurrent) {
       gradientColors = [AppColors.orange, AppColors.yellow];
+    } else if (isAvailable) {
+      // ✅ كل مستوى متاح للشراء ياخد لونه الخاص (أزرق/موف/فيروزي/وردي..)
+      gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
     } else {
-      gradientColors = [AppColors.sky, AppColors.primary];
+      // completed
+      gradientColors = [const Color(0xFF4ADE80), const Color(0xFF22C55E)];
     }
 
     Widget aura = const SizedBox.shrink();
@@ -2381,6 +2624,51 @@ class _LevelNode extends StatelessWidget {
       );
     }
 
+    // ✅ بادج القفل المفتوح + السعر للمستويات المتاحة للشراء
+    if (isAvailable && level.price != null) {
+      final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
+      node = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          node,
+          Positioned(
+            bottom: -2.h,
+            right: -2.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: badgeColors),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: AppColors.dark, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: badgeColors.first.withOpacity(.6),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_open_rounded,
+                      size: 9.sp, color: Colors.white),
+                  SizedBox(width: 2.w),
+                  Text(
+                    "\$${level.price!.toStringAsFixed(0)}",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 9.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (isCurrent || isBoss) {
       node = node
           .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -2443,6 +2731,7 @@ class _LevelInfoCard extends StatelessWidget {
     final isLocked = level.status == LevelStatus.locked;
     final isBoss = level.status == LevelStatus.boss;
     final isCompleted = level.status == LevelStatus.completed;
+    final isAvailable = level.status == LevelStatus.available;
 
     Color statusColor;
     String statusText;
@@ -2460,6 +2749,12 @@ class _LevelInfoCard extends StatelessWidget {
       statusColor = const Color(0xFFFF6FB5);
       statusText = "Conquered";
       statusIcon = Icons.emoji_events_rounded;
+    } else if (isAvailable) {
+      statusColor = level.colors?.first ?? AppColors.sky;
+      statusText = level.price != null
+          ? "Available – \$${level.price!.toStringAsFixed(0)}"
+          : "Available";
+      statusIcon = Icons.lock_open_rounded;
     } else {
       statusColor = AppColors.yellow;
       statusText = "Current";
@@ -2488,10 +2783,17 @@ class _LevelInfoCard extends StatelessWidget {
                             const Color(0xffB861F5).withOpacity(.22),
                             const Color(0xffFF6FB5).withOpacity(.12),
                           ]
-                        : [
-                            Colors.white.withOpacity(.10),
-                            Colors.white.withOpacity(.04),
-                          ],
+                        : isAvailable
+                            ? [
+                                (level.colors?[0] ?? AppColors.sky)
+                                    .withOpacity(.18),
+                                (level.colors?[1] ?? AppColors.primary)
+                                    .withOpacity(.12),
+                              ]
+                            : [
+                                Colors.white.withOpacity(.10),
+                                Colors.white.withOpacity(.04),
+                              ],
               ),
               borderRadius: BorderRadius.circular(20.r),
               border: Border.all(
@@ -2499,8 +2801,11 @@ class _LevelInfoCard extends StatelessWidget {
                     ? AppColors.yellow.withOpacity(.6)
                     : isBoss
                         ? const Color(0xffFF6FB5).withOpacity(.5)
-                        : Colors.white.withOpacity(.15),
-                width: isCurrent || isBoss ? 1.5 : 1,
+                        : isAvailable
+                            ? (level.colors?.first ?? AppColors.sky)
+                                .withOpacity(.5)
+                            : Colors.white.withOpacity(.15),
+                width: isCurrent || isBoss || isAvailable ? 1.5 : 1,
               ),
               boxShadow: isCurrent
                   ? [
@@ -2518,7 +2823,16 @@ class _LevelInfoCard extends StatelessWidget {
                             spreadRadius: 1,
                           ),
                         ]
-                      : null,
+                      : isAvailable
+                          ? [
+                              BoxShadow(
+                                color: (level.colors?.first ?? AppColors.sky)
+                                    .withOpacity(.35),
+                                blurRadius: 16,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2595,10 +2909,11 @@ class _LevelInfoCard extends StatelessWidget {
                           'userName': userName,
                           'xp': xp,
                           'streakDays': streakDays,
-                          'level': 8, // Current level
+                          'level': level.order ?? 8,
                           'levelProgress': levelProgress,
                           'levelTitle': level.title,
                           'levelSubtitle': level.subtitle,
+                          'levelId': level.id,
                         },
                       );
                     },

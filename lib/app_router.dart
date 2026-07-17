@@ -29,6 +29,8 @@ import 'package:fluent/presentation/screens/statics/profile_screen.dart';
 import 'package:fluent/presentation/screens/statics/word_bank_screen.dart';
 import 'package:fluent/presentation/screens/statics/podcasts_screen.dart';
 import 'package:fluent/presentation/screens/statics/ai_conversation_screen.dart';
+import 'package:fluent/cubit/student/levels/levels_cubit.dart';
+import 'package:fluent/data/repository/level_repository.dart';
 
 
 
@@ -102,7 +104,7 @@ class AppRouter {
           ),
           settings: RouteSettings(
             arguments: email,
-          ), // ✅ تمرير email عبر settings
+          ), 
         );
 
       case streakRoute:
@@ -119,9 +121,14 @@ class AppRouter {
       case homeRoute:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
 
-      // ✅ Route للطالب
       case studentHomeRoute:
-        return MaterialPageRoute(builder: (_) => const StudentHomeScreen());
+       return MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (ctx) => StudentLevelsCubit(ctx.read<LevelRepository>())
+        ..fetchStudentLevels(),
+      child: const StudentHomeScreen(),
+      ),
+      );
 
           case profileRoute:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());

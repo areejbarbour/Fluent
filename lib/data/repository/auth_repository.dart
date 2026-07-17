@@ -92,7 +92,6 @@ class AuthRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
 
-        // ✅ حفظ التوكن إذا موجود (فقط في حالة REGISTER)
         if (data is Map && data.containsKey('token')) {
           await _saveToken(data['token']);
         }
@@ -129,7 +128,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Resend OTP - مع type parameter
   Future<Map<String, dynamic>> resendOtp({
     required String email,
     required String type,
@@ -171,7 +169,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Login - MODIFIED
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -187,13 +184,10 @@ class AuthRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
 
-        // ✅ حفظ التوكن إذا موجود
         if (data is Map && data.containsKey('token')) {
           await _saveToken(data['token']);
         }
 
-        // ✅ استخراج roles من عدة أماكن محتملة في الـ response
-        // الـ API ممكن يرجّع role بأشكال مختلفة
         List<dynamic> roles = [];
         if (data['roles'] != null && (data['roles'] as List).isNotEmpty) {
           roles = data['roles'] as List<dynamic>;
@@ -244,7 +238,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Get Current User
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
       final token = await _getToken();

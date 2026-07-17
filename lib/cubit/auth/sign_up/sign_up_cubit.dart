@@ -34,7 +34,6 @@ class SignUpCubit extends Cubit<SignUpState> {
       final success = data['success'] as bool? ?? false;
       final message = data['message'] as String? ?? '';
 
-      // ✅ غيرنا الـ cast من Map<String, List<String>>? إلى Map<String, dynamic>?
       final errors = data['errors'] as Map<String, dynamic>?;
 
       if (success) {

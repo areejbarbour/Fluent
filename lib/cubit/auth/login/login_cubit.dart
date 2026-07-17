@@ -26,12 +26,6 @@ class LoginCubit extends Cubit<LoginState> {
       if (success) {
         final token = data['token'] as String?;
 
-        // ✅ استخراج الـ role من عدة أماكن محتملة
-        // الـ API بيرجّع role بأشكال مختلفة:
-        // - data['roles'] = ["student"]
-        // - data['role'] = ["student"]
-        // - data['user']['roles'] = [{"name": "student"}]
-        // - data['data']['role'] = ["student"]
         List<dynamic> roles = [];
         if (data['roles'] != null && (data['roles'] as List).isNotEmpty) {
           roles = data['roles'] as List<dynamic>;

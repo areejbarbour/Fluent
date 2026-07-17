@@ -38,6 +38,12 @@ const String apiLogin = '/api/login';
 const String apiLogout = '/api/logout';
 const String apiCurrentUser = '/api/user';
 
+
+// ✅ Level API
+const String apiGetStudentLevels = '/api/getStudentLevels'; // ⭐ استخدمناه
+
+
+
 // ✅ Question API Endpoints
 const String apiQuestions = '/api/questions';
 const String apiDeprecatedQuestions = '/api/questions/deprecated';
