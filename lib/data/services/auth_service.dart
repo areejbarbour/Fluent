@@ -29,7 +29,6 @@ class AuthService {
     );
   }
 
-  // ✅ Verify OTP - مع type parameter
   Future<Response> verifyOtp({
     required String email,
     required String otp,
@@ -45,7 +44,6 @@ class AuthService {
     );
   }
 
-  // ✅ Resend OTP - مع type parameter
   Future<Response> resendOtp({
     required String email,
     required String type,

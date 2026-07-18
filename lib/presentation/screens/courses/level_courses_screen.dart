@@ -14,8 +14,9 @@ import 'package:fluent/cubit/student/courses/course_cubit.dart';
 import 'package:fluent/cubit/student/courses/course_state.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/presentation/screens/lessons/lessons_scrssn.dart';
 class LevelCoursesScreen extends StatefulWidget {
-  final int? levelId; // ✅ جديد: معرف المستوى لجلب كورساته من الباك
+  final int? levelId; 
   final String userName;
   final int xp;
   final int streakDays;
@@ -97,10 +98,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     return "${minutes}m";
   }
 
-  // ✅ يدمج completed + current + locked بنفس التجميع القادم من الباك،
-  // بدون فرض إعادة ترتيب حسب order — لأنو ترتيب المستويات/الكورسات ممكن
-  // ينكسر إذا الأدمن أرشف كورس معيّن، فما في داعي نعتمد عليه لعرض التسلسل.
-  // بالتالي: بس منعرض كل مجموعة متل ما إجت (completed ثم current ثم locked).
   List<CourseData> _mapCourses(StudentCoursesModel data) {
     final list = <CourseData>[];
     int colorIndex = 0;
@@ -145,7 +142,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
         AnimationController(vsync: this, duration: const Duration(seconds: 6))
           ..repeat();
 
-    // ✅ جلب كورسات المستوى من الباك (لو ما انجلبت أصلاً من الراوت)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cubit = context.read<StudentCoursesCubit>();
       if (cubit.state is StudentCoursesInitial) {
@@ -160,8 +156,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     super.dispose();
   }
 
-  /// ✅ الكورس اللي المستخدم شغّال عليه هلأ — صار معروف مباشرة من الباك
-  /// (current_course) بدل ما نخمّنه من نسبة التقدّم
   int get _activeCourseIndex => _courses.indexWhere((c) => c.isCurrent);
 
   @override
@@ -296,8 +290,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       itemCount: _courses.length + 1,
       itemBuilder: (context, index) {
-        // ✅ أول عنصر = الهيرو (Orbit Ring + عنوان المستوى + إحصائيات)
-        // + عنوان قسم الكورسات
         if (index == 0) {
           return Padding(
             padding: EdgeInsets.only(bottom: 18.h),
@@ -366,19 +358,33 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                   ),
                 );
               } else {
-                HapticFeedback.lightImpact();
+                   HapticFeedback.lightImpact();
+                  setState(() => _tappedIndex = courseIndex);
 
-                setState(() => _tappedIndex = courseIndex);
+                      Future.delayed(const Duration(milliseconds: 200), () {
+                     if (mounted) setState(() => _tappedIndex = null);
+                       });
 
-                Future.delayed(
-                  const Duration(milliseconds: 200),
-                  () {
-                    if (mounted) {
-                      setState(() => _tappedIndex = null);
-                    }
-                  },
-                );
-              }
+                         final course = _courses[courseIndex];
+
+                          Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => LessonsScreen(
+        courseId: course.id,
+        courseTitle: course.title,
+        courseSubtitle: "${widget.levelTitle} · ${course.teacher}",
+        teacherName: course.teacher,
+        userName: widget.userName,
+        xp: widget.xp,
+        streakDays: widget.streakDays,
+        courseProgress: course.progress,
+        onLessonTap: (lesson) {
+        },
+      ),
+    ),
+  );
+}
             },
             borderAnimation: _borderFlowController,
           ),
@@ -539,11 +545,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     );
   }
 
-  /// ✅ =========================================================
-  /// الهيرو الجديد: Orbit Ring بيلف حوله نقاط ملونة، كل نقطة بتمثل
-  /// كورس بالمستوى (لونها = لون الكورس، معبّاة إذا مكتمل، خافتة إذا مقفولة)
-  /// وبالنص نسبة تقدّم المستوى. جنبو عنوان المستوى + شرائح إحصائيات مصغّرة.
-  /// =========================================================
   Widget _buildLevelHeroCard() {
     final completedCount = _courses.where((c) => c.isCompleted).length;
     final totalCount = _courses.isNotEmpty ? _courses.length : 0;
@@ -1134,7 +1135,6 @@ class _LevelOrbitRing extends StatelessWidget {
             return Transform.translate(offset: Offset(dx, dy), child: dot);
           }),
 
-          // ✅ مسار الخلفية (Track)
           SizedBox(
             width: size,
             height: size,
@@ -1146,7 +1146,6 @@ class _LevelOrbitRing extends StatelessWidget {
             ),
           ),
 
-          // ✅ حلقة التقدّم المتحرّكة
           SizedBox(
             width: size,
             height: size,
@@ -1164,7 +1163,6 @@ class _LevelOrbitRing extends StatelessWidget {
             ),
           ),
 
-          // ✅ المحتوى بالمنتصف
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1207,7 +1205,7 @@ class CourseData {
   final bool isCompleted;
   final Color accentColor;
   final bool isLocked;
-  final bool isCurrent; // ✅ جديد: جاي مباشرة من current_course بالباك
+  final bool isCurrent; 
 
   const CourseData({
     this.id,
@@ -1225,14 +1223,6 @@ class CourseData {
     this.isCurrent = false,
   });
 }
-
-/// ✅ =========================================================
-/// كرت الكورس الجديد: صورة رمزية محاطة بحلقة تقدّم (بدل الصورة +
-/// الشريط الأفقي)، رقم ترتيب الكورس بزاوية الصورة، شرائح معلومات
-/// (عدد الدروس/المدة)، وشارة حالة واضحة (نسبة/مكتمل/مقفول).
-/// "التوهج" المتحرك محصور فقط بكورس واحد (اللي شغّال عليه المستخدم
-/// حالياً) بدل ما يكون على كل الكروت مع بعض.
-/// =========================================================
 class AnimatedCourseCard extends StatelessWidget {
   final CourseData course;
   final int index;
@@ -1351,7 +1341,6 @@ class AnimatedCourseCard extends StatelessWidget {
         .slideX(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
   }
 
-  /// صورة رمزية للكورس محاطة بحلقة تقدّم + رقم ترتيبه بالزاوية
   Widget _buildAvatar(double avatarSize) {
     return Stack(
       clipBehavior: Clip.none,
@@ -1409,7 +1398,7 @@ class AnimatedCourseCard extends StatelessWidget {
             ],
           ),
         ),
-        // رقم ترتيب الكورس ضمن المستوى
+
         Positioned(
           top: -4.h,
           left: -4.w,

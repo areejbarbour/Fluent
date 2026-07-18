@@ -74,7 +74,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Verify OTP - مع type parameter
   Future<Map<String, dynamic>> verifyOtp({
     required String email,
     required String otp,
@@ -283,7 +282,6 @@ class AuthRepository {
       print("✅ Logout Response Status: ${response.statusCode}");
       print("✅ Logout Response Data: ${response.data}");
 
-      // ✅ مسح التوكن محلياً بغض النظر عن حالة الاستجابة
       await _clearToken();
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -412,7 +410,6 @@ class AuthRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
 
-        // ✅ الباك يرجع array فيها object واحد
         if (data is List && data.isNotEmpty) {
           final responseData = data.first as Map<String, dynamic>;
 
@@ -420,7 +417,6 @@ class AuthRepository {
             await _saveToken(responseData['token']);
           }
 
-          // ✅ استخراج roles من user
           final user = responseData['user'] as Map<String, dynamic>?;
           final roles = user?['roles'] as List<dynamic>? ?? [];
 

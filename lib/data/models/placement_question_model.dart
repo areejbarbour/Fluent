@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// أنواع الأسئلة في اختبار تحديد المستوى
 enum PlacementQuestionType {
-  vocabulary, // مفردات
-  grammar, // قواعد
-  reading, // فهم نص
+  vocabulary, 
+  grammar, 
+  reading, 
 }
 
-/// مستوى الصعوبة
 enum PlacementDifficulty {
   beginner, // A1
   elementary, // A2
@@ -22,7 +20,7 @@ class PlacementQuestion {
   final PlacementQuestionType type;
   final PlacementDifficulty difficulty;
   final String question;
-  final String? passage; // للنصوص (reading)
+  final String? passage; 
   final List<String> options;
   final int correctIndex;
   final String explanation;
@@ -38,7 +36,6 @@ class PlacementQuestion {
     required this.explanation,
   });
 
-  /// تحويل مستوى الصعوبة إلى title و subtitle
   static ({String title, String code, Color color}) getLevelInfo(
     PlacementDifficulty d,
   ) {
@@ -75,9 +72,7 @@ class PlacementQuestion {
   }
 }
 
-/// قائمة أسئلة الاختبار — 12 سؤال يغطي كل المستويات
 const List<PlacementQuestion> kPlacementQuestions = [
-  // ============ BEGINNER (A1) ============
   PlacementQuestion(
     id: 'q1',
     type: PlacementQuestionType.vocabulary,
@@ -102,7 +97,6 @@ const List<PlacementQuestion> kPlacementQuestions = [
     explanation: 'مع she/he/it نستخدم "is"',
   ),
 
-  // ============ ELEMENTARY (A2) ============
   PlacementQuestion(
     id: 'q3',
     type: PlacementQuestionType.vocabulary,
@@ -122,7 +116,6 @@ const List<PlacementQuestion> kPlacementQuestions = [
     explanation: 'مع I/you/we/they نستخدم الفعل في المصدر (go)',
   ),
 
-  // ============ PRE-INTERMEDIATE (B1) ============
   PlacementQuestion(
     id: 'q5',
     type: PlacementQuestionType.grammar,
@@ -142,7 +135,6 @@ const List<PlacementQuestion> kPlacementQuestions = [
     explanation: 'To accomplish = تحقيق / إنجاز ✅',
   ),
 
-  // ============ INTERMEDIATE (B2) ============
   PlacementQuestion(
     id: 'q7',
     type: PlacementQuestionType.reading,
@@ -165,7 +157,6 @@ const List<PlacementQuestion> kPlacementQuestions = [
         'Future Perfect: will have + past participle (لحدث يكتمل قبل آخر في المستقبل)',
   ),
 
-  // ============ UPPER-INTERMEDIATE (C1) ============
   PlacementQuestion(
     id: 'q9',
     type: PlacementQuestionType.vocabulary,
@@ -185,7 +176,6 @@ const List<PlacementQuestion> kPlacementQuestions = [
     explanation: 'I wish + past perfect (للتعبير عن ندم على الماضي)',
   ),
 
-  // ============ ADVANCED (C2) ============
   PlacementQuestion(
     id: 'q11',
     type: PlacementQuestionType.reading,

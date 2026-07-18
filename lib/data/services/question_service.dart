@@ -5,7 +5,6 @@ class QuestionService {
   final Dio dio;
   QuestionService(this.dio);
 
-  // ✅ GET /api/questions  (paginated active)
   Future<Response> getQuestions({int page = 1}) async {
     return await dio.get(
       apiQuestions,

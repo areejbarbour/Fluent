@@ -12,9 +12,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ============================================================
-/// MODELS
-/// ============================================================
 
 enum ProgressPeriod { daily, weekly, monthly }
 
@@ -35,9 +32,6 @@ class _ChartData {
   double get average => values.isEmpty ? 0 : total / values.length;
 }
 
-/// ============================================================
-/// PROFILE SCREEN
-/// ============================================================
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -47,7 +41,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // ✅ TODO: هاي بيانات وهمية بس للعرض — اربطيها مع الـ AuthCubit / UserCubit
   String _name = "Rasha Ahmad";
   String _email = "rasha.ahmad@example.com";
   String _phone = "+970 59 123 4567";
@@ -83,8 +76,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ الـ LogoutCubit عام (Provided) على مستوى التطبيق كامل، فمنصفّر حالته
-    // كل ما تفتح هالشاشة حتى ما يضل في أثر لعملية logout سابقة.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<LogoutCubit>().reset();
     });
@@ -115,9 +106,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
 
-            // ✅ نفس منطق التوجيه المستخدم بعد اللوجن، بس بالاتجاه المعاكس:
-            // نمسح الـ stack بالكامل ونرجّع المستخدم لصفحة تسجيل الدخول
-            // حتى ما يقدر يرجع بزر الـ back لصفحات محمية بعد ما سجل خروج.
             Navigator.pushNamedAndRemoveUntil(
               context,
               loginRoute,
@@ -198,9 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // BACKGROUND
-  // ============================================================
   Widget _buildBackground() {
     return Stack(
       children: [
@@ -278,9 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // TOP BAR
-  // ============================================================
   Widget _buildTopBar() {
     return Row(
       children: [
@@ -367,9 +349,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // HERO PROFILE — نسخة احترافية مطوّرة
-  // ============================================================
   Widget _buildHeroProfile() {
     final xpProgress = (_xpPoints / _nextLevelXp).clamp(0.0, 1.0);
 
@@ -397,7 +376,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // ---- الأفاتار مع حلقة متدرّجة + مؤشر المستوى ----
           SizedBox(
             width: 130.w,
             height: 130.w,
@@ -419,7 +397,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-                // الحلقة المتدرّجة (تدور)
                 SizedBox(
                   width: 122.w,
                   height: 122.w,
@@ -439,7 +416,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .animate(onPlay: (c) => c.repeat())
                           .rotate(duration: 14.seconds, curve: Curves.linear),
                 ),
-                // الأفاتار الفعلي
                 Container(
                   width: 100.w,
                   height: 100.w,
@@ -468,7 +444,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         )
                       : null,
                 ),
-                // شارة المستوى
                 Positioned(
                   bottom: 4.h,
                   child: Container(
@@ -511,7 +486,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-                // زر الكاميرا
                 Positioned(
                   top: 0,
                   right: 0,
@@ -547,7 +521,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           SizedBox(height: 18.h),
 
-          // ---- الاسم + بادج "Pro" ----
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -600,7 +573,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           SizedBox(height: 6.h),
 
-          // ---- الإيميل ----
           Text(
             _email,
             maxLines: 1,
@@ -615,7 +587,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           SizedBox(height: 18.h),
 
-          // ---- شريط XP ----
           Container(
             padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
             decoration: BoxDecoration(
@@ -702,9 +673,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ).animate().fadeIn(duration: 500.ms).moveY(begin: 12, end: 0);
   }
 
-  // ============================================================
-  // STATS ROW (تحت الهيرو)
-  // ============================================================
   Widget _buildStatsRow() {
     final stats = [
       _StatItem(
@@ -820,9 +788,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // SECTION HEADER
-  // ============================================================
   Widget _buildSectionHeader({
     required String title,
     required IconData icon,
@@ -866,9 +831,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // ACCOUNT INFO CARD — نسخة احترافية
-  // ============================================================
   Widget _buildAccountInfoCard() {
     return Container(
       decoration: BoxDecoration(
@@ -1024,9 +986,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // SECURITY CARD — مع خيارات إضافية
-  // ============================================================
   Widget _buildSecurityCard() {
     return Container(
           decoration: BoxDecoration(
@@ -1233,9 +1192,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // PREFERENCES CARD
-  // ============================================================
   Widget _buildPreferencesCard() {
     return Container(
           decoration: BoxDecoration(
@@ -1289,9 +1245,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .moveY(begin: 12, end: 0);
   }
 
-  // ============================================================
-  // PROGRESS CARD (Chart)
-  // ============================================================
   Widget _buildProgressCard(_ChartData data) {
     return Container(
           padding: EdgeInsets.all(18.w),
@@ -1471,9 +1424,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============================================================
-  // LOGOUT
-  // ============================================================
   Widget _buildLogoutButton() {
     return BlocBuilder<LogoutCubit, LogoutState>(
       builder: (context, state) {
@@ -1586,14 +1536,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // ============================================================
-  // GRADIENT RING PAINTER (للأفاتار)
-  // ============================================================
-
-  // ============================================================
-  // BOTTOM SHEETS & DIALOGS
-  // ============================================================
 
   void _showAvatarOptionsSheet() {
     showModalBottomSheet(
@@ -1912,7 +1854,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // مؤشر قوة كلمة المرور
   Widget _strengthIndicator(TextEditingController ctrl) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: ctrl,
@@ -2185,8 +2126,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: GestureDetector(
                             onTap: () {
                               Navigator.pop(context);
-                              // ✅ نفس نمط التطبيق: نسكر الـ dialog الأول
-                              // وبعدين ننادي الـ Cubit (متل حذف السؤال بالضبط)
                               context.read<LogoutCubit>().logout();
                             },
                             child: Container(
@@ -2228,9 +2167,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ============================================================
-// MODELS صغيرة
-// ============================================================
 class _StatItem {
   final IconData icon;
   final String value;
@@ -2244,9 +2180,6 @@ class _StatItem {
   });
 }
 
-// ============================================================
-// Gradient Ring Painter — حلقة الأفاتار
-// ============================================================
 class _GradientRingPainter extends CustomPainter {
   final double progress;
   final List<Color> colors;
@@ -2263,14 +2196,12 @@ class _GradientRingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    // الخلفية
     final bgPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..color = Colors.white.withOpacity(.08);
     canvas.drawCircle(center, radius, bgPaint);
 
-    // القوس المتدرّج (الجزء المتقدّم)
     final rect = Rect.fromCircle(center: center, radius: radius);
     final gradient = SweepGradient(
       colors: colors,
@@ -2291,10 +2222,6 @@ class _GradientRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _GradientRingPainter oldDelegate) =>
       oldDelegate.progress != progress || oldDelegate.colors != colors;
 }
-
-/// ============================================================
-/// SHARED BOTTOM SHEET SHELL
-/// ============================================================
 class _BottomSheetShell extends StatelessWidget {
   final String title;
   final Widget child;
@@ -2349,9 +2276,6 @@ class _BottomSheetShell extends StatelessWidget {
   }
 }
 
-/// ============================================================
-/// BAR CHART (Daily / Weekly / Monthly)
-/// ============================================================
 class _BarChart extends StatelessWidget {
   final _ChartData data;
   const _BarChart({super.key, required this.data});

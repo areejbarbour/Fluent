@@ -8,12 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ============================================================
-/// MODELS
-/// ============================================================
-
 enum WordStatus { learning, mastered }
-
 enum WordDifficulty { easy, medium, hard }
 
 class WordItem {
@@ -64,11 +59,6 @@ class WordItem {
     );
   }
 }
-
-/// ============================================================
-/// MAIN WORD BANK SCREEN
-/// ============================================================
-
 class WordBankScreen extends StatefulWidget {
   const WordBankScreen({super.key});
 
@@ -372,9 +362,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 
-  // ============================================================
-  // ✅ build() — TopBar + Search + Tabs ثابتين، List بس بيتسكرول
-  // ============================================================
   @override
   Widget build(BuildContext context) {
     final searchQuery = _searchController.text.toLowerCase().trim();
@@ -437,9 +424,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 
-  // ============================================================
-  // BACKGROUND
-  // ============================================================
   Widget _buildBackground() {
     return Stack(
       children: [
@@ -539,9 +523,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 
-  // ============================================================
-  // TOP BAR
-  // ============================================================
   Widget _buildTopBar() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -629,9 +610,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 
-  // ============================================================
-  // SEARCH BAR
-  // ============================================================
   Widget _buildSearchBar() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -684,9 +662,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
 
-  // ============================================================
-  // TAB BAR
-  // ============================================================
   Widget _buildTabBar() {
     final learningCount =
         _words.where((w) => w.status == WordStatus.learning).length;
@@ -787,9 +762,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 400.ms);
   }
 
-  // ============================================================
-  // WORDS LIST
-  // ============================================================
   Widget _buildWordsList({
     required List<WordItem> words,
     required WordStatus targetStatus,
@@ -911,9 +883,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     ).animate().fadeIn(duration: 500.ms);
   }
 
-  // ============================================================
-  // FAB
-  // ============================================================
   Widget _buildFABs() {
     return Container(
       margin: EdgeInsets.only(bottom: 8.h, right: 4.w),
@@ -978,9 +947,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 
-  // ============================================================
-  // ADD WORD BOTTOM SHEET
-  // ============================================================
   void _showAddWordSheet() {
     final wordCtrl = TextEditingController();
     final translationCtrl = TextEditingController();
@@ -1279,10 +1245,6 @@ class _WordBankScreenState extends State<WordBankScreen>
     );
   }
 }
-
-// ============================================================
-// WORD CARD
-// ============================================================
 class _WordCard extends StatefulWidget {
   final WordItem word;
   final int index;
@@ -1745,10 +1707,6 @@ class _WordCardState extends State<_WordCard> {
     return "${(diff.inDays / 30).floor()}mo ago";
   }
 }
-
-// ============================================================
-// FLASHCARD PRACTICE SCREEN
-// ============================================================
 class FlashcardPracticeScreen extends StatefulWidget {
   final List<WordItem> words;
   final void Function(WordItem) onUpdateWord;
@@ -1864,9 +1822,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     );
   }
 
-  // ============================================================
-  // ✅ build() — بطاقة بارتفاع ثابت 340.h + Spacer() للأزرار
-  // ============================================================
   @override
   Widget build(BuildContext context) {
     if (_currentIndex >= _queue.length) {
@@ -1890,7 +1845,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                 _buildProgressBar(progress),
                 SizedBox(height: 20.h),
 
-                // ✅ بطاقة بارتفاع ثابت — الأزرار دايماً ظاهرة
                 SizedBox(
                   height: 340.h,
                   child: Center(
@@ -1916,8 +1870,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                 ),
 
                 Spacer(),
-
-                // ✅ الأزرار دايماً ظاهرة
                 _buildAnswerButtons(),
 
                 SizedBox(height: 10.h),
@@ -1936,7 +1888,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                     ),
                   ),
                 ),
-
                 SizedBox(height: 12.h),
               ],
             ),
@@ -2157,60 +2108,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     );
   }
 
-  // Widget _answerButton({
-  //   required String label,
-  //   required IconData icon,
-  //   required List<Color> gradient,
-  //   required VoidCallback onTap,
-  // }) {
-  //   return AnimatedBuilder(
-  //     animation: _slideController,
-  //     builder: (context, child) {
-  //       final v = _slideController.value;
-  //       return Opacity(
-  //         opacity: v < 0.5 ? 1 : 1 - (v - 0.5) * 2,
-  //         child: child,
-  //       );
-  //     },
-  //     child: GestureDetector(
-  //       onTap: onTap,
-  //       child: Container(
-  //         padding: EdgeInsets.symmetric(vertical: 15.h),
-  //         decoration: BoxDecoration(
-  //           gradient: LinearGradient(colors: gradient),
-  //           borderRadius: BorderRadius.circular(18.r),
-  //           boxShadow: [
-  //             BoxShadow(
-  //               color: gradient.first.withOpacity(.5),
-  //               blurRadius: 16,
-  //               spreadRadius: 1,
-  //             ),
-  //           ],
-  //         ),
-  //         child: Row(
-  //           mainAxisAlignment: MainAxisAlignment.center,
-  //           children: [
-  //             Icon(icon, color: Colors.white, size: 18.sp),
-  //             SizedBox(width: 6.w),
-  //             Flexible(
-  //               child: Text(
-  //                 label,
-  //                 maxLines: 1,
-  //                 overflow: TextOverflow.ellipsis,
-  //                 style: GoogleFonts.poppins(
-  //                   color: Colors.white,
-  //                   fontSize: 12.5.sp,
-  //                   fontWeight: FontWeight.w800,
-  //                   letterSpacing: .3,
-  //                 ),
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
   Widget _answerButton({
   required String label,
   required IconData icon,
@@ -2366,10 +2263,6 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     );
   }
 }
-
-// ============================================================
-// ✅ FLASHCARD WIDGET — الوجه الأمامي بدون Transform
-// ============================================================
 class _Flashcard extends StatelessWidget {
   final WordItem word;
   final bool showAnswer;
@@ -2394,7 +2287,6 @@ class _Flashcard extends StatelessWidget {
           final isFront = value < 0.5;
           final rotation = value * math.pi;
 
-          // ✅ FIXED: الوجه الأمامي بدون rotateY(math.pi)
           return Transform(
             alignment: Alignment.center,
             transform: Matrix4.identity()
@@ -2421,7 +2313,6 @@ class _Flashcard extends StatelessWidget {
         );
   }
 
-  // ✅ الوجه الأمامي — كلمة بالإنكليزي
   Widget _cardFront(WordItem word) {
     return Container(
       width: double.infinity,
@@ -2552,7 +2443,6 @@ class _Flashcard extends StatelessWidget {
     );
   }
 
-  // ✅ الوجه الخلفي — الترجمة
   Widget _cardBack(WordItem word) {
     return Container(
       width: double.infinity,
@@ -2680,10 +2570,6 @@ class _Flashcard extends StatelessWidget {
     );
   }
 }
-
-// ============================================================
-// RESULTS DIALOG
-// ============================================================
 class _PracticeResultsDialog extends StatefulWidget {
   final int correct;
   final int total;
@@ -2978,10 +2864,6 @@ class _CircularPercentPainter extends CustomPainter {
       oldDelegate.percent != percent ||
       oldDelegate.animationValue != animationValue;
 }
-
-// ============================================================
-// TWINKLING STARS
-// ============================================================
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});

@@ -25,7 +25,7 @@ class LevelPathData {
   final IconData icon;
   final double? price;
   final int? order;
-  final List<Color>? colors; // ✅ لون مخصص (يُستخدم حالياً للمستويات المتاحة)
+  final List<Color>? colors; 
 
   const LevelPathData({
     this.id,
@@ -1047,9 +1047,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-  /// لوحة المتصدّرين بشكل "منصة تتويج" (Podium): صاحب المركز الأول
-  /// بالنص وأطول قاعدة + تاج، والثاني يسار، الثالث يمين — بدل ليستة
-  /// أسماء مسطّحة. البيانات نفسها بالضبط، بس العرض أوضح وأجمل.
   Widget _topLearnersCard() {
     final leaders = [
       ("Omar", "18,200", AppColors.yellow, "1"),
@@ -1212,9 +1209,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-  /// شريط ملخّص "رحلتك" فوق المسار مباشرة: كم مستوى مكتمل من الإجمالي
-  /// + نقاط صغيرة ملوّنة بترتيب المستويات، بتعطي نظرة سريعة على التقدّم
-  /// العام قبل ما تنزل تتصفح المسار بالتفصيل.
   Widget _buildJourneyOverview() {
     final completed =
         _levels.where((l) => l.status == LevelStatus.completed).length;
@@ -2353,11 +2347,11 @@ class _LevelNode extends StatelessWidget {
     context,
     levelCoursesRoute,
     arguments: {
-      'levelId': level.id,                    // ← مهم جداً
+      'levelId': level.id,                    
       'userName': userName,
       'xp': xp,
       'streakDays': streakDays,
-      'level': level.order ?? level.id ?? 1,  // تحسين
+      'level': level.order ?? level.id ?? 1,  
       'levelProgress': levelProgress,
       'levelTitle': level.title,
       'levelSubtitle': level.subtitle,
@@ -2424,7 +2418,6 @@ class _LevelNode extends StatelessWidget {
                 SizedBox(height: 18.h),
                 GestureDetector(
                   onTap: () {
-                    // TODO: نداء API الدفع/الشراء هون
                     Navigator.pop(context);
                   },
                   child: Container(
@@ -2629,7 +2622,6 @@ class _LevelNode extends StatelessWidget {
       );
     }
 
-    // ✅ بادج القفل المفتوح + السعر للمستويات المتاحة للشراء
     if (isAvailable && level.price != null) {
       final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
       node = Stack(

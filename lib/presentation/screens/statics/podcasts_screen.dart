@@ -1,48 +1,4 @@
-// // 📁 lib/presentation/screens/podcasts/podcasts_screen.dart
 
-// import 'package:fluent/constants/app_colors.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_screenutil/flutter_screenutil.dart';
-// import 'package:google_fonts/google_fonts.dart';
-
-// class PodcastsScreen extends StatelessWidget {
-//   const PodcastsScreen({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: AppColors.dark,
-//       appBar: AppBar(
-//         backgroundColor: Colors.transparent,
-//         title: Text(
-//           "Podcasts",
-//           style: GoogleFonts.poppins(
-//             color: Colors.white,
-//             fontWeight: FontWeight.w800,
-//           ),
-//         ),
-//         iconTheme: const IconThemeData(color: Colors.white),
-//       ),
-//       body: Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Icon(Icons.mic_rounded, size: 80.sp, color: AppColors.sky),
-//             SizedBox(height: 20.h),
-//             Text(
-//               "Podcasts Coming Soon 🎙️",
-//               style: GoogleFonts.poppins(
-//                 color: Colors.white,
-//                 fontSize: 18.sp,
-//                 fontWeight: FontWeight.w700,
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 import 'dart:math' as math;
 import 'dart:ui';
@@ -54,9 +10,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ============================================================
-/// MODELS
-/// ============================================================
 
 enum PodcastLevel { beginner, intermediate, advanced }
 
@@ -96,11 +49,6 @@ class PodcastCategory {
   int get ownedCount => podcasts.where((p) => p.isOwned).length;
 }
 
-/// ============================================================
-/// MOCK DATA
-/// ============================================================
-// ✅ TODO: هاي بيانات وهمية للعرض — اربطيها مع الـ API / Cubit الحقيقي
-// عندك (PodcastsCubit مثلاً) بدل القائمة الثابتة.
 final List<PodcastCategory> _mockCategories = [
   PodcastCategory(
     title: "Business English",
@@ -173,9 +121,6 @@ final List<PodcastCategory> _mockCategories = [
   ),
 ];
 
-/// ============================================================
-/// SHARED BACKGROUND (نفس هوية باقي الشاشات)
-/// ============================================================
 Widget podcastsBackground() {
   return Stack(
     children: [
@@ -328,9 +273,6 @@ Color levelColor(PodcastLevel l) {
   }
 }
 
-/// ============================================================
-/// PODCASTS SCREEN (Categories)
-/// ============================================================
 class PodcastsScreen extends StatefulWidget {
   const PodcastsScreen({super.key});
 
@@ -339,7 +281,6 @@ class PodcastsScreen extends StatefulWidget {
 }
 
 class _PodcastsScreenState extends State<PodcastsScreen> {
-  // ✅ TODO: اربطي رصيد النقاط الحقيقي من الـ backend / Wallet Cubit
   int _userPoints = 450;
   final List<PodcastCategory> _categories = _mockCategories;
 
@@ -499,7 +440,6 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
             ),
           ),
           SizedBox(width: 8.w),
-          // ================= محفظة النقاط =================
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             decoration: BoxDecoration(
@@ -624,9 +564,6 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
   }
 }
 
-/// ============================================================
-/// PODCAST LIST SCREEN (episodes within a category)
-/// ============================================================
 class PodcastListScreen extends StatefulWidget {
   final PodcastCategory category;
   final int userPoints;
@@ -659,7 +596,6 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
   void _handlePodcastTap(PodcastItem podcast) {
     if (podcast.isOwned) {
       HapticFeedback.lightImpact();
-      // ✅ TODO: افتحي مشغّل البودكاست الفعلي هون
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("▶ Playing \"${podcast.title}\"..."),
@@ -1083,7 +1019,6 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
         borderColor: podcast.isOwned ? const Color(0xFF4ADE80).withOpacity(.3) : Colors.white.withOpacity(.1),
         child: Row(
           children: [
-            // ================= الصورة المصغّرة =================
             Container(
               width: 58.w,
               height: 58.w,
@@ -1144,7 +1079,6 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
               ),
             ),
             SizedBox(width: 8.w),
-            // ================= شارة الحالة / السعر =================
             if (podcast.isOwned)
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),

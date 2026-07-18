@@ -1,6 +1,6 @@
 // const String baseUrl = 'http://10.0.0.2:8000';
-//const String baseUrl = 'http://192.168.1.6:8000';
-const String baseUrl = 'http://172.20.10.2:8000';
+const String baseUrl = 'http://192.168.1.2:8000';
+//const String baseUrl = 'http://172.20.10.2:8000';
 
 
 // ✅ Routes
@@ -34,7 +34,6 @@ const String questionEditRoute = '/teacher/questions/edit';
 const String questionStatusRoute = '/teacher/questions/status';
 const String blockingTestsRoute = '/teacher/questions/blocking-tests';
 
-// Add this
 // ✅ API Endpoints
 const String apiRegister = '/api/register';
 const String apiLogin = '/api/login';

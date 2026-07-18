@@ -1,10 +1,5 @@
 import 'question_type.dart';
 
-/// Answer model that handles all 4 question types
-/// MCQ   -> {text_answer, is_correct}
-/// FILL  -> {text_answer, blank_order}
-/// ARRANGE -> {text_answer, is_correct, order}
-/// PAIR  -> {left_text, right_text}
 class QuestionAnswer {
   final int? id;
   final String? textAnswer;
@@ -140,7 +135,6 @@ class Question {
         (json['image'] as Map)['url'] != null) {
       imageUrl = (json['image'] as Map)['url'].toString();
     }
-    // 👇 ضيف هالسطرين هون (قبل return Question( بالضبط)
     if (audioUrl != null && audioUrl.trim().isEmpty) audioUrl = null;
     if (imageUrl != null && imageUrl.trim().isEmpty) imageUrl = null;
 

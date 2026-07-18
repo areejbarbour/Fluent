@@ -38,7 +38,7 @@ class LevelModel {
   final int maximumScore;
   final String price;
   final int estimatedDuration;
-  final String status; // status من الباك (published..) مش له علاقة بتقدم الطالب
+  final String status; 
   final LevelCreatorModel? creator;
 
   LevelModel({
