@@ -1,23 +1,21 @@
-
 import 'package:dio/dio.dart';
-import '../models/level_model.dart';
-import 'package:fluent/data/services/level_service.dart';
+import '../models/course_model.dart';
+import 'package:fluent/data/services/course_service.dart';
 
+class CourseRepository {
+  final CourseService courseService;
+  CourseRepository(this.courseService);
 
-class LevelRepository {
-  final LevelService levelService;
-  LevelRepository(this.levelService);
-
-  Future<Map<String, dynamic>> getStudentLevels() async {
+  Future<Map<String, dynamic>> getStudentCourses(int levelId) async {
     try {
-      final response = await levelService.getStudentLevels();
-      print("✅ GetStudentLevels Status: ${response.statusCode}");
-      print("✅ GetStudentLevels Data: ${response.data}");
+      final response = await courseService.getStudentCourses(levelId);
+      print("✅ GetStudentCourses Status: ${response.statusCode}");
+      print("✅ GetStudentCourses Data: ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
-          return {'success': true, 'data': StudentLevelsModel.fromJson(data)};
+          return {'success': true, 'data': StudentCoursesModel.fromJson(data)};
         }
         return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
       } else {
@@ -25,12 +23,12 @@ class LevelRepository {
         return {
           'success': false,
           'message': errorData is Map
-              ? errorData['message'] ?? 'فشل في جلب المستويات'
-              : 'فشل في جلب المستويات',
+              ? errorData['message'] ?? 'فشل في جلب الكورسات'
+              : 'فشل في جلب الكورسات',
         };
       }
     } on DioException catch (e) {
-      print("❌ GetStudentLevels DioException: ${e.response?.data}");
+      print("❌ GetStudentCourses DioException: ${e.response?.data}");
       final errorData = e.response?.data;
       return {
         'success': false,
@@ -39,7 +37,7 @@ class LevelRepository {
             : e.message ?? 'حدث خطأ ما',
       };
     } catch (e) {
-      print("❌ GetStudentLevels Unexpected error: $e");
+      print("❌ GetStudentCourses Unexpected error: $e");
       return {'success': false, 'message': 'حدث خطأ غير متوقع'};
     }
   }

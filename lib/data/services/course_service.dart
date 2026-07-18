@@ -1,14 +1,13 @@
-
 import 'package:dio/dio.dart';
 import 'package:fluent/constants/strings.dart';
 
-class LevelService {
+class CourseService {
   final Dio dio;
-  LevelService(this.dio);
+  CourseService(this.dio);
 
-  Future<Response> getStudentLevels() async {
+  Future<Response> getStudentCourses(int levelId) async {
     return await dio.get(
-      apiGetStudentLevels,
+      apiGetStudentCourses(levelId),
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,

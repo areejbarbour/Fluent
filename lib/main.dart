@@ -19,11 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/data/services/level_service.dart';
-
-
-
-
-
+import 'package:fluent/data/services/course_service.dart';
+import 'package:fluent/data/repository/course_repository.dart';
 import 'app_router.dart';
 import 'constants/strings.dart';
 
@@ -50,6 +47,9 @@ void main() async {
   final levelService = LevelService(dioInstance);
   final levelRepository = LevelRepository(levelService);
 
+  final courseService = CourseService(dioInstance);
+  final courseRepository = CourseRepository(courseService);
+
   String initialRoute = onboardingRoute;
 
   if (isUserLoggedIn) {
@@ -64,7 +64,8 @@ void main() async {
     MyApp(
       authRepository: authRepository,
       questionRepository: questionRepository,
-      levelRepository: levelRepository, // ✅ جديد
+      levelRepository: levelRepository, 
+      courseRepository: courseRepository, 
       initialRoute: initialRoute,
     ),
   );
@@ -74,6 +75,7 @@ class MyApp extends StatefulWidget {
   final AuthRepository authRepository;
   final QuestionRepository questionRepository;
   final LevelRepository levelRepository;
+  final CourseRepository courseRepository; // ✅ جديد
   final String initialRoute;
   late final AppRouter appRouter;
 
@@ -82,6 +84,7 @@ class MyApp extends StatefulWidget {
     required this.authRepository,
     required this.questionRepository,
     required this.levelRepository,
+    required this.courseRepository, // ✅ جديد
     required this.initialRoute,
   }) {
     appRouter = AppRouter(authRepository);
@@ -111,6 +114,7 @@ class _MyAppState extends State<MyApp> {
             ),
               RepositoryProvider<LevelRepository>.value(
                 value: widget.levelRepository), // ✅ جديد
+                RepositoryProvider<CourseRepository>.value(value: widget.courseRepository),
 
           ],
           child: MultiBlocProvider(
@@ -126,13 +130,7 @@ class _MyAppState extends State<MyApp> {
 
               BlocProvider(create: (_) => GoogleLoginCubit(widget.authRepository),),
 
-              BlocProvider(
-              create: (_) => StudentLevelsCubit(widget.levelRepository),
-              ),
-
-              // BlocProvider(
-              // create: (_) => LevelsCubit(widget.levelRepository)..getLevels(), // 👈 أضف ..getLevels()
-              //  ),
+              BlocProvider(create: (_) => StudentLevelsCubit(widget.levelRepository),),
 
             ],
             child: MaterialApp(

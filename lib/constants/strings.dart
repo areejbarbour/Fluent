@@ -1,5 +1,7 @@
 // const String baseUrl = 'http://10.0.0.2:8000';
-const String baseUrl = 'http://192.168.1.6:8000';
+//const String baseUrl = 'http://192.168.1.6:8000';
+const String baseUrl = 'http://172.20.10.2:8000';
+
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -16,6 +18,7 @@ const String placementTestRoute = '/placement-test';
 const String studentHomeRoute = '/student/home';
 //const String teacherHomeRoute = '/teacher/home';
 const String levelCoursesRoute = '/level-courses';
+const String courseLessonsRoute = '/course-lessons';
 const String profileRoute = '/profile';
 const String wordBankRoute = '/word_bank';
 const String podcastsRoute = '/podcasts';          
@@ -40,9 +43,10 @@ const String apiCurrentUser = '/api/user';
 
 
 // ✅ Level API
-const String apiGetStudentLevels = '/api/getStudentLevels'; // ⭐ استخدمناه
+const String apiGetStudentLevels = '/api/getStudentLevels';
 
-
+// ✅ Course API
+String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';
 
 // ✅ Question API Endpoints
 const String apiQuestions = '/api/questions';

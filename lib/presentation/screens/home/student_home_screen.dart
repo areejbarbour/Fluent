@@ -44,7 +44,7 @@ class StudentHomeScreen extends StatefulWidget {
   final int xp;
   final int streakDays;
   final int level;
-  final double levelProgress; // 0.0 -> 1.0
+  final double levelProgress; 
 
   const StudentHomeScreen({
     super.key,
@@ -849,7 +849,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 500.ms).moveY(begin: 10, end: 0);
   }
 
-  /// أيقونة التحدي اليومي صارت محاطة بحلقة تقدّم (70%) بدل دائرة تلوين ثابتة
   Widget _dailyChallengeRingIcon() {
     return SizedBox(
       width: 30.w,
@@ -2309,58 +2308,64 @@ class _LevelNode extends StatelessWidget {
   });
 
   void _handleTap(BuildContext context) {
-    final isLocked = level.status == LevelStatus.locked;
-    final isAvailable = level.status == LevelStatus.available;
+  final isLocked = level.status == LevelStatus.locked;
+  final isAvailable = level.status == LevelStatus.available;
 
-    if (isLocked) {
-      HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8.w),
-              const Expanded(
-                child:
-                    Text("Finish the previous level to unlock this one! 💪"),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          duration: const Duration(seconds: 2),
+  if (isLocked) {
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8.w),
+            const Expanded(
+              child: Text("Finish the previous level to unlock this one! 💪"),
+            ),
+          ],
         ),
-      );
-      return;
-    }
-
-    if (isAvailable) {
-      HapticFeedback.lightImpact();
-      _showPurchaseSheet(context);
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-    Navigator.pushNamed(
-      context,
-      levelCoursesRoute,
-      arguments: {
-        'userName': userName,
-        'xp': xp,
-        'streakDays': streakDays,
-        'level': level.order ?? (8 - index),
-        'levelProgress': levelProgress,
-        'levelTitle': level.title,
-        'levelSubtitle': level.subtitle,
-        'levelId': level.id,
-      },
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
     );
+    return;
   }
 
-  // ✅ TODO: اربطي هون API الدفع/الشراء لما يجهز عندك بالباك
+  if (isAvailable) {
+    HapticFeedback.lightImpact();
+    _showPurchaseSheet(context);   
+    return;
+  }
+
+  if (level.id == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("خطأ: معرف المستوى غير موجود")),
+    );
+    return;
+  }
+
+  HapticFeedback.lightImpact();
+  Navigator.pushNamed(
+    context,
+    levelCoursesRoute,
+    arguments: {
+      'levelId': level.id,                    // ← مهم جداً
+      'userName': userName,
+      'xp': xp,
+      'streakDays': streakDays,
+      'level': level.order ?? level.id ?? 1,  // تحسين
+      'levelProgress': levelProgress,
+      'levelTitle': level.title,
+      'levelSubtitle': level.subtitle,
+    },
+  );
+}
+
+
   void _showPurchaseSheet(BuildContext context) {
     final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
     showModalBottomSheet(
@@ -2968,3 +2973,4 @@ class _LevelInfoCard extends StatelessWidget {
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
   }
 }
+

@@ -31,6 +31,8 @@ import 'package:fluent/presentation/screens/statics/podcasts_screen.dart';
 import 'package:fluent/presentation/screens/statics/ai_conversation_screen.dart';
 import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
+import 'package:fluent/cubit/student/courses/course_cubit.dart';
+import 'package:fluent/data/repository/course_repository.dart';
 
 
 
@@ -48,11 +50,11 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const OnboardingScreen());
 
       case loginRoute:
-        final email = settings.arguments as String?; // ✅ استقبال الإيميل
+        final email = settings.arguments as String?; 
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (_) => LoginCubit(authRepository),
-            child: LoginScreen(email: email), // ✅ تمرير الإيميل
+            child: LoginScreen(email: email), 
           ),
         );
 
@@ -100,7 +102,7 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (_) => ResetPasswordCubit(authRepository),
             child:
-                const SetNewPasswordScreen(), // ✅ إزالة email من الـ constructor
+                const SetNewPasswordScreen(), 
           ),
           settings: RouteSettings(
             arguments: email,
@@ -129,7 +131,7 @@ class AppRouter {
       child: const StudentHomeScreen(),
       ),
       );
-
+      
           case profileRoute:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
@@ -148,18 +150,25 @@ class AppRouter {
       // case teacherHomeRoute:
       //   return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
 
-      case levelCoursesRoute:
+        case levelCoursesRoute:
         final args = settings.arguments as Map<String, dynamic>;
+        final levelId = args['levelId'] as int?;
+ 
         return MaterialPageRoute(
-          builder: (_) => LevelCoursesScreen(
-            userName: args['userName'] as String? ?? "Rasha",
-            xp: args['xp'] as int? ?? 12540,
-            streakDays: args['streakDays'] as int? ?? 15,
-            level: args['level'] as int? ?? 8,
-            levelProgress: args['levelProgress'] as double? ?? 0.78,
-            levelTitle: args['levelTitle'] as String? ?? "Level 8",
-            levelSubtitle:
-                args['levelSubtitle'] as String? ?? "Grammar Mastery",
+          builder: (_) => BlocProvider(
+            create: (ctx) => StudentCoursesCubit(ctx.read<CourseRepository>())
+              ..fetchStudentCourses(levelId ?? 0),
+            child: LevelCoursesScreen(
+              levelId: levelId,
+              userName: args['userName'] as String? ?? "Rasha",
+              xp: args['xp'] as int? ?? 12540,
+              streakDays: args['streakDays'] as int? ?? 15,
+              level: args['level'] as int? ?? 8,
+              levelProgress: args['levelProgress'] as double? ?? 0.78,
+              levelTitle: args['levelTitle'] as String? ?? "Level 8",
+              levelSubtitle:
+                  args['levelSubtitle'] as String? ?? "Grammar Mastery",
+            ),
           ),
         );
 
