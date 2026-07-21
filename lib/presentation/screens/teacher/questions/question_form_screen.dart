@@ -21,10 +21,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class QuestionFormScreen extends StatelessWidget {
-  /// null = create mode
   final int? questionId;
   const QuestionFormScreen({super.key, this.questionId});
-
   bool get isEdit => questionId != null;
 
   @override
@@ -59,30 +57,20 @@ class _FormView extends StatefulWidget {
 
 class _FormViewState extends State<_FormView> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers
   final _titleEn = TextEditingController();
   final _titleAr = TextEditingController();
   final _textQuestion = TextEditingController();
   final _scoreController = TextEditingController(text: '1');
-
   QuestionType _type = QuestionType.mcq;
   QuestionDifficulty _difficulty = QuestionDifficulty.easy;
   int _score = 1;
-
   File? _audioFile;
   File? _imageFile;
   String? _audioFileName;
   String? _imageFileName;
-
-  // 👇 ضيف هالسطرين هون
   String? _existingImageUrl;
   String? _existingAudioUrl;
-
-  /// Per-type answer list
   List<_AnswerDraft> _answers = [];
-
-  /// Track if form was pre-filled from edit
   bool _prefilled = false;
 
   @override
@@ -130,15 +118,12 @@ class _FormViewState extends State<_FormView> {
     _difficulty = q.difficulty;
     _score = q.score;
     _scoreController.text = _score.toString();
-
-    // 👇 ضيف هالسطرين هون (بعد _score = q.score;)
     _existingImageUrl = (q.imageUrl != null && q.imageUrl!.isNotEmpty)
         ? q.imageUrl
         : null;
     _existingAudioUrl = (q.audioUrl != null && q.audioUrl!.isNotEmpty)
         ? q.audioUrl
         : null;
-
     _answers = q.answers.map((a) {
       return _AnswerDraft(
         text: a.textAnswer ?? '',
@@ -152,11 +137,9 @@ class _FormViewState extends State<_FormView> {
     if (_answers.isEmpty) _resetAnswersForType(_type);
   }
 
-  // ─── Build ───────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.questionId != null;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -168,7 +151,7 @@ class _FormViewState extends State<_FormView> {
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .move(
                   begin: Offset.zero,
-                  end: Offset(-15.w, 10.h), // تم التعديل ليكون responsive
+                  end: Offset(-15.w, 10.h),
                   duration: 5000.ms,
                 ),
           ),
@@ -179,7 +162,7 @@ class _FormViewState extends State<_FormView> {
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .move(
                   begin: Offset.zero,
-                  end: Offset(20.w, -15.h), // تم التعديل ليكون responsive
+                  end: Offset(20.w, -15.h),
                   duration: 6000.ms,
                 ),
           ),
@@ -195,7 +178,7 @@ class _FormViewState extends State<_FormView> {
               ],
               child: Column(
                 children: [
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 10.h),
                   _buildTopBar(isEdit),
                   SizedBox(height: 12.h),
                   Expanded(
@@ -211,9 +194,8 @@ class _FormViewState extends State<_FormView> {
                               }
                             },
                             builder: (context, state) {
-                              if (state is QuestionDetailLoaded || _prefilled) {
+                              if (state is QuestionDetailLoaded || _prefilled)
                                 return _buildForm();
-                              }
                               if (state is QuestionDetailFailure) {
                                 return Center(
                                   child: Text(
@@ -294,7 +276,6 @@ class _FormViewState extends State<_FormView> {
     String msg,
     Map<String, dynamic>? errors,
   ) {
-    // دالة مساعدة لتنسيق اسم الحقل ليظهر بشكل أجمل للمستخدم
     String formatFieldName(String key) {
       return key
           .replaceAll('title_question_en', 'English Title')
@@ -381,40 +362,46 @@ class _FormViewState extends State<_FormView> {
     );
   }
 
-  // ─── Top bar ─────────────────────────────────────
   Widget _buildTopBar(bool isEdit) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 18.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center, // توسيط المحتوى بالكامل
+        mainAxisSize: MainAxisSize.min, // مهم جداً لضمان عدم تمدد الـ Row
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: EdgeInsets.all(10.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.15),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.white,
-                size: 20.sp,
-              ),
+          Container(
+            width: 38.w,
+            height: 38.w,
+            decoration: BoxDecoration(
+              color: AppColors.yellow.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: AppColors.yellow.withOpacity(0.5)),
+            ),
+            child: Icon(
+              Icons.quiz_outlined,
+              color: AppColors.yellow,
+              size: 20.sp,
             ),
           ),
-          SizedBox(width: 12.w),
-          Text(
-            isEdit ? "Edit Question" : "New Question",
-            style: GoogleFonts.cinzelDecorative(
-              color: Colors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
-              shadows: [
-                Shadow(
-                  color: AppColors.sky.withOpacity(0.7),
-                  blurRadius: 10.r, // تم التعديل ليكون responsive
+          SizedBox(width: 10.w),
+          Flexible(
+            // نستخدم Flexible بدلاً من Expanded للسماح بتصغير الخط إذا لزم الأمر
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                isEdit ? "Edit Question" : "New Question",
+                style: GoogleFonts.cinzelDecorative(
+                  color: Colors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w600,
+                  shadows: [
+                    Shadow(
+                      color: AppColors.sky.withOpacity(0.7),
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -422,26 +409,27 @@ class _FormViewState extends State<_FormView> {
     );
   }
 
-  // ─── Form ────────────────────────────────────────
   Widget _buildForm() {
     return Form(
       key: _formKey,
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 18.w),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16.w,
+        ), // ✅ تقليل الـ Padding للموبايل
         children: [
           _buildTypeSelector(),
-          SizedBox(height: 14.h),
+          SizedBox(height: 12.h),
           _buildTitleFields(),
-          SizedBox(height: 14.h),
+          SizedBox(height: 12.h),
           _buildDifficultyAndScore(),
-          SizedBox(height: 14.h),
+          SizedBox(height: 12.h),
           if (_type == QuestionType.fill) ...[
             _buildTextQuestionField(),
-            SizedBox(height: 14.h),
+            SizedBox(height: 12.h),
           ],
           _buildMediaPickers(),
-          SizedBox(height: 14.h),
+          SizedBox(height: 12.h),
           _buildAnswersSection(),
           SizedBox(height: 24.h),
           _buildSubmitButton(),
@@ -453,6 +441,7 @@ class _FormViewState extends State<_FormView> {
 
   Widget _buildTypeSelector() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -466,6 +455,7 @@ class _FormViewState extends State<_FormView> {
             ),
           ),
           SizedBox(height: 10.h),
+          // ✅ استخدام Wrap لضمان عدم تداخل الأزرار في الشاشات الصغيرة
           Wrap(
             spacing: 8.w,
             runSpacing: 8.h,
@@ -482,7 +472,7 @@ class _FormViewState extends State<_FormView> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
+                    horizontal: 10.w,
                     vertical: 8.h,
                   ),
                   decoration: BoxDecoration(
@@ -508,7 +498,7 @@ class _FormViewState extends State<_FormView> {
                         t.value,
                         style: GoogleFonts.poppins(
                           color: selected ? Colors.white : Colors.white70,
-                          fontSize: 12.sp,
+                          fontSize: 11.sp,
                           fontWeight: selected
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -527,6 +517,7 @@ class _FormViewState extends State<_FormView> {
 
   Widget _buildTitleFields() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -550,6 +541,7 @@ class _FormViewState extends State<_FormView> {
 
   Widget _buildTextQuestionField() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -562,38 +554,25 @@ class _FormViewState extends State<_FormView> {
               letterSpacing: 0.5,
             ),
           ),
-          SizedBox(height: 4.h),
-          // Text(
-          //   "Use {1} for the first blank, {2} for the second, etc.",
-          //   style: GoogleFonts.poppins(
-          //     color: Colors.white.withOpacity(0.55),
-          //     fontSize: 10.sp,
-          //     fontStyle: FontStyle.italic,
-          //   ),
-          // ),
           SizedBox(height: 10.h),
           TextFormField(
             controller: _textQuestion,
             maxLines: 4,
-            onChanged: (_) => setState(() {}), // 🔄 refresh preview live
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 14.sp),
+            onChanged: (_) => setState(() {}),
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
             decoration: _inputDecoration("e.g. The capital of France is {1}."),
           ),
           SizedBox(height: 14.h),
-          // ─── Live preview ──────────────────────────
           _buildLiveFillPreview(),
         ],
       ),
     );
   }
 
-  /// Shows how the fill question will look to the student,
-  /// updating live as the teacher types the text and answers.
   Widget _buildLiveFillPreview() {
     final text = _textQuestion.text.trim();
     final hasBlanks = RegExp(r'\{\d+\}').hasMatch(text);
     final hasAnswers = _answers.any((a) => a.text.trim().isNotEmpty);
-
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.w),
@@ -635,7 +614,6 @@ class _FormViewState extends State<_FormView> {
               ),
             )
           else if (!hasBlanks)
-            // No {n} tokens yet -> render as plain text + helper hint
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -670,15 +648,12 @@ class _FormViewState extends State<_FormView> {
               ],
             )
           else
-            // ✅ Real blanks — rendered inline (no separate widget)
             _renderFillRichPreview(text, hasAnswers),
         ],
       ),
     );
   }
 
-  /// Inlines {1} {2} ... as visual blank chips for the live preview,
-  /// pulling the per-blank answer from `_answers` (1-based blankOrder).
   Widget _renderFillRichPreview(String text, bool hasAnswers) {
     final baseStyle = GoogleFonts.poppins(
       color: Colors.white,
@@ -689,11 +664,9 @@ class _FormViewState extends State<_FormView> {
     final regex = RegExp(r'\{(\d+)\}');
     final spans = <InlineSpan>[];
     int lastEnd = 0;
-
     String? answerFor(int blankNumber) {
       for (final a in _answers) {
         if (a.text.trim().isEmpty) continue;
-        // Use blankOrder if set, else fall back to the list index.
         final n = a.blankOrder > 0 ? a.blankOrder : 1;
         if (n == blankNumber) return a.text;
       }
@@ -701,11 +674,10 @@ class _FormViewState extends State<_FormView> {
     }
 
     for (final m in regex.allMatches(text)) {
-      if (m.start > lastEnd) {
+      if (m.start > lastEnd)
         spans.add(
           TextSpan(text: text.substring(lastEnd, m.start), style: baseStyle),
         );
-      }
       final n = int.tryParse(m.group(1) ?? '') ?? 0;
       if (n > 0) {
         final answer = hasAnswers ? answerFor(n) : null;
@@ -785,10 +757,8 @@ class _FormViewState extends State<_FormView> {
       }
       lastEnd = m.end;
     }
-    if (lastEnd < text.length) {
+    if (lastEnd < text.length)
       spans.add(TextSpan(text: text.substring(lastEnd), style: baseStyle));
-    }
-
     return Text.rich(
       TextSpan(children: spans),
       textDirection: TextDirection.ltr,
@@ -797,6 +767,7 @@ class _FormViewState extends State<_FormView> {
 
   Widget _buildDifficultyAndScore() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -919,7 +890,6 @@ class _FormViewState extends State<_FormView> {
                       if (_score > v.maxScore) _score = v.maxScore;
                       _scoreController.text = _score.toString();
                     });
-                    // يعيد تشغيل التحقق فوراً حتى تنعكس حدود الصعوبة الجديدة
                     _formKey.currentState?.validate();
                   },
                 ),
@@ -966,21 +936,12 @@ class _FormViewState extends State<_FormView> {
                       borderRadius: BorderRadius.circular(12.r),
                       borderSide: const BorderSide(color: Colors.redAccent),
                     ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: const BorderSide(color: Colors.redAccent),
-                    ),
                   ),
-                  // ✅ نفس شرط الباك بالضبط:
-                  // EASY: 1-2 | MEDIUM: 3-5 | HARD: 6-10
                   validator: (v) {
                     final n = int.tryParse(v ?? '');
-                    if (n == null) {
-                      return 'Score is required';
-                    }
-                    if (n < _difficulty.minScore || n > _difficulty.maxScore) {
+                    if (n == null) return 'Score is required';
+                    if (n < _difficulty.minScore || n > _difficulty.maxScore)
                       return '${_difficulty.displayName}: ${_difficulty.minScore}-${_difficulty.maxScore} only';
-                    }
                     return null;
                   },
                   onChanged: (v) {
@@ -998,11 +959,12 @@ class _FormViewState extends State<_FormView> {
 
   Widget _buildMediaPickers() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Media (optional - Choose One)", // توضيح للمستخدم
+            "Media (optional - Choose One)",
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
               fontSize: 12.sp,
@@ -1022,9 +984,7 @@ class _FormViewState extends State<_FormView> {
                   onRemove: _removeImage,
                   file: _imageFile,
                   fileName: _imageFileName,
-                  existingUrl: _imageFile == null
-                      ? _existingImageUrl
-                      : null, // 👈 جديد
+                  existingUrl: _imageFile == null ? _existingImageUrl : null,
                   isImage: true,
                   isEnabled: _audioFile == null,
                 ),
@@ -1039,9 +999,7 @@ class _FormViewState extends State<_FormView> {
                   onRemove: _removeAudio,
                   file: _audioFile,
                   fileName: _audioFileName,
-                  existingUrl: _audioFile == null
-                      ? _existingAudioUrl
-                      : null, // 👈 جديد
+                  existingUrl: _audioFile == null ? _existingAudioUrl : null,
                   isImage: false,
                   isEnabled: _imageFile == null,
                 ),
@@ -1061,16 +1019,15 @@ class _FormViewState extends State<_FormView> {
     required VoidCallback onRemove,
     File? file,
     String? fileName,
-    String? existingUrl, // 👈 جديد
+    String? existingUrl,
     required bool isImage,
     required bool isEnabled,
   }) {
     final hasFile = file != null;
-    final hasExisting = !hasFile && existingUrl != null; // 👈 جديد
-    final showsSomething = hasFile || hasExisting; // 👈 جديد
-
+    final hasExisting = !hasFile && existingUrl != null;
+    final showsSomething = hasFile || hasExisting;
     return Container(
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: showsSomething
             ? color.withOpacity(0.2)
@@ -1104,7 +1061,7 @@ class _FormViewState extends State<_FormView> {
                         fit: BoxFit.cover,
                       ),
                     )
-                  else if (hasExisting && isImage) // 👈 جديد
+                  else if (hasExisting && isImage)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
                       child: Image.network(
@@ -1130,7 +1087,7 @@ class _FormViewState extends State<_FormView> {
                     hasFile
                         ? (fileName ?? "File selected")
                         : hasExisting
-                        ? "Current $label" // 👈 جديد
+                        ? "Current $label"
                         : "Pick $label",
                     style: GoogleFonts.poppins(
                       color: showsSomething ? Colors.white : Colors.white60,
@@ -1147,12 +1104,10 @@ class _FormViewState extends State<_FormView> {
               ),
             ),
           ),
-
           if (hasExisting && !isImage) ...[
             SizedBox(height: 8.h),
             AudioPreviewTile(url: existingUrl!, compact: true),
           ],
-
           if (showsSomething) ...[
             SizedBox(height: 10.h),
             GestureDetector(
@@ -1187,9 +1142,9 @@ class _FormViewState extends State<_FormView> {
     );
   }
 
-  // ─── Answers ────────────────────────────────────
   Widget _buildAnswersSection() {
     return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1307,7 +1262,6 @@ class _FormViewState extends State<_FormView> {
           ),
           onRemove: () => setState(() => _answers.removeAt(idx)),
         );
-
       case QuestionType.fill:
         return _answerShell(
           idx,
@@ -1349,7 +1303,6 @@ class _FormViewState extends State<_FormView> {
             ],
           ),
         );
-
       case QuestionType.arrange:
         return _answerShell(
           idx,
@@ -1418,7 +1371,6 @@ class _FormViewState extends State<_FormView> {
           ),
           onRemove: () => setState(() => _answers.removeAt(idx)),
         );
-
       case QuestionType.pair:
         return _answerShell(
           idx,
@@ -1527,16 +1479,12 @@ class _FormViewState extends State<_FormView> {
     );
   }
 
-  // ─── Submit ─────────────────────────────────────
   void _submit() async {
-    // ✅ يمنع الإرسال إذا كانت النقاط خارج المدى المسموح لهذه الصعوبة
-    // (نفس شرط الباك إند: EASY 1-2 / MEDIUM 3-5 / HARD 6-10)
     if (!(_formKey.currentState?.validate() ?? true)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Please fix the Score field (${_difficulty.displayName}: "
-            "${_difficulty.minScore}-${_difficulty.maxScore}) before submitting.",
+            "Please fix the Score field (${_difficulty.displayName}: ${_difficulty.minScore}-${_difficulty.maxScore}) before submitting.",
             style: GoogleFonts.poppins(fontSize: 13.sp),
           ),
           backgroundColor: Colors.redAccent,
@@ -1545,23 +1493,16 @@ class _FormViewState extends State<_FormView> {
       );
       return;
     }
-
     final formData = FormData();
-
     formData.fields.add(MapEntry('type', _type.value));
     formData.fields.add(MapEntry('title_question_en', _titleEn.text.trim()));
     formData.fields.add(MapEntry('title_question_ar', _titleAr.text.trim()));
     formData.fields.add(MapEntry('difficulty', _difficulty.value));
     formData.fields.add(MapEntry('score', _score.toString()));
-
-    if (_type == QuestionType.fill && _textQuestion.text.trim().isNotEmpty) {
+    if (_type == QuestionType.fill && _textQuestion.text.trim().isNotEmpty)
       formData.fields.add(MapEntry('text_question', _textQuestion.text.trim()));
-    }
-
-    // ─── Answers ───────────────────────────────────
     for (int i = 0; i < _answers.length; i++) {
       final a = _answers[i];
-
       if (_type == QuestionType.mcq) {
         formData.fields.add(
           MapEntry('answers[$i][text_answer]', a.text.trim()),
@@ -1569,7 +1510,6 @@ class _FormViewState extends State<_FormView> {
         formData.fields.add(
           MapEntry('answers[$i][is_correct]', a.isCorrect ? '1' : '0'),
         );
-        // ✅ تم إزالة order تماماً لأن الباك إند يمنع إرساله لـ MCQ (prohibited)
       } else if (_type == QuestionType.fill) {
         formData.fields.add(
           MapEntry('answers[$i][text_answer]', a.text.trim()),
@@ -1587,16 +1527,13 @@ class _FormViewState extends State<_FormView> {
         formData.fields.add(
           MapEntry('answers[$i][is_correct]', a.isCorrect ? '1' : '0'),
         );
-
-        // ✅ في الـ Arrange فقط، الـ order مطلوب للإجابات الصحيحة
-        if (a.isCorrect) {
+        if (a.isCorrect)
           formData.fields.add(
             MapEntry(
               'answers[$i][order]',
               (a.order > 0 ? a.order : (i + 1)).toString(),
             ),
           );
-        }
       } else if (_type == QuestionType.pair) {
         formData.fields.add(MapEntry('answers[$i][left_text]', a.left.trim()));
         formData.fields.add(
@@ -1604,32 +1541,20 @@ class _FormViewState extends State<_FormView> {
         );
       }
     }
-
-    // Media
-    if (_imageFile != null) {
+    if (_imageFile != null)
       formData.files.add(
         MapEntry(
           'image',
           await awaitableFile(_imageFile!, _imageFileName ?? 'image.jpg'),
         ),
       );
-    }
-    if (_audioFile != null) {
+    if (_audioFile != null)
       formData.files.add(
         MapEntry(
           'audio',
           await awaitableFile(_audioFile!, _audioFileName ?? 'audio.mp3'),
         ),
       );
-    }
-
-    // 🔍 طباعة البيانات للتأكد (افتح الـ Console)
-    debugPrint('======= START SENDING FORM DATA =======');
-    for (var field in formData.fields) {
-      debugPrint('${field.key}  =>  ${field.value}');
-    }
-    debugPrint('======== END SENDING FORM DATA ========');
-
     if (widget.questionId != null) {
       context.read<QuestionUpdateCubit>().updateQuestion(
         widget.questionId!,
@@ -1644,7 +1569,7 @@ class _FormViewState extends State<_FormView> {
     setState(() {
       _imageFile = null;
       _imageFileName = null;
-      _existingImageUrl = null; // 👈 جديد
+      _existingImageUrl = null;
     });
   }
 
@@ -1652,7 +1577,7 @@ class _FormViewState extends State<_FormView> {
     setState(() {
       _audioFile = null;
       _audioFileName = null;
-      _existingAudioUrl = null; // 👈 جديد
+      _existingAudioUrl = null;
     });
   }
 
@@ -1663,7 +1588,7 @@ class _FormViewState extends State<_FormView> {
   }) {
     return TextFormField(
       controller: c,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 14.sp),
+      style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
       textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
       decoration: _inputDecoration(label),
     );
@@ -1703,15 +1628,12 @@ class _FormViewState extends State<_FormView> {
       if (result != null && result.files.isNotEmpty) {
         final filePath = result.files.single.path;
         final fileName = result.files.single.name;
-
         if (filePath != null) {
           setState(() {
             _imageFile = File(filePath);
             _imageFileName = fileName;
           });
-          debugPrint("✅ Image picked successfully: $fileName");
         } else {
-          debugPrint("⚠️ Image path is null (This happens on Flutter Web)");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -1722,7 +1644,6 @@ class _FormViewState extends State<_FormView> {
         }
       }
     } catch (e) {
-      debugPrint("❌ Error picking image: $e");
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
@@ -1738,19 +1659,14 @@ class _FormViewState extends State<_FormView> {
       if (result != null && result.files.isNotEmpty) {
         final filePath = result.files.single.path;
         final fileName = result.files.single.name;
-
         if (filePath != null) {
           setState(() {
             _audioFile = File(filePath);
             _audioFileName = fileName;
           });
-          debugPrint("✅ Audio picked successfully: $fileName");
-        } else {
-          debugPrint("⚠️ Audio path is null (This happens on Flutter Web)");
         }
       }
     } catch (e) {
-      debugPrint("❌ Error picking audio: $e");
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to pick audio: $e')));
@@ -1758,7 +1674,6 @@ class _FormViewState extends State<_FormView> {
   }
 }
 
-// ─── Answer draft model ────────────────────────────
 class _AnswerDraft {
   String text;
   bool isCorrect;
@@ -1766,7 +1681,6 @@ class _AnswerDraft {
   int blankOrder;
   String left;
   String right;
-
   _AnswerDraft({
     this.text = '',
     this.isCorrect = false,
@@ -1775,7 +1689,6 @@ class _AnswerDraft {
     this.left = '',
     this.right = '',
   });
-
   factory _AnswerDraft.forType(QuestionType t) {
     switch (t) {
       case QuestionType.mcq:
@@ -1789,7 +1702,6 @@ class _AnswerDraft {
   }
 }
 
-// ─── Util functions ───
 Future<MultipartFile> awaitableFile(File file, String filename) async {
   return await MultipartFile.fromFile(file.path, filename: filename);
 }

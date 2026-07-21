@@ -1,14 +1,29 @@
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
+import 'package:fluent/cubit/teacher/courses/all/teacher_courses_cubit.dart';
+import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
+import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_cubit.dart';
+import 'package:fluent/cubit/teacher/courses/form/lesson_form_cubit.dart';
+import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
+import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
+import 'package:fluent/data/models/course_model.dart';
+import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/repository/question_repository.dart';
+import 'package:fluent/data/repository/lesson_repository.dart';
+import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detail_screen.dart';
+import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
+import 'package:fluent/presentation/screens/teacher/home/teacher_home_screen.dart';
+import 'package:fluent/presentation/screens/teacher/lessons/lesson_form_screen.dart';
+import 'package:fluent/presentation/screens/teacher/status_board/teacher_status_board_screen.dart';
 import 'package:fluent/presentation/screens/Streak/StreakScreen.dart';
 import 'package:fluent/presentation/screens/auth/OtpVerificationScreen.dart';
 import 'package:fluent/presentation/screens/auth/forget_password_screen.dart';
 import 'package:fluent/presentation/screens/auth/set_new_password_screen.dart';
 import 'package:fluent/presentation/screens/home/student_home_screen.dart';
 import 'package:fluent/presentation/screens/home/teacher_home_screen.dart';
+
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:fluent/presentation/screens/teacher/questions/questions_list_screen.dart';
@@ -34,9 +49,6 @@ import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/cubit/student/courses/course_cubit.dart';
 import 'package:fluent/data/repository/course_repository.dart';
 
-
-
-
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -50,11 +62,11 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const OnboardingScreen());
 
       case loginRoute:
-        final email = settings.arguments as String?; 
+        final email = settings.arguments as String?;
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (_) => LoginCubit(authRepository),
-            child: LoginScreen(email: email), 
+            child: LoginScreen(email: email),
           ),
         );
 
@@ -101,12 +113,9 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (_) => ResetPasswordCubit(authRepository),
-            child:
-                const SetNewPasswordScreen(), 
+            child: const SetNewPasswordScreen(),
           ),
-          settings: RouteSettings(
-            arguments: email,
-          ), 
+          settings: RouteSettings(arguments: email),
         );
 
       case streakRoute:
@@ -124,40 +133,51 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const HomeScreen());
 
       case studentHomeRoute:
-       return MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (ctx) => StudentLevelsCubit(ctx.read<LevelRepository>())
-        ..fetchStudentLevels(),
-      child: const StudentHomeScreen(),
-      ),
-      );
-      
-          case profileRoute:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
-
-        case wordBankRoute:                            
-          return MaterialPageRoute(builder: (_) => const WordBankScreen(),);
-
-          case podcastsRoute:                                  
-              return MaterialPageRoute(builder: (_) => const PodcastsScreen());
-
-
-            case aiConversationRoute:                             
-               return MaterialPageRoute(builder: (_) => const AIConversationScreen());
-
-
-      // // ✅ Route للمعلم
-      // case teacherHomeRoute:
-      //   return MaterialPageRoute(builder: (_) => const TeacherHomeScreen());
-
-        case levelCoursesRoute:
-        final args = settings.arguments as Map<String, dynamic>;
-        final levelId = args['levelId'] as int?;
- 
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (ctx) => StudentCoursesCubit(ctx.read<CourseRepository>())
-              ..fetchStudentCourses(levelId ?? 0),
+            create: (ctx) =>
+                StudentLevelsCubit(ctx.read<LevelRepository>())
+                  ..fetchStudentLevels(),
+            child: const StudentHomeScreen(),
+          ),
+        );
+
+      case profileRoute:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+
+      case wordBankRoute:
+        return MaterialPageRoute(builder: (_) => const WordBankScreen());
+
+      case podcastsRoute:
+        return MaterialPageRoute(builder: (_) => const PodcastsScreen());
+
+      case aiConversationRoute:
+        return MaterialPageRoute(builder: (_) => const AIConversationScreen());
+
+      case teacherHomeRoute:
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => TeacherHomeCubit(
+                  ctx.read<LessonRepository>(),
+                  ctx.read<QuestionRepository>(),
+                )..loadDashboardData(), // جلب البيانات فور فتح الشاشة
+              ),
+            ],
+            child: const TeacherHomeScreen(), // لم نعد نحتاج لتمرير متغيرات
+          ),
+        );
+
+      case levelCoursesRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final levelId = args['levelId'] as int?;
+
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                StudentCoursesCubit(ctx.read<CourseRepository>())
+                  ..fetchStudentCourses(levelId ?? 0),
             child: LevelCoursesScreen(
               levelId: levelId,
               userName: args['userName'] as String? ?? "Rasha",
@@ -172,7 +192,7 @@ class AppRouter {
           ),
         );
 
-         // ✅ Teacher: Questions list
+      // ✅ Teacher: Questions list
       case questionsListRoute:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
@@ -181,8 +201,82 @@ class AppRouter {
           ),
         );
 
+      // ✅ Teacher: Lesson status board (teacher's home screen)
+      // ✅ Teacher: Status Board
+      case teacherStatusBoardRoute: // يمكنك تغيير اسم الـ route الثابت في strings.dart إلى teacherStatusBoardRoute
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                TeacherStatusBoardCubit(ctx.read<LessonRepository>())
+                  ..loadAll(),
+            child: const TeacherStatusBoardScreen(),
+          ),
+        );
 
-        
+      // ✅ Teacher: All Courses Library
+      case teacherCoursesRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                TeacherCoursesCubit(ctx.read<LessonRepository>())
+                  ..loadCourses(),
+            child: const TeacherCoursesScreen(),
+          ),
+        );
+
+      // ✅ Teacher: Course Details (يستقبل كائن CourseModel بأمان)
+      case teacherCourseDetailRoute:
+        final args = settings.arguments;
+
+        // فحص آمن لنوع البيانات لمنع الأخطاء
+        if (args is CourseModel) {
+          return MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (ctx) =>
+                  TeacherCourseDetailCubit(ctx.read<LessonRepository>(), args)
+                    ..loadLessons(),
+              child: TeacherCourseDetailScreen(course: args),
+            ),
+          );
+        } else {
+          // في حال تم تمرير بيانات خاطئة، نعرض شاشة خطأ بدلاً من انهيار التطبيق
+          return MaterialPageRoute(
+            builder: (_) => Scaffold(
+              body: Center(
+                child: Text(
+                  'Error: Course data is missing or invalid',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          );
+        }
+
+      // ✅ Teacher: Lesson Form (Create / Edit)
+
+      // في ملف AppRouter.dart
+
+      case lessonFormRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => LessonFormCubit(ctx.read<LessonRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) =>
+                    LessonDeleteCubit(ctx.read<LessonRepository>()),
+              ),
+            ],
+            child: LessonFormScreen(
+              courseId: args['courseId'] as int?,
+              lesson: args['lesson'] as LessonModel?,
+              courseStatus:
+                  args['courseStatus'] as String?, // ✅ استقبال حالة الكورس
+            ),
+          ),
+        );
 
       default:
         return MaterialPageRoute(

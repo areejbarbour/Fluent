@@ -10,8 +10,10 @@ import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
 import 'package:fluent/data/repository/question_repository.dart';
+import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/services/auth_service.dart';
 import 'package:fluent/data/services/question_service.dart';
+import 'package:fluent/data/services/lesson_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -44,6 +46,9 @@ void main() async {
   final questionService = QuestionService(dioInstance);
   final questionRepository = QuestionRepository(questionService);
 
+  final lessonService = LessonService(dioInstance);
+  final lessonRepository = LessonRepository(lessonService);
+
   final levelService = LevelService(dioInstance);
   final levelRepository = LevelRepository(levelService);
 
@@ -54,7 +59,7 @@ void main() async {
 
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
-      initialRoute = questionsListRoute; // 🎓 صفحة المعلم
+      initialRoute = teacherHomeRoute; // 🎓 صفحة المعلم (لوحة حالات الدروس)
     } else {
       initialRoute = studentHomeRoute; // 🎓 صفحة الطالب
     }
@@ -64,8 +69,9 @@ void main() async {
     MyApp(
       authRepository: authRepository,
       questionRepository: questionRepository,
-      levelRepository: levelRepository, 
-      courseRepository: courseRepository, 
+      levelRepository: levelRepository,
+      courseRepository: courseRepository,
+      lessonRepository: lessonRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -76,6 +82,7 @@ class MyApp extends StatefulWidget {
   final QuestionRepository questionRepository;
   final LevelRepository levelRepository;
   final CourseRepository courseRepository; // ✅ جديد
+  final LessonRepository lessonRepository; // ✅ جديد
   final String initialRoute;
   late final AppRouter appRouter;
 
@@ -85,6 +92,7 @@ class MyApp extends StatefulWidget {
     required this.questionRepository,
     required this.levelRepository,
     required this.courseRepository, // ✅ جديد
+    required this.lessonRepository, // ✅ جديد
     required this.initialRoute,
   }) {
     appRouter = AppRouter(authRepository);
@@ -112,26 +120,42 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<QuestionRepository>.value(
               value: widget.questionRepository,
             ),
-              RepositoryProvider<LevelRepository>.value(
-                value: widget.levelRepository), // ✅ جديد
-                RepositoryProvider<CourseRepository>.value(value: widget.courseRepository),
-
+            RepositoryProvider<LevelRepository>.value(
+              value: widget.levelRepository,
+            ), // ✅ جديد
+            RepositoryProvider<CourseRepository>.value(
+              value: widget.courseRepository,
+            ),
+            RepositoryProvider<LessonRepository>.value(
+              value: widget.lessonRepository,
+            ),
           ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => SignUpCubit(widget.authRepository)),
               BlocProvider(create: (_) => LoginCubit(widget.authRepository)),
-              BlocProvider(create: (_) => VerifyOtpCubit(widget.authRepository),),
-              BlocProvider(create: (_) => ResendOtpCubit(widget.authRepository),),
+              BlocProvider(
+                create: (_) => VerifyOtpCubit(widget.authRepository),
+              ),
+              BlocProvider(
+                create: (_) => ResendOtpCubit(widget.authRepository),
+              ),
               BlocProvider(create: (_) => LogoutCubit(widget.authRepository)),
 
-              BlocProvider(create: (_) => ForgotPasswordCubit(widget.authRepository),),
-              BlocProvider( create: (_) => ResetPasswordCubit(widget.authRepository), ),
+              BlocProvider(
+                create: (_) => ForgotPasswordCubit(widget.authRepository),
+              ),
+              BlocProvider(
+                create: (_) => ResetPasswordCubit(widget.authRepository),
+              ),
 
-              BlocProvider(create: (_) => GoogleLoginCubit(widget.authRepository),),
+              BlocProvider(
+                create: (_) => GoogleLoginCubit(widget.authRepository),
+              ),
 
-              BlocProvider(create: (_) => StudentLevelsCubit(widget.levelRepository),),
-
+              BlocProvider(
+                create: (_) => StudentLevelsCubit(widget.levelRepository),
+              ),
             ],
             child: MaterialApp(
               title: 'Fluent',
