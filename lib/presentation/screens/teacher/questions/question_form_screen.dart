@@ -20,9 +20,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+final RegExp enRegex = RegExp(r'^[a-zA-Z0-9\s.,!?;:()"\u0027-]+$');
+
+final RegExp arRegex = RegExp(
+  r'^[\u0600-\u06FF0-9\s،؟؛:()«»"\u0027!,-]+$',
+  unicode: true,
+);
+
 class QuestionFormScreen extends StatelessWidget {
   final int? questionId;
   const QuestionFormScreen({super.key, this.questionId});
+
   bool get isEdit => questionId != null;
 
   @override
@@ -61,15 +69,18 @@ class _FormViewState extends State<_FormView> {
   final _titleAr = TextEditingController();
   final _textQuestion = TextEditingController();
   final _scoreController = TextEditingController(text: '1');
+
   QuestionType _type = QuestionType.mcq;
   QuestionDifficulty _difficulty = QuestionDifficulty.easy;
   int _score = 1;
+
   File? _audioFile;
   File? _imageFile;
   String? _audioFileName;
   String? _imageFileName;
   String? _existingImageUrl;
   String? _existingAudioUrl;
+
   List<_AnswerDraft> _answers = [];
   bool _prefilled = false;
 
@@ -124,6 +135,7 @@ class _FormViewState extends State<_FormView> {
     _existingAudioUrl = (q.audioUrl != null && q.audioUrl!.isNotEmpty)
         ? q.audioUrl
         : null;
+
     _answers = q.answers.map((a) {
       return _AnswerDraft(
         text: a.textAnswer ?? '',
@@ -134,6 +146,7 @@ class _FormViewState extends State<_FormView> {
         right: a.rightText ?? '',
       );
     }).toList();
+
     if (_answers.isEmpty) _resetAnswersForType(_type);
   }
 
@@ -194,8 +207,9 @@ class _FormViewState extends State<_FormView> {
                               }
                             },
                             builder: (context, state) {
-                              if (state is QuestionDetailLoaded || _prefilled)
+                              if (state is QuestionDetailLoaded || _prefilled) {
                                 return _buildForm();
+                              }
                               if (state is QuestionDetailFailure) {
                                 return Center(
                                   child: Text(
@@ -366,8 +380,8 @@ class _FormViewState extends State<_FormView> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // توسيط المحتوى بالكامل
-        mainAxisSize: MainAxisSize.min, // مهم جداً لضمان عدم تمدد الـ Row
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 38.w,
@@ -385,7 +399,6 @@ class _FormViewState extends State<_FormView> {
           ),
           SizedBox(width: 10.w),
           Flexible(
-            // نستخدم Flexible بدلاً من Expanded للسماح بتصغير الخط إذا لزم الأمر
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -414,9 +427,7 @@ class _FormViewState extends State<_FormView> {
       key: _formKey,
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.symmetric(
-          horizontal: 16.w,
-        ), // ✅ تقليل الـ Padding للموبايل
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         children: [
           _buildTypeSelector(),
           SizedBox(height: 12.h),
@@ -440,6 +451,7 @@ class _FormViewState extends State<_FormView> {
   }
 
   Widget _buildTypeSelector() {
+    final isEdit = widget.questionId != null; // <--- تمت إضافتها
     return QuestionUI.glass(
       padding: EdgeInsets.all(12.w),
       child: Column(
@@ -448,14 +460,15 @@ class _FormViewState extends State<_FormView> {
           Text(
             "Question Type",
             style: GoogleFonts.poppins(
-              color: AppColors.yellow,
+              color: isEdit
+                  ? Colors.white54
+                  : AppColors.yellow, // <--- تغيير اللون للتنبيه
               fontSize: 12.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
             ),
           ),
           SizedBox(height: 10.h),
-          // ✅ استخدام Wrap لضمان عدم تداخل الأزرار في الشاشات الصغيرة
           Wrap(
             spacing: 8.w,
             runSpacing: 8.h,
@@ -463,12 +476,15 @@ class _FormViewState extends State<_FormView> {
               final selected = _type == t;
               final color = QuestionUI.typeColor(t.value);
               return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _type = t;
-                    _resetAnswersForType(t);
-                  });
-                },
+                onTap: isEdit
+                    ? null
+                    : () {
+                        // <--- منع الضغط إذا كان في وضع التعديل
+                        setState(() {
+                          _type = t;
+                          _resetAnswersForType(t);
+                        });
+                      },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: EdgeInsets.symmetric(
@@ -531,9 +547,30 @@ class _FormViewState extends State<_FormView> {
             ),
           ),
           SizedBox(height: 10.h),
-          _field(_titleEn, "Title (English)"),
+          _field(
+            _titleEn,
+            "Title (English)",
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (!enRegex.hasMatch(v)) {
+                return 'Only English letters, numbers, and basic punctuation allowed';
+              }
+              return null;
+            },
+          ),
           SizedBox(height: 10.h),
-          _field(_titleAr, "Title (Arabic)", isArabic: true),
+          _field(
+            _titleAr,
+            "Title (Arabic)",
+            isArabic: true,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (!arRegex.hasMatch(v)) {
+                return 'Only Arabic letters, numbers, and basic punctuation allowed';
+              }
+              return null;
+            },
+          ),
         ],
       ),
     );
@@ -561,6 +598,33 @@ class _FormViewState extends State<_FormView> {
             onChanged: (_) => setState(() {}),
             style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
             decoration: _inputDecoration("e.g. The capital of France is {1}."),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'Question text is required for Fill type';
+              }
+
+              final regex = RegExp(r'\{(\d+)\}');
+              final matches = regex.allMatches(v);
+
+              if (matches.isEmpty) {
+                return 'Must contain at least one placeholder like {1}';
+              }
+
+              final placeholders =
+                  matches.map((m) => int.parse(m.group(1)!)).toList()..sort();
+
+              for (int i = 0; i < placeholders.length; i++) {
+                if (placeholders[i] != i + 1) {
+                  return 'Placeholders must be sequential starting from {1} (e.g., {1}, {2})';
+                }
+              }
+
+              if (placeholders.length != _answers.length) {
+                return 'Number of placeholders (${placeholders.length}) must equal number of answers (${_answers.length})';
+              }
+
+              return null;
+            },
           ),
           SizedBox(height: 14.h),
           _buildLiveFillPreview(),
@@ -573,6 +637,7 @@ class _FormViewState extends State<_FormView> {
     final text = _textQuestion.text.trim();
     final hasBlanks = RegExp(r'\{\d+\}').hasMatch(text);
     final hasAnswers = _answers.any((a) => a.text.trim().isNotEmpty);
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.w),
@@ -664,6 +729,7 @@ class _FormViewState extends State<_FormView> {
     final regex = RegExp(r'\{(\d+)\}');
     final spans = <InlineSpan>[];
     int lastEnd = 0;
+
     String? answerFor(int blankNumber) {
       for (final a in _answers) {
         if (a.text.trim().isEmpty) continue;
@@ -674,10 +740,11 @@ class _FormViewState extends State<_FormView> {
     }
 
     for (final m in regex.allMatches(text)) {
-      if (m.start > lastEnd)
+      if (m.start > lastEnd) {
         spans.add(
           TextSpan(text: text.substring(lastEnd, m.start), style: baseStyle),
         );
+      }
       final n = int.tryParse(m.group(1) ?? '') ?? 0;
       if (n > 0) {
         final answer = hasAnswers ? answerFor(n) : null;
@@ -757,8 +824,9 @@ class _FormViewState extends State<_FormView> {
       }
       lastEnd = m.end;
     }
-    if (lastEnd < text.length)
+    if (lastEnd < text.length) {
       spans.add(TextSpan(text: text.substring(lastEnd), style: baseStyle));
+    }
     return Text.rich(
       TextSpan(children: spans),
       textDirection: TextDirection.ltr,
@@ -855,33 +923,31 @@ class _FormViewState extends State<_FormView> {
                     color: QuestionUI.difficultyColor(_difficulty.value),
                     size: 24.sp,
                   ),
-                  items: QuestionDifficulty.values
-                      .map(
-                        (d) => DropdownMenuItem(
-                          value: d,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 8.w,
-                                height: 8.w,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: QuestionUI.difficultyColor(d.value),
-                                ),
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                d.value,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                  items: QuestionDifficulty.values.map((d) {
+                    return DropdownMenuItem(
+                      value: d,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8.w,
+                            height: 8.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: QuestionUI.difficultyColor(d.value),
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                          SizedBox(width: 8.w),
+                          Text(
+                            d.value,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                   onChanged: (v) {
                     if (v == null) return;
                     setState(() {
@@ -940,8 +1006,9 @@ class _FormViewState extends State<_FormView> {
                   validator: (v) {
                     final n = int.tryParse(v ?? '');
                     if (n == null) return 'Score is required';
-                    if (n < _difficulty.minScore || n > _difficulty.maxScore)
+                    if (n < _difficulty.minScore || n > _difficulty.maxScore) {
                       return '${_difficulty.displayName}: ${_difficulty.minScore}-${_difficulty.maxScore} only';
+                    }
                     return null;
                   },
                   onChanged: (v) {
@@ -1026,6 +1093,7 @@ class _FormViewState extends State<_FormView> {
     final hasFile = file != null;
     final hasExisting = !hasFile && existingUrl != null;
     final showsSomething = hasFile || hasExisting;
+
     return Container(
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
@@ -1111,23 +1179,30 @@ class _FormViewState extends State<_FormView> {
           if (showsSomething) ...[
             SizedBox(height: 10.h),
             GestureDetector(
-              onTap: onRemove,
+              // <--- بدلاً من الحذف، سنقوم بفتح مستكشف الملفات للاستبدال
+              onTap: isImage ? _pickImage : _pickAudio,
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.2),
+                  color: AppColors.sky.withOpacity(
+                    0.2,
+                  ), // <--- تغيير اللون ليعكس الاستبدال
                   borderRadius: BorderRadius.circular(6.r),
-                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                  border: Border.all(color: AppColors.sky.withOpacity(0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.close, color: Colors.redAccent, size: 14.sp),
+                    Icon(
+                      Icons.swap_horiz,
+                      color: AppColors.sky,
+                      size: 14.sp,
+                    ), // <--- أيقونة الاستبدال
                     SizedBox(width: 4.w),
                     Text(
-                      "Remove",
+                      "Replace", // <--- تغيير النص
                       style: GoogleFonts.poppins(
-                        color: Colors.redAccent,
+                        color: AppColors.sky,
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1262,6 +1337,7 @@ class _FormViewState extends State<_FormView> {
           ),
           onRemove: () => setState(() => _answers.removeAt(idx)),
         );
+
       case QuestionType.fill:
         return _answerShell(
           idx,
@@ -1296,13 +1372,15 @@ class _FormViewState extends State<_FormView> {
                   decoration: _inputDecoration("Blank answer"),
                   onChanged: (v) {
                     a.text = v;
-                    a.blankOrder = idx + 1;
+                    a.blankOrder =
+                        idx + 1; // ✅ يضمن تطابق blank_order مع رقم الفراغ
                   },
                 ),
               ),
             ],
           ),
         );
+
       case QuestionType.arrange:
         return _answerShell(
           idx,
@@ -1371,6 +1449,7 @@ class _FormViewState extends State<_FormView> {
           ),
           onRemove: () => setState(() => _answers.removeAt(idx)),
         );
+
       case QuestionType.pair:
         return _answerShell(
           idx,
@@ -1385,6 +1464,11 @@ class _FormViewState extends State<_FormView> {
                 decoration: _inputDecoration("Left (Arabic)"),
                 textDirection: TextDirection.rtl,
                 onChanged: (v) => a.left = v,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (!arRegex.hasMatch(v)) return 'Must be Arabic text';
+                  return null;
+                },
               ),
               SizedBox(height: 6.h),
               TextFormField(
@@ -1395,6 +1479,11 @@ class _FormViewState extends State<_FormView> {
                 ),
                 decoration: _inputDecoration("Right (English)"),
                 onChanged: (v) => a.right = v,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (!enRegex.hasMatch(v)) return 'Must be English text';
+                  return null;
+                },
               ),
             ],
           ),
@@ -1484,7 +1573,7 @@ class _FormViewState extends State<_FormView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Please fix the Score field (${_difficulty.displayName}: ${_difficulty.minScore}-${_difficulty.maxScore}) before submitting.",
+            "Please fix the validation errors before submitting.",
             style: GoogleFonts.poppins(fontSize: 13.sp),
           ),
           backgroundColor: Colors.redAccent,
@@ -1493,14 +1582,86 @@ class _FormViewState extends State<_FormView> {
       );
       return;
     }
+
+    // 1. التحقق من MCQ
+    if (_type == QuestionType.mcq) {
+      final correctCount = _answers.where((a) => a.isCorrect).length;
+      if (correctCount != 1) {
+        _showError(context, 'Validation Error', {
+          'answers': ['MCQ questions must contain exactly one correct answer.'],
+        });
+        return;
+      }
+    }
+
+    // 2. التحقق من ARRANGE
+    if (_type == QuestionType.arrange) {
+      final correctAnswers = _answers.where((a) => a.isCorrect).toList();
+      if (correctAnswers.length < 2) {
+        _showError(context, 'Validation Error', {
+          'answers': [
+            'Arrange questions must contain at least two correct items.',
+          ],
+        });
+        return;
+      }
+      final orders = correctAnswers.map((a) => a.order).toList()..sort();
+      for (int i = 0; i < orders.length; i++) {
+        if (orders[i] != i + 1) {
+          _showError(context, 'Validation Error', {
+            'answers': [
+              'Correct answers order must be sequential starting from 1.',
+            ],
+          });
+          return;
+        }
+      }
+    }
+
+    // 3. التحقق من FILL
+    if (_type == QuestionType.fill) {
+      final regex = RegExp(r'\{(\d+)\}');
+      final matches = regex.allMatches(_textQuestion.text.trim());
+      if (matches.isEmpty) {
+        _showError(context, 'Validation Error', {
+          'text_question': ['Must contain at least one placeholder like {1}.'],
+        });
+        return;
+      }
+      final placeholders = matches.map((m) => int.parse(m.group(1)!)).toList()
+        ..sort();
+      for (int i = 0; i < placeholders.length; i++) {
+        if (placeholders[i] != i + 1) {
+          _showError(context, 'Validation Error', {
+            'text_question': [
+              'Placeholders must be sequential starting from {1}.',
+            ],
+          });
+          return;
+        }
+      }
+      if (placeholders.length != _answers.length) {
+        _showError(context, 'Validation Error', {
+          'text_question': [
+            'Number of placeholders must equal the number of answers.',
+          ],
+        });
+        return;
+      }
+    }
+
+    // بناء FormData
     final formData = FormData();
     formData.fields.add(MapEntry('type', _type.value));
     formData.fields.add(MapEntry('title_question_en', _titleEn.text.trim()));
     formData.fields.add(MapEntry('title_question_ar', _titleAr.text.trim()));
     formData.fields.add(MapEntry('difficulty', _difficulty.value));
     formData.fields.add(MapEntry('score', _score.toString()));
-    if (_type == QuestionType.fill && _textQuestion.text.trim().isNotEmpty)
+
+    if (_type == QuestionType.fill && _textQuestion.text.trim().isNotEmpty) {
       formData.fields.add(MapEntry('text_question', _textQuestion.text.trim()));
+    }
+
     for (int i = 0; i < _answers.length; i++) {
       final a = _answers[i];
       if (_type == QuestionType.mcq) {
@@ -1508,7 +1669,10 @@ class _FormViewState extends State<_FormView> {
           MapEntry('answers[$i][text_answer]', a.text.trim()),
         );
         formData.fields.add(
-          MapEntry('answers[$i][is_correct]', a.isCorrect ? '1' : '0'),
+          MapEntry(
+            'answers[$i][is_correct]',
+            a.isCorrect ? '1' : '0',
+          ), // ← تم التصحيح
         );
       } else if (_type == QuestionType.fill) {
         formData.fields.add(
@@ -1525,15 +1689,19 @@ class _FormViewState extends State<_FormView> {
           MapEntry('answers[$i][text_answer]', a.text.trim()),
         );
         formData.fields.add(
-          MapEntry('answers[$i][is_correct]', a.isCorrect ? '1' : '0'),
+          MapEntry(
+            'answers[$i][is_correct]',
+            a.isCorrect ? '1' : '0',
+          ), // ← تم التصحيح
         );
-        if (a.isCorrect)
+        if (a.isCorrect) {
           formData.fields.add(
             MapEntry(
               'answers[$i][order]',
               (a.order > 0 ? a.order : (i + 1)).toString(),
             ),
           );
+        }
       } else if (_type == QuestionType.pair) {
         formData.fields.add(MapEntry('answers[$i][left_text]', a.left.trim()));
         formData.fields.add(
@@ -1541,20 +1709,25 @@ class _FormViewState extends State<_FormView> {
         );
       }
     }
-    if (_imageFile != null)
+
+    // الميديا
+    if (_imageFile != null) {
       formData.files.add(
         MapEntry(
           'image',
           await awaitableFile(_imageFile!, _imageFileName ?? 'image.jpg'),
         ),
       );
-    if (_audioFile != null)
+    }
+    if (_audioFile != null) {
       formData.files.add(
         MapEntry(
           'audio',
           await awaitableFile(_audioFile!, _audioFileName ?? 'audio.mp3'),
         ),
       );
+    }
+
     if (widget.questionId != null) {
       context.read<QuestionUpdateCubit>().updateQuestion(
         widget.questionId!,
@@ -1585,12 +1758,14 @@ class _FormViewState extends State<_FormView> {
     TextEditingController c,
     String label, {
     bool isArabic = false,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: c,
       style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
       textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
       decoration: _inputDecoration(label),
+      validator: validator,
     );
   }
 
@@ -1626,21 +1801,22 @@ class _FormViewState extends State<_FormView> {
         allowMultiple: false,
       );
       if (result != null && result.files.isNotEmpty) {
-        final filePath = result.files.single.path;
-        final fileName = result.files.single.name;
-        if (filePath != null) {
-          setState(() {
-            _imageFile = File(filePath);
-            _imageFileName = fileName;
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Image picking is not supported on Web in this mode',
+        final file = result.files.single;
+        if (file.path != null) {
+          // ✅ فحص حجم الملف (5 ميجابايت كحد أقصى حسب الـ Backend)
+          if (file.size > 5 * 1024 * 1024) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image size must not exceed 5MB'),
+                backgroundColor: Colors.redAccent,
               ),
-            ),
-          );
+            );
+            return;
+          }
+          setState(() {
+            _imageFile = File(file.path!);
+            _imageFileName = file.name;
+          });
         }
       }
     } catch (e) {
@@ -1657,12 +1833,21 @@ class _FormViewState extends State<_FormView> {
         allowMultiple: false,
       );
       if (result != null && result.files.isNotEmpty) {
-        final filePath = result.files.single.path;
-        final fileName = result.files.single.name;
-        if (filePath != null) {
+        final file = result.files.single;
+        if (file.path != null) {
+          // ✅ فحص حجم الملف (5 ميجابايت كحد أقصى حسب الـ Backend)
+          if (file.size > 5 * 1024 * 1024) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Audio size must not exceed 5MB'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
           setState(() {
-            _audioFile = File(filePath);
-            _audioFileName = fileName;
+            _audioFile = File(file.path!);
+            _audioFileName = file.name;
           });
         }
       }
@@ -1681,6 +1866,7 @@ class _AnswerDraft {
   int blankOrder;
   String left;
   String right;
+
   _AnswerDraft({
     this.text = '',
     this.isCorrect = false,
@@ -1689,6 +1875,7 @@ class _AnswerDraft {
     this.left = '',
     this.right = '',
   });
+
   factory _AnswerDraft.forType(QuestionType t) {
     switch (t) {
       case QuestionType.mcq:

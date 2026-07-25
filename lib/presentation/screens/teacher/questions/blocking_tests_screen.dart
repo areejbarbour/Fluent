@@ -185,6 +185,7 @@ class _BlockingView extends StatelessWidget {
     );
   }
 
+  // ✅ 1. تحديث نص البانر العلوي
   Widget _buildInfoBanner(int count) {
     return QuestionUI.glass(
       borderColor: AppColors.orange.withOpacity(0.4),
@@ -205,7 +206,7 @@ class _BlockingView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "$count Published Test${count == 1 ? '' : 's'}",
+                  "$count Blocking Test${count == 1 ? '' : 's'}", // ✅ تم التعديل ليكون عاماً
                   style: GoogleFonts.poppins(
                     color: AppColors.orange,
                     fontSize: 14.sp,
@@ -215,7 +216,7 @@ class _BlockingView extends StatelessWidget {
                 SizedBox(height: 2.h),
                 Text(
                   count > 0
-                      ? "These tests are currently using this question. They must be unlinked before editing."
+                      ? "These tests are currently using this question. Editing requires creating a new version."
                       : "No tests are blocking this question. You can edit or delete it freely.",
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(0.8),
@@ -269,16 +270,32 @@ class _BlockingView extends StatelessWidget {
     );
   }
 
+  // في دالة _testCard في BlockingTestsScreen
   Widget _testCard(AffectedTest t) {
+    // ✅ قراءة الحالة وتحديد الألوان والأيقونات بناءً عليها
+    final isClosed = t.status?.toLowerCase() == 'closed';
+    final statusColor = isClosed
+        ? Colors.blueGrey.shade200
+        : Colors.greenAccent;
+    final statusLabel = isClosed ? 'Closed' : 'Published';
+    final statusIcon = isClosed
+        ? Icons.lock_outline_rounded
+        : Icons.public_rounded;
+
     return Container(
       margin: EdgeInsets.only(bottom: 10.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.orange.withOpacity(0.4)),
+        border: Border.all(
+          color: statusColor.withOpacity(0.4),
+        ), // ✅ لون ديناميكي
         boxShadow: [
-          BoxShadow(color: AppColors.orange.withOpacity(0.1), blurRadius: 16),
+          BoxShadow(
+            color: statusColor.withOpacity(0.1),
+            blurRadius: 16,
+          ), // ✅ ظل ديناميكي
         ],
       ),
       child: Row(
@@ -287,12 +304,12 @@ class _BlockingView extends StatelessWidget {
             width: 42.w,
             height: 42.w,
             decoration: BoxDecoration(
-              color: AppColors.orange.withOpacity(0.25),
+              color: statusColor.withOpacity(0.25), // ✅ لون ديناميكي
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(
-              Icons.assignment_outlined,
-              color: AppColors.orange,
+              statusIcon, // ✅ أيقونة ديناميكية
+              color: statusColor,
               size: 20.sp,
             ),
           ),
@@ -326,22 +343,58 @@ class _BlockingView extends StatelessWidget {
                   ),
                 ],
                 SizedBox(height: 6.h),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.yellow.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Text(
-                    t.testableType ?? "Published Test",
-                    style: GoogleFonts.poppins(
-                      color: AppColors.yellow,
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w700,
+                Wrap(
+                  spacing: 6.w,
+                  runSpacing: 4.h,
+                  children: [
+                    // ✅ بادج الحالة (Closed / Published)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 3.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: statusColor.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 10.sp),
+                          SizedBox(width: 4.w),
+                          Text(
+                            statusLabel,
+                            style: GoogleFonts.poppins(
+                              color: statusColor,
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    // ✅ بادج نوع الاختبار
+                    if (t.testableType != null)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellow.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          _formatTestableType(t.testableType!),
+                          style: GoogleFonts.poppins(
+                            color: AppColors.yellow,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -349,6 +402,29 @@ class _BlockingView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ✅ دالة مساعدة لتنسيق نوع الاختبار
+  String _formatTestableType(String type) {
+    switch (type.toLowerCase()) {
+      case 'course':
+        return 'Course Test';
+      case 'lesson':
+        return 'Lesson Quiz';
+      case 'placement_test':
+        return 'Placement Test';
+      case 'level':
+        return 'Level Test';
+      default:
+        return type;
+    }
+  }
+
+  // ✅ دالة للتحقق إذا كان الاختبار published (إذا الباك ببعث الحالة)
+  bool _isPublishedTest(int testId) {
+    // هنا يمكنك إضافة منطق للتحقق من حالة الاختبار
+    // حالياً بنعتبره published إلا إذا في معلومات ثانية
+    return true;
   }
 
   Widget _buildError(BuildContext context, String msg) {

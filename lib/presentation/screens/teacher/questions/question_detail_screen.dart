@@ -5,6 +5,7 @@ import 'package:fluent/cubit/teacher/questions/delete/question_delete_state.dart
 import 'package:fluent/cubit/teacher/questions/detail/question_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/detail/question_detail_state.dart';
 import 'package:fluent/data/models/question_model.dart';
+import 'package:fluent/data/models/question_status_model.dart';
 import 'package:fluent/data/models/question_type.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'blocking_tests_screen.dart';
 import 'question_form_screen.dart';
 import 'question_status_screen.dart';
@@ -21,6 +23,7 @@ import 'question_status_screen.dart';
 class QuestionDetailScreen extends StatelessWidget {
   final int questionId;
   const QuestionDetailScreen({super.key, required this.questionId});
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -161,6 +164,9 @@ class _QuestionDetailView extends StatelessWidget {
     );
   }
 
+  // ... (دوال _buildTopBar, _buildHeader, _titleLine, _buildTextQuestion, _buildImage, _buildAudio, _buildAnswers, _answerTile, _buildMetaRow, _metaChip, _actionBtn, _buildError تبقى كما هي في كودك الأصلي) ...
+  // للتوفير في المساحة، سأضع فقط الدوال التي تم تعديلها أو إضافتها:
+
   Widget _buildTopBar(BuildContext context) => Padding(
     padding: EdgeInsets.symmetric(horizontal: 16.w),
     child: Row(
@@ -174,10 +180,10 @@ class _QuestionDetailView extends StatelessWidget {
               color: Colors.white.withOpacity(0.15),
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
-              size: 18.sp,
+              size: 18,
             ),
           ),
         ),
@@ -190,10 +196,10 @@ class _QuestionDetailView extends StatelessWidget {
             borderRadius: BorderRadius.circular(10.r),
             border: Border.all(color: AppColors.yellow.withOpacity(0.5)),
           ),
-          child: Icon(
+          child: const Icon(
             Icons.quiz_outlined,
             color: AppColors.yellow,
-            size: 20.sp,
+            size: 20,
           ),
         ),
         SizedBox(width: 10.w),
@@ -317,7 +323,7 @@ class _QuestionDetailView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.short_text, color: AppColors.sky, size: 16.sp),
+              const Icon(Icons.short_text, color: AppColors.sky, size: 16),
               SizedBox(width: 6.w),
               Text(
                 "Question Text",
@@ -355,11 +361,7 @@ class _QuestionDetailView extends StatelessWidget {
           color: Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16.r),
         ),
-        child: Icon(
-          Icons.broken_image,
-          color: Colors.white.withOpacity(0.5),
-          size: 28.sp,
-        ),
+        child: const Icon(Icons.broken_image, color: Colors.white54, size: 28),
       ),
     ),
   );
@@ -379,7 +381,7 @@ class _QuestionDetailView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.list_alt, color: AppColors.yellow, size: 16.sp),
+              const Icon(Icons.list_alt, color: AppColors.yellow, size: 16),
               SizedBox(width: 6.w),
               Text(
                 "Answers (${q.answers.length})",
@@ -487,7 +489,6 @@ class _QuestionDetailView extends StatelessWidget {
     );
   }
 
-  // ✅ استخدام Wrap بدلاً من Row لمنع التداخل
   Widget _buildBottomActions(BuildContext context, Question q) {
     return ClipRRect(
       child: BackdropFilter(
@@ -526,22 +527,12 @@ class _QuestionDetailView extends StatelessWidget {
                   ),
                 ),
               ),
+              // ✅ التعديل الجوهري هنا: فحص الحالة قبل الانتقال لشاشة التعديل
               _actionBtn(
                 icon: Icons.edit,
                 label: 'Edit',
                 color: AppColors.yellow,
-                onTap: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => QuestionFormScreen(questionId: q.id),
-                    ),
-                  );
-                  if (result == true && context.mounted)
-                    context.read<QuestionDetailCubit>().loadQuestion(
-                      questionId,
-                    );
-                },
+                onTap: () => _attemptEdit(context, q),
               ),
               _actionBtn(
                 icon: Icons.delete_outline,
@@ -586,6 +577,151 @@ class _QuestionDetailView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ✅ دالة جديدة لفحص حالة السؤال قبل السماح بالتعديل
+  Future<void> _attemptEdit(BuildContext context, Question q) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.yellow),
+      ),
+    );
+
+    try {
+      final repo = context.read<QuestionRepository>();
+      final result = await repo.checkStatus(q.id);
+
+      if (!context.mounted) return;
+      Navigator.pop(context);
+
+      if (result['success'] == true) {
+        final statusData = result['data'] as QuestionStatus; // ✅ تغيير هنا
+        final status = statusData.status;
+        final message = statusData.message;
+
+        if (status == 'locked_in_review') {
+          _showStatusDialog(
+            context,
+            'Action Not Allowed',
+            message,
+            isWarning: true,
+          );
+          return;
+        }
+
+        if (status == 'locked' || status == 'versioned') {
+          final proceed = await _showStatusDialog(
+            context,
+            'Create New Version?',
+            '$message\n\nA new version of this question will be created.',
+            isWarning: true,
+            showProceedButton: true,
+          );
+          if (proceed != true) return;
+        }
+
+        final editResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => QuestionFormScreen(questionId: q.id),
+          ),
+        );
+        if (editResult == true && context.mounted) {
+          context.read<QuestionDetailCubit>().loadQuestion(questionId);
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to check status'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool?> _showStatusDialog(
+    BuildContext context,
+    String title,
+    String message, {
+    required bool isWarning,
+    bool showProceedButton = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+          side: BorderSide(
+            color: isWarning
+                ? Colors.orange.withOpacity(0.5)
+                : Colors.white.withOpacity(0.2),
+          ),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              isWarning ? Icons.warning_amber_rounded : Icons.info_outline,
+              color: isWarning ? Colors.orange : AppColors.sky,
+              size: 24.sp,
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 13.sp,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.poppins(color: Colors.white70),
+            ),
+          ),
+          if (showProceedButton)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                "Proceed",
+                style: GoogleFonts.poppins(
+                  color: AppColors.yellow,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -639,11 +775,7 @@ class _QuestionDetailView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline,
-            color: Colors.redAccent.withOpacity(0.8),
-            size: 56.sp,
-          ),
+          const Icon(Icons.error_outline, color: Colors.redAccent, size: 56),
           SizedBox(height: 12.h),
           Text(
             msg,

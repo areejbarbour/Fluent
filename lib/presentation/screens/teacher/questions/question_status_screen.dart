@@ -141,21 +141,14 @@ class _StatusView extends StatelessWidget {
     );
   }
 
-
-
-
-
-  // ✅ 2. إضافة RefreshIndicator للسحب للتحديث
   Widget _buildLoaded(BuildContext context, QuestionStatus s) {
     final color = _statusColor(s.status);
     return RefreshIndicator(
       color: AppColors.yellow,
       onRefresh: () async {
-        // عند السحب، يتم طلب البيانات من الباك اند مجدداً
         await context.read<QuestionStatusCubit>().checkStatus(questionId);
       },
       child: ListView(
-        // AlwaysScrollableScrollPhysics ضرورية لعمل الـ RefreshIndicator حتى لو كانت القائمة قصيرة
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         children: [
@@ -166,38 +159,136 @@ class _StatusView extends StatelessWidget {
           SizedBox(height: 14.h),
           _buildMessage(s),
           SizedBox(height: 14.h),
+
+          // ✅ توضيح خاص إذا في published tests
+          if (s.affectedPublishedTests.isNotEmpty) ...[
+            _buildPublishedNotice(),
+            SizedBox(height: 14.h),
+          ],
+
+          // ✅ توضيح خاص إذا في closed tests
+          if (s.affectedClosedTests.isNotEmpty) ...[
+            _buildClosedNotice(),
+            SizedBox(height: 14.h),
+          ],
+
           if (s.willRevertToPending) ...[
             _buildRevertNotice(),
             SizedBox(height: 14.h),
           ],
+
+          // ✅ Published Tests - لا يمكن تعديلها
           _buildAffectedSection(
             "Published Tests",
             s.affectedPublishedTests,
-            AppColors.sky,
+            Colors.greenAccent,
             Icons.public,
+            "These tests are live and blocking edits",
           ),
           SizedBox(height: 10.h),
+
+          // ✅ Closed Tests - لا يمكن تعديلها
+          _buildAffectedSection(
+            "Closed Tests",
+            s.affectedClosedTests,
+            Colors.blueGrey,
+            Icons.lock_outline,
+            "These tests are closed and blocking edits",
+          ),
+          SizedBox(height: 10.h),
+
           _buildAffectedSection(
             "Archived Tests",
             s.affectedArchivedTests,
             AppColors.orange,
             Icons.archive_outlined,
+            "Can create new version",
           ),
           SizedBox(height: 10.h),
+
           _buildAffectedSection(
             "In Review Tests",
             s.affectedInReviewTests,
             Colors.amber,
             Icons.rate_review_outlined,
+            "Waiting for admin review",
           ),
           SizedBox(height: 10.h),
+
           _buildAffectedSection(
             "Approved Tests",
             s.affectedApprovedTests,
-            Colors.greenAccent,
+            Colors.teal,
             Icons.verified_outlined,
+            "Will revert to changes requested",
           ),
           SizedBox(height: 24.h),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClosedNotice() {
+    return QuestionUI.glass(
+      radius: 16,
+      borderColor: Colors.blueGrey.withOpacity(0.5),
+      padding: EdgeInsets.all(12.w),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(7.r),
+            decoration: BoxDecoration(
+              color: Colors.blueGrey.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.lock_outline,
+              color: Colors.blueGrey,
+              size: 18.sp,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              "This question is used in CLOSED tests. You must create a new version to edit it.",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 11.sp,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishedNotice() {
+    return QuestionUI.glass(
+      radius: 16,
+      borderColor: Colors.greenAccent.withOpacity(0.5),
+      padding: EdgeInsets.all(12.w),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(7.r),
+            decoration: BoxDecoration(
+              color: Colors.greenAccent.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.public, color: Colors.greenAccent, size: 18.sp),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              "This question is used in LIVE tests. You must create a new version to edit it.",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 11.sp,
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -305,6 +396,7 @@ class _StatusView extends StatelessWidget {
     List<AffectedTest> tests,
     Color color,
     IconData icon,
+    String description, // ✅ جديد
   ) {
     if (tests.isEmpty) return const SizedBox.shrink();
     return QuestionUI.glass(
@@ -342,6 +434,16 @@ class _StatusView extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 6.h),
+          // ✅ الرسالة التوضيحية
+          Text(
+            description,
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 10.sp,
+              fontStyle: FontStyle.italic,
+            ),
           ),
           SizedBox(height: 8.h),
           ...tests.map((t) => _testTile(t, color)),

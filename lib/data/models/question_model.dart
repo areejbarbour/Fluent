@@ -78,6 +78,7 @@ class Question {
   final String? audioUrl;
   final String? imageUrl;
   final bool hasNextVersion;
+  final bool? isEligible;
 
   Question({
     required this.id,
@@ -93,6 +94,7 @@ class Question {
     this.audioUrl,
     this.imageUrl,
     this.hasNextVersion = false,
+    this.isEligible,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -153,7 +155,13 @@ class Question {
       answers: answers,
       audioUrl: audioUrl,
       imageUrl: imageUrl,
-      hasNextVersion: json['next_version'] != null,
+      // ✅ FIX #3: الباك ما يرجع `next_version`، نعتمد على previous_question_id
+      // لو السؤال عنده parent، يعني هو نسخة جديدة (next version of someone)
+      hasNextVersion:
+          json['has_next_version'] == true || json['next_version'] != null,
+      isEligible: json['is_eligible'] is bool
+          ? json['is_eligible'] as bool
+          : null,
     );
   }
 }

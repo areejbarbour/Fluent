@@ -200,6 +200,23 @@ class LessonRepository {
       return _errorPayload(e);
     }
   }
+
+  Future<Map<String, dynamic>> getLessonDetails(int lessonId) async {
+    try {
+      final response = await lessonService.getLessonDetails(lessonId);
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        return {
+          'success': true,
+          'lesson': data['lesson'], // DetailLessonResource
+          'comments': data['comments'] ?? [],
+        };
+      }
+      return {'success': false, 'message': 'Failed to load lesson details'};
+    } on DioException catch (e) {
+      return _errorPayload(e);
+    }
+  }
 }
 
 class PaginatedLessons {

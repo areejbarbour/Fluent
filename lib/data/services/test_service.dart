@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:fluent/constants/strings.dart';
 
-class LessonService {
+class TestService {
   final Dio dio;
-  LessonService(this.dio);
+  TestService(this.dio);
 
-  // GET /api/getTeacherCourses
-  Future<Response> getTeacherCourses() async {
+  // ✅ نستخدم نفس المسار /api/tests ولكن بـ GET method لجلب القائمة
+  Future<Response> getTeacherTests() async {
     return await dio.get(
-      apiGetTeacherCourses,
+      '/api/tests',
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
@@ -16,22 +16,9 @@ class LessonService {
     );
   }
 
-  // GET /api/lessons/{course}/teacher
-  Future<Response> getLessons(int courseId, {int page = 1}) async {
-    return await dio.get(
-      apiTeacherLessons(courseId),
-      queryParameters: {'page': page},
-      options: Options(
-        headers: {'Accept': 'application/json'},
-        validateStatus: (status) => status != null && status < 500,
-      ),
-    );
-  }
-
-  // POST /api/lessons/{course}  ← إنشاء
-  Future<Response> createLesson(int courseId, FormData formData) async {
+  Future<Response> createTest(FormData formData) async {
     return await dio.post(
-      apiCreateLesson(courseId),
+      '/api/tests', // نفس المسار الموجود في الباك اند
       data: formData,
       options: Options(
         headers: {'Accept': 'application/json'},
@@ -40,10 +27,9 @@ class LessonService {
     );
   }
 
-  // POST /api/lessons/{lesson}/update
-  Future<Response> updateLesson(int lessonId, FormData formData) async {
+  Future<Response> updateTest(int testId, FormData formData) async {
     return await dio.post(
-      apiLessonUpdate(lessonId),
+      '/api/tests/$testId', // ✅ المسار الصحيح حسب الباك إند
       data: formData,
       options: Options(
         headers: {'Accept': 'application/json'},
@@ -52,10 +38,21 @@ class LessonService {
     );
   }
 
-  // DELETE /api/lessons/{lesson}/delete
-  Future<Response> deleteLesson(int lessonId) async {
+  Future<Response> getTestById(int testId) async {
+    // ✅ جديد
+    return await dio.get(
+      '/api/tests/$testId',
+      options: Options(
+        headers: {'Accept': 'application/json'},
+        validateStatus: (status) => status != null && status < 500,
+      ),
+    );
+  }
+
+  // ✅ جديد: حذف الاختبار
+  Future<Response> deleteTest(int testId) async {
     return await dio.delete(
-      '/api/lessons/$lessonId/delete',
+      '/api/tests/$testId',
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
@@ -63,10 +60,10 @@ class LessonService {
     );
   }
 
-  // GET /api/lessons/{lesson}/details
-  Future<Response> getLessonDetails(int lessonId) async {
+  // Service
+  Future<Response> getAllTests() async {
     return await dio.get(
-      apiLessonDetails(lessonId),
+      apiTests,
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (s) => s != null && s < 500,

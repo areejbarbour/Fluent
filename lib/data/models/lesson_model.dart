@@ -1,13 +1,12 @@
-// lib/data/models/lesson_model.dart
 class LessonModel {
   final int id;
-  final String titleEn; // ✅ تم التغيير من title إلى titleEn
-  final String titleAr; // ✅ تم إضافة titleAr
+  final String titleEn;
+  final String titleAr;
   final int courseId;
   final String status;
   final int order;
   final int xpPoints;
-  final String? videoUrl; // ✅ يتم تعيينه من حقل 'video'
+  final String? videoUrl;
   final String? createdAt;
   final String? updatedAt;
   final String? courseName;
@@ -26,7 +25,6 @@ class LessonModel {
     this.courseName,
   });
 
-  // lib/data/models/lesson_model.dart
   factory LessonModel.fromJson(Map<String, dynamic> json) {
     String? video = json['video']?.toString();
     if (video != null && video.trim().isEmpty) video = null;
@@ -43,11 +41,10 @@ class LessonModel {
       status: json['status']?.toString() ?? 'draft',
       order: json['order'] is int
           ? json['order']
-          : int.tryParse(json['order']?.toString() ?? '1') ?? 1, // ✅ مهم جداً
+          : int.tryParse(json['order']?.toString() ?? '1') ?? 1,
       xpPoints: json['xp_points'] is int
           ? json['xp_points']
-          : int.tryParse(json['xp_points']?.toString() ?? '20') ??
-                20, // ✅ مهم جداً
+          : int.tryParse(json['xp_points']?.toString() ?? '20') ?? 20,
       videoUrl: video,
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),

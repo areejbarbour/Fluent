@@ -6,15 +6,23 @@ import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/form/lesson_form_cubit.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
+import 'package:fluent/cubit/teacher/lessons/lesson_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
+import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_cubit.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
+import 'package:fluent/cubit/teacher/tests/create/test_create_cubit.dart';
+import 'package:fluent/cubit/teacher/tests/delete/test_delete_cubit.dart';
+import 'package:fluent/cubit/teacher/tests/update/test_update_cubit.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
+import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
+import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
 import 'package:fluent/presentation/screens/teacher/home/teacher_home_screen.dart';
+import 'package:fluent/presentation/screens/teacher/lessons/lesson_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/lessons/lesson_form_screen.dart';
 import 'package:fluent/presentation/screens/teacher/status_board/teacher_status_board_screen.dart';
 import 'package:fluent/presentation/screens/Streak/StreakScreen.dart';
@@ -22,11 +30,11 @@ import 'package:fluent/presentation/screens/auth/OtpVerificationScreen.dart';
 import 'package:fluent/presentation/screens/auth/forget_password_screen.dart';
 import 'package:fluent/presentation/screens/auth/set_new_password_screen.dart';
 import 'package:fluent/presentation/screens/home/student_home_screen.dart';
-import 'package:fluent/presentation/screens/home/teacher_home_screen.dart';
 
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:fluent/presentation/screens/teacher/questions/questions_list_screen.dart';
+import 'package:fluent/presentation/screens/teacher/tests/test_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -192,11 +200,20 @@ class AppRouter {
           ),
         );
 
-      // ✅ Teacher: Questions list
       case questionsListRoute:
         return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (ctx) => QuestionListCubit(ctx.read<QuestionRepository>()),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) =>
+                    QuestionListCubit(ctx.read<QuestionRepository>())
+                      ..loadInitial(),
+              ),
+              BlocProvider(
+                create: (ctx) =>
+                    QuestionFilterCubit(ctx.read<QuestionRepository>()),
+              ), // ✅ هذا السطر
+            ],
             child: const QuestionsListScreen(),
           ),
         );
@@ -206,9 +223,10 @@ class AppRouter {
       case teacherStatusBoardRoute: // يمكنك تغيير اسم الـ route الثابت في strings.dart إلى teacherStatusBoardRoute
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (ctx) =>
-                TeacherStatusBoardCubit(ctx.read<LessonRepository>())
-                  ..loadAll(),
+            create: (ctx) => TeacherStatusBoardCubit(
+              ctx.read<LessonRepository>(),
+              ctx.read<TestRepository>(),
+            )..loadAll(),
             child: const TeacherStatusBoardScreen(),
           ),
         );
@@ -224,24 +242,23 @@ class AppRouter {
           ),
         );
 
-      // ✅ Teacher: Course Details (يستقبل كائن CourseModel بأمان)
       case teacherCourseDetailRoute:
         final args = settings.arguments;
 
-        // فحص آمن لنوع البيانات لمنع الأخطاء
         if (args is CourseModel) {
           return MaterialPageRoute(
             builder: (_) => BlocProvider(
-              create: (ctx) =>
-                  TeacherCourseDetailCubit(ctx.read<LessonRepository>(), args)
-                    ..loadLessons(),
+              create: (ctx) => TeacherCourseDetailCubit(
+                ctx.read<LessonRepository>(),
+                ctx.read<TestRepository>(), // ✅
+                args,
+              )..loadLessons(),
               child: TeacherCourseDetailScreen(course: args),
             ),
           );
         } else {
-          // في حال تم تمرير بيانات خاطئة، نعرض شاشة خطأ بدلاً من انهيار التطبيق
           return MaterialPageRoute(
-            builder: (_) => Scaffold(
+            builder: (_) => const Scaffold(
               body: Center(
                 child: Text(
                   'Error: Course data is missing or invalid',
@@ -251,10 +268,6 @@ class AppRouter {
             ),
           );
         }
-
-      // ✅ Teacher: Lesson Form (Create / Edit)
-
-      // في ملف AppRouter.dart
 
       case lessonFormRoute:
         final args = settings.arguments as Map<String, dynamic>;
@@ -268,12 +281,77 @@ class AppRouter {
                 create: (ctx) =>
                     LessonDeleteCubit(ctx.read<LessonRepository>()),
               ),
+              // ✅ جديد: توفير TestDeleteCubit
+              BlocProvider(
+                create: (ctx) => TestDeleteCubit(ctx.read<TestRepository>()),
+              ),
             ],
             child: LessonFormScreen(
               courseId: args['courseId'] as int?,
               lesson: args['lesson'] as LessonModel?,
-              courseStatus:
-                  args['courseStatus'] as String?, // ✅ استقبال حالة الكورس
+              courseStatus: args['courseStatus'] as String?,
+            ),
+          ),
+        );
+
+      // ✅ أضيفي هالـ case الجديد:
+      case 'lesson-detail':
+        final args = settings.arguments as Map<String, dynamic>;
+        final int lessonId = args['lessonId'] as int;
+        final String lessonTitle = args['lessonTitle'] as String? ?? 'Lesson';
+
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => LessonDetailCubit(
+              lessonRepository: ctx.read<LessonRepository>(),
+              testRepository: ctx.read<TestRepository>(),
+            )..loadLessonDetails(lessonId),
+            child: LessonDetailScreen(
+              lessonId: lessonId,
+              lessonTitle: lessonTitle,
+            ),
+          ),
+        );
+
+      case questionsListRoute:
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) =>
+                    QuestionListCubit(ctx.read<QuestionRepository>())
+                      ..loadInitial(),
+              ),
+              // ✅ أضف هذا السطر
+              BlocProvider(
+                create: (ctx) =>
+                    QuestionFilterCubit(ctx.read<QuestionRepository>()),
+              ),
+            ],
+            child: const QuestionsListScreen(),
+          ),
+        );
+      case testFormRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => TestCreateCubit(ctx.read<TestRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) => TestUpdateCubit(ctx.read<TestRepository>()),
+              ), // ✅ جديد
+              BlocProvider(
+                create: (ctx) =>
+                    QuestionFilterCubit(ctx.read<QuestionRepository>()),
+              ),
+            ],
+            child: TestFormScreen(
+              testableType: args['testableType'] as String,
+              testableId: args['testableId'] as int,
+              title: args['title'] as String,
+              initialTest: args['initialTest'] as TestModel?, // ✅ جديد
             ),
           ),
         );

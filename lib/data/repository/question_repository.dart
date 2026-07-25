@@ -13,44 +13,61 @@ class QuestionRepository {
   PaginatedQuestions? _parsePaginated(Response response) {
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = response.data;
+
       if (data is Map<String, dynamic>) {
-        // find first list value (active_questions or deprecated_questions)
-        Map<String, dynamic>? paginationMap;
+        // ✅ الحالة 1: Laravel standard pagination
+        if (data['data'] is List && data['meta'] is Map) {
+          return _extractFromMap(data);
+        }
+
+        // ✅ الحالة 2: wrapped in active_questions/deprecated_questions
         for (final entry in data.entries) {
           if (entry.value is Map<String, dynamic>) {
-            paginationMap = entry.value as Map<String, dynamic>;
-            break;
-          }
-        }
-        if (paginationMap != null) {
-          final list = paginationMap['data'];
-          if (list is List) {
-            final questions = list
-                .whereType<Map>()
-                .map((e) => Question.fromJson(Map<String, dynamic>.from(e)))
-                .toList();
-
-            // Laravel's ResourceCollection->response()->getData(true) nests
-            // pagination info under "meta": { current_page, last_page, per_page, total }.
-            // Fall back to paginationMap itself in case the backend shape changes.
-            final meta = paginationMap['meta'] is Map<String, dynamic>
-                ? paginationMap['meta'] as Map<String, dynamic>
-                : paginationMap;
-
-            return PaginatedQuestions(
-              questions: questions,
-              currentPage: meta['current_page'] is int
-                  ? meta['current_page']
-                  : 1,
-              lastPage: meta['last_page'] is int ? meta['last_page'] : 1,
-              perPage: meta['per_page'] is int ? meta['per_page'] : 10,
-              total: meta['total'] is int ? meta['total'] : questions.length,
-            );
+            final map = entry.value as Map<String, dynamic>;
+            if (map['data'] is List) {
+              return _extractFromMap(map);
+            }
           }
         }
       }
+
+      // ✅ الحالة 3: direct array (your current issue)
+      if (data is List) {
+        final questions = data
+            .whereType<Map>()
+            .map((e) => Question.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+
+        return PaginatedQuestions(
+          questions: questions,
+          currentPage: 1,
+          lastPage: 1,
+          perPage: questions.length,
+          total: questions.length,
+        );
+      }
     }
     return null;
+  }
+
+  PaginatedQuestions _extractFromMap(Map<String, dynamic> data) {
+    final list = data['data'] as List;
+    final meta = data['meta'] is Map<String, dynamic>
+        ? data['meta'] as Map<String, dynamic>
+        : data;
+
+    final questions = list
+        .whereType<Map>()
+        .map((e) => Question.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    return PaginatedQuestions(
+      questions: questions,
+      currentPage: meta['current_page'] is int ? meta['current_page'] : 1,
+      lastPage: meta['last_page'] is int ? meta['last_page'] : 1,
+      perPage: meta['per_page'] is int ? meta['per_page'] : 10,
+      total: meta['total'] is int ? meta['total'] : questions.length,
+    );
   }
 
   // Laravel wraps a single JsonResource returned directly from a controller
@@ -196,7 +213,7 @@ class QuestionRepository {
           final questionJson = data['question'];
           Question? question;
           if (questionJson is Map<String, dynamic>) {
-          question = Question.fromJson(_unwrapResource(questionJson));
+            question = Question.fromJson(_unwrapResource(questionJson));
           }
           return {
             'success': true,
@@ -277,6 +294,49 @@ class QuestionRepository {
         }
       }
       return {'success': false, 'message': 'Failed to load blocking tests'};
+    } on DioException catch (e) {
+      return _errorPayload(e);
+    }
+  }
+
+  // ✅ Filter Questions
+  Future<Map<String, dynamic>> filterQuestions({
+    int page = 1,
+    String? type,
+    String? difficulty,
+    int? minScore,
+    int? maxScore,
+    String? search,
+    int? courseId,
+    bool? onlyEligible,
+    String? sort,
+  }) async {
+    try {
+      final response = await questionService.filterQuestions(
+        page: page,
+        type: type,
+        difficulty: difficulty,
+        minScore: minScore,
+        maxScore: maxScore,
+        search: search,
+        courseId: courseId,
+        onlyEligible: onlyEligible,
+        sort: sort,
+      );
+
+      // نستخدم نفس دالة التحليل الموجودة مسبقاً لضمان التوافق
+      final paginated = _parsePaginated(response);
+
+      if (paginated != null) {
+        return {'success': true, 'data': paginated};
+      }
+
+      final err = response.data;
+      return {
+        'success': false,
+        'message': _extractMessage(err, 'Failed to filter questions'),
+        'errors': err is Map ? err['errors'] : null,
+      };
     } on DioException catch (e) {
       return _errorPayload(e);
     }

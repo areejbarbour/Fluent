@@ -1,10 +1,11 @@
-import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_state.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
+import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -66,11 +67,13 @@ class _CourseDetailView extends StatelessWidget {
           ),
         ],
       ),
-      // ✅ سيتم إخفاء هذا الزر تلقائياً إذا لم يكن الكورس في حالة 'pending'
       floatingActionButton: _buildFab(context),
     );
   }
 
+  // ─────────────────────────────────────────────
+  // Background
+  // ─────────────────────────────────────────────
   Widget _buildBackground() => Stack(
     children: [
       Container(decoration: QuestionUI.backgroundGradient()),
@@ -99,11 +102,22 @@ class _CourseDetailView extends StatelessWidget {
     ],
   );
 
+  // ─────────────────────────────────────────────
+  // Top bar
+  // ─────────────────────────────────────────────
   Widget _buildTopBar(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 18.w),
       child: Row(
         children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
           SizedBox(width: 12.w),
           Container(
             width: 40.w,
@@ -145,40 +159,325 @@ class _CourseDetailView extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // Lessons list
+  // ─────────────────────────────────────────────
   Widget _buildLessonsList(
     BuildContext context,
     TeacherCourseDetailLoaded state,
   ) {
-    if (state.lessons.isEmpty) return _buildEmpty();
     return RefreshIndicator(
       color: AppColors.yellow,
       onRefresh: () => context.read<TeacherCourseDetailCubit>().refresh(),
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
-        itemCount: state.lessons.length,
-        itemBuilder: (context, index) =>
-            _buildLessonCard(context, state.lessons[index], index)
+        itemCount: state.lessons.isEmpty ? 2 : state.lessons.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _buildCourseTestCard(context, state)
                 .animate()
-                .fadeIn(duration: 400.ms, delay: (60 * index).ms)
-                .moveY(begin: 20, end: 0, duration: 400.ms),
+                .fadeIn(duration: 400.ms)
+                .moveY(begin: 20, end: 0, duration: 400.ms);
+          }
+
+          if (state.lessons.isEmpty) {
+            return _buildEmptyInline();
+          }
+
+          final lessonIndex = index - 1;
+          return _buildLessonCard(
+                context,
+                state.lessons[lessonIndex],
+                lessonIndex,
+                state,
+              )
+              .animate()
+              .fadeIn(duration: 400.ms, delay: (60 * lessonIndex).ms)
+              .moveY(begin: 20, end: 0, duration: 400.ms);
+        },
       ),
     );
   }
 
-  Widget _buildLessonCard(BuildContext context, LessonModel lesson, int index) {
+  // ─────────────────────────────────────────────
+  // Course test card
+  // ─────────────────────────────────────────────
+  Widget _buildCourseTestCard(
+    BuildContext context,
+    TeacherCourseDetailLoaded state,
+  ) {
+    final courseTest = state.courseTest;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.orange.withOpacity(0.18),
+            AppColors.yellow.withOpacity(0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.orange.withOpacity(0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44.w,
+                height: 44.w,
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.orange.withOpacity(0.5)),
+                ),
+                child: Icon(
+                  Icons.quiz_rounded,
+                  color: AppColors.orange,
+                  size: 22.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Course Final Test',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      courseTest == null
+                          ? 'Create a test for the entire course'
+                          : (courseTest.titleEn.isNotEmpty
+                                ? courseTest.titleEn
+                                : courseTest.titleAr),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white60,
+                        fontSize: 11.sp,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (courseTest != null)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(courseTest.status).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Text(
+                    courseTest.status.toUpperCase(),
+                    style: GoogleFonts.poppins(
+                      color: _getStatusColor(courseTest.status),
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 14.h),
+
+          // Add / Edit
+          SizedBox(
+            width: double.infinity,
+            height: 44.h,
+            child: ElevatedButton.icon(
+              onPressed: () => _openCourseTestForm(context, courseTest),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.orange,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+              icon: Icon(
+                courseTest == null ? Icons.add_rounded : Icons.edit_rounded,
+                size: 18.sp,
+              ),
+              label: Text(
+                courseTest == null ? 'Add Course Test' : 'Edit Course Test',
+                style: GoogleFonts.poppins(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+
+          // Delete (if allowed)
+          if (courseTest != null && _canDeleteTest(courseTest)) ...[
+            SizedBox(height: 8.h),
+            SizedBox(
+              width: double.infinity,
+              height: 40.h,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmDeleteCourseTest(context, courseTest),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                icon: Icon(Icons.delete_outline, size: 16.sp),
+                label: Text(
+                  'Delete Course Test',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openCourseTestForm(
+    BuildContext context,
+    TestModel? existing,
+  ) async {
+    final result = await Navigator.pushNamed(
+      context,
+      testFormRoute,
+      arguments: {
+        'testableType': 'course',
+        'testableId': course.id,
+        'title': course.name,
+        if (existing != null) 'initialTest': existing,
+      },
+    );
+    if (result == true && context.mounted) {
+      context.read<TeacherCourseDetailCubit>().refresh();
+    }
+  }
+
+  bool _canDeleteTest(TestModel test) {
+    const blocked = ['published', 'archived', 'closed', 'in_review'];
+    return !blocked.contains(test.status.toLowerCase());
+  }
+
+  Future<void> _confirmDeleteCourseTest(
+    BuildContext context,
+    TestModel test,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+          side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
+        ),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+              size: 24,
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              'Delete Course Test?',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'This action cannot be undone. The course test will be permanently removed.',
+          style: GoogleFonts.poppins(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 13.sp,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final repo = context.read<TestRepository>();
+    final result = await repo.deleteTest(test.id);
+
+    if (!context.mounted) return;
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Test deleted'),
+          backgroundColor: Colors.greenAccent,
+        ),
+      );
+      context.read<TeacherCourseDetailCubit>().refresh();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Failed to delete test'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Lesson card
+  // ─────────────────────────────────────────────
+  Widget _buildLessonCard(
+    BuildContext context,
+    LessonModel lesson,
+    int index,
+    TeacherCourseDetailLoaded state,
+  ) {
     final statusColor = _getStatusColor(lesson.status);
     final statusLabel = _getStatusFriendlyName(lesson.status);
+    final lessonTest = state.testForLesson(lesson.id);
+
     return GestureDetector(
       onTap: () async {
         final result = await Navigator.pushNamed(
           context,
           lessonFormRoute,
-          arguments: {
-            'lesson': lesson,
-            'courseStatus': course
-                .status, // ✅ نمرر حالة الكورس هنا لمنع التعديل إذا كان منشوراً
-          },
+          arguments: {'lesson': lesson, 'courseStatus': course.status},
         );
         if (result == true && context.mounted) {
           context.read<TeacherCourseDetailCubit>().refresh();
@@ -188,7 +487,6 @@ class _CourseDetailView extends StatelessWidget {
         margin: EdgeInsets.only(bottom: 12.h),
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          // ✅ تم إزالة const وإصلاح تكرار colors ليظهر التأثير الزجاجي الداكن بشكل صحيح
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -221,7 +519,6 @@ class _CourseDetailView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ✅ تحديث ليتطابق مع LessonModel الجديد (titleEn / titleAr)
                   Text(
                     lesson.titleEn.isNotEmpty ? lesson.titleEn : lesson.titleAr,
                     style: GoogleFonts.poppins(
@@ -265,6 +562,12 @@ class _CourseDetailView extends StatelessWidget {
                         label: 'Order ${lesson.order}',
                         color: Colors.white54,
                       ),
+                      if (lessonTest != null)
+                        _miniChip(
+                          icon: Icons.quiz_outlined,
+                          label: 'Test',
+                          color: AppColors.sky,
+                        ),
                     ],
                   ),
                 ],
@@ -311,10 +614,45 @@ class _CourseDetailView extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // Empty / FAB / Error
+  // ─────────────────────────────────────────────
+  Widget _buildEmptyInline() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 40.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.video_library_outlined,
+            color: Colors.white.withOpacity(0.3),
+            size: 56.sp,
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            'No lessons yet',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'Add your first lesson to this course',
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 11.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFab(BuildContext context) {
-    // ✅ قاعدة الـ Backend: لا يمكن إضافة دروس إلا إذا كان الكورس في حالة 'pending'
     if (course.status != 'pending') {
-      return const SizedBox.shrink(); // إخفاء الزر تماماً
+      return const SizedBox.shrink();
     }
 
     return FloatingActionButton.extended(
@@ -322,10 +660,7 @@ class _CourseDetailView extends StatelessWidget {
         final result = await Navigator.pushNamed(
           context,
           lessonFormRoute,
-          arguments: {
-            'courseId': course.id,
-            'courseStatus': course.status, // ✅ نمرر حالة الكورس هنا أيضاً
-          },
+          arguments: {'courseId': course.id, 'courseStatus': course.status},
         );
         if (result == true && context.mounted) {
           context.read<TeacherCourseDetailCubit>().refresh();
@@ -343,37 +678,6 @@ class _CourseDetailView extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildEmpty() => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.video_library_outlined,
-          color: Colors.white.withOpacity(0.3),
-          size: 64.sp,
-        ),
-        SizedBox(height: 14.h),
-        Text(
-          "No lessons yet",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: 6.h),
-        Text(
-          "Add your first lesson to this course",
-          style: GoogleFonts.poppins(
-            color: Colors.white.withOpacity(0.5),
-            fontSize: 12.sp,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
 
   Widget _buildError(BuildContext context, String msg) => Center(
     child: Padding(
@@ -407,8 +711,11 @@ class _CourseDetailView extends StatelessWidget {
     ),
   );
 
+  // ─────────────────────────────────────────────
+  // Status helpers
+  // ─────────────────────────────────────────────
   Color _getStatusColor(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'published':
         return Colors.greenAccent;
       case 'pending':
@@ -431,7 +738,7 @@ class _CourseDetailView extends StatelessWidget {
   }
 
   String _getStatusFriendlyName(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'published':
         return 'Live';
       case 'pending':

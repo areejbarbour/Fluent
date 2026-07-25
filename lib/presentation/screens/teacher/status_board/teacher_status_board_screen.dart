@@ -1,3 +1,4 @@
+// lib/presentation/screens/teacher/status_board/teacher_status_board_screen.dart
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
@@ -6,6 +7,7 @@ import 'package:fluent/cubit/teacher/statuses/teacher_status_board_state.dart';
 import 'package:fluent/data/models/content_status.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
+import 'package:fluent/data/models/test_model.dart'; // ➕ جديد
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +18,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 class TeacherStatusBoardScreen extends StatefulWidget {
   const TeacherStatusBoardScreen({super.key});
-
   @override
   State<TeacherStatusBoardScreen> createState() =>
       _TeacherStatusBoardScreenState();
@@ -27,11 +28,15 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
   late final TabController _tabController;
   final Set<String> _expandedCourseStatuses = {};
   final Set<String> _expandedLessonStatuses = {};
+  final Set<String> _expandedTestStatuses = {}; // ➕ جديد
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+    ); // ➕ تم التغيير من 2 إلى 3
   }
 
   @override
@@ -78,6 +83,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                             return TabBarView(
                               controller: _tabController,
                               children: [
+                                // 1. Courses Tab
                                 _buildBoard<CourseModel>(
                                   grouped: state.coursesByStatus,
                                   total: state.totalCourses,
@@ -88,6 +94,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                                   rowBuilder: _buildCourseRow,
                                   isCoursesTab: true,
                                 ),
+                                // 2. Lessons Tab
                                 _buildBoard<LessonModel>(
                                   grouped: state.lessonsByStatus,
                                   total: state.totalLessons,
@@ -97,6 +104,18 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                                       "Lessons you create will appear here",
                                   rowBuilder: _buildLessonRow,
                                   isCoursesTab: false,
+                                ),
+                                // 3. Tests Tab ➕ جديد
+                                _buildBoard<TestModel>(
+                                  grouped: state.testsByStatus,
+                                  total: state.totalTests,
+                                  expandedSet: _expandedTestStatuses,
+                                  emptyTitle: 'No tests yet',
+                                  emptySubtitle:
+                                      "Tests you create will appear here",
+                                  rowBuilder: _buildTestRow,
+                                  isCoursesTab:
+                                      false, // Tests show all statuses like lessons
                                 ),
                               ],
                             );
@@ -113,6 +132,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     );
   }
 
+  // =================== BACKGROUND & TOP BAR ===================
   Widget _buildBackground() => Stack(
     children: [
       Container(decoration: QuestionUI.backgroundGradient()),
@@ -147,14 +167,17 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // عداد الكورسات أو الدروس
           BlocBuilder<TeacherStatusBoardCubit, TeacherStatusBoardState>(
             builder: (context, state) {
               if (state is TeacherStatusBoardLoaded) {
-                final isCoursesTab = _tabController.index == 0;
-                final label = isCoursesTab
-                    ? "${state.totalCourses} courses"
-                    : "${state.totalLessons} lessons";
+                String label;
+                if (_tabController.index == 0)
+                  label = "${state.totalCourses} courses";
+                else if (_tabController.index == 1)
+                  label = "${state.totalLessons} lessons";
+                else
+                  label = "${state.totalTests} tests"; // ➕ جديد
+
                 return Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 12.w,
@@ -178,8 +201,6 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
               return const SizedBox.shrink();
             },
           ),
-
-          // ✅ أزرار التنقل السريعة (تم تفعيلها وتنسيقها بشكل احترافي)
           Row(
             children: [
               Tooltip(
@@ -278,7 +299,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
         ),
         SizedBox(height: 3.h),
         Text(
-          "Track your courses and lessons at a glance",
+          "Track your courses, lessons, and tests",
           textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
             color: Colors.white.withOpacity(0.7),
@@ -289,6 +310,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     ),
   );
 
+  // =================== TABS ===================
   Widget _buildTabs() => Padding(
     padding: EdgeInsets.symmetric(horizontal: 18.w),
     child: ClipRRect(
@@ -317,10 +339,6 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
               fontSize: 12.sp,
               fontWeight: FontWeight.w700,
             ),
-            unselectedLabelStyle: GoogleFonts.poppins(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-            ),
             tabs: const [
               Tab(
                 icon: Icon(Icons.menu_book_outlined, size: 16),
@@ -330,6 +348,10 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                 icon: Icon(Icons.play_lesson_outlined, size: 16),
                 text: 'Lessons',
               ),
+              Tab(
+                icon: Icon(Icons.quiz_outlined, size: 16),
+                text: 'Tests',
+              ), // ➕ جديد
             ],
           ),
         ),
@@ -337,6 +359,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     ),
   );
 
+  // =================== BOARD & SECTIONS ===================
   Widget _buildBoard<T>({
     required Map<String, List<T>> grouped,
     required int total,
@@ -407,11 +430,10 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
           InkWell(
             borderRadius: BorderRadius.circular(12.r),
             onTap: () => setState(() {
-              if (isOpen) {
+              if (isOpen)
                 expandedSet.remove(status.value);
-              } else {
+              else
                 expandedSet.add(status.value);
-              }
             }),
             child: Row(
               children: [
@@ -497,19 +519,18 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     );
   }
 
-  Widget _buildSectionEmpty() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 6.h),
-      child: Text(
-        "Nothing in this status",
-        style: GoogleFonts.poppins(
-          color: Colors.white.withOpacity(0.5),
-          fontSize: 11.sp,
-        ),
+  Widget _buildSectionEmpty() => Padding(
+    padding: EdgeInsets.symmetric(vertical: 6.h),
+    child: Text(
+      "Nothing in this status",
+      style: GoogleFonts.poppins(
+        color: Colors.white.withOpacity(0.5),
+        fontSize: 11.sp,
       ),
-    );
-  }
+    ),
+  );
 
+  // =================== ROW BUILDERS ===================
   Widget _buildCourseRow(CourseModel course) {
     final color = StatusUI.statusColor(course.status);
     return GestureDetector(
@@ -585,14 +606,12 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     );
   }
 
-  Widget _courseImageFallback(Color color) {
-    return Container(
-      width: 36.w,
-      height: 36.w,
-      color: color.withOpacity(0.2),
-      child: Icon(Icons.menu_book_outlined, color: color, size: 18.sp),
-    );
-  }
+  Widget _courseImageFallback(Color color) => Container(
+    width: 36.w,
+    height: 36.w,
+    color: color.withOpacity(0.2),
+    child: Icon(Icons.menu_book_outlined, color: color, size: 18.sp),
+  );
 
   Widget _buildLessonRow(LessonModel lesson) {
     final color = StatusUI.statusColor(lesson.status);
@@ -619,7 +638,6 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ✅ تحديث ليتطابق مع LessonModel الجديد (titleEn / titleAr)
                   Text(
                     lesson.titleEn.isNotEmpty ? lesson.titleEn : lesson.titleAr,
                     style: GoogleFonts.poppins(
@@ -663,6 +681,105 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     );
   }
 
+  // ➕ دالة بناء صف الاختبار (مطابقة تماماً لاحترافيتك)
+  Widget _buildTestRow(TestModel test) {
+    final color = StatusUI.statusColor(test.status);
+    final isCourseTest = test.testableType.toLowerCase() == 'course';
+
+    final canEdit = ![
+      'in_review',
+      'archived',
+      'closed',
+    ].contains(test.status.toLowerCase());
+
+    return GestureDetector(
+      onTap: canEdit
+          ? () {
+              Navigator.pushNamed(
+                context,
+                testFormRoute,
+                arguments: {
+                  'testableType': test.testableType.toLowerCase(),
+                  'testableId': test.testableId,
+                  'title': test.titleEn.isNotEmpty
+                      ? test.titleEn
+                      : test.titleAr,
+                  'initialTest': test, // ✅ تمرير كائن الاختبار كاملاً للتعديل
+                },
+              ).then((result) {
+                if (result == true && context.mounted) {
+                  context.read<TeacherStatusBoardCubit>().refresh();
+                }
+              });
+            }
+          : null, // إذا لم يكن مسموحاً بالتعديل، يكون الـ onTap null
+
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 5.w,
+              height: 32.h,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 3.h),
+                  Wrap(
+                    spacing: 5.w,
+                    runSpacing: 3.h,
+                    children: [
+                      _miniChip(
+                        icon: isCourseTest
+                            ? Icons.menu_book_outlined
+                            : Icons.play_lesson_outlined,
+                        label: isCourseTest ? 'Course Test' : 'Lesson Quiz',
+                        color: AppColors.sky,
+                      ),
+                      _miniChip(
+                        icon: Icons.check_circle_outline,
+                        label: 'Pass: ${test.passingScore}%',
+                        color: AppColors.yellow,
+                      ),
+                      _miniChip(
+                        icon: Icons.tag_outlined,
+                        label: 'ID #${test.id}',
+                        color: Colors.white70,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =================== HELPERS ===================
   Widget _miniChip({
     required String label,
     required Color color,

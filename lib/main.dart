@@ -11,9 +11,11 @@ import 'package:fluent/data/network/dio_client.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
+import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/data/services/auth_service.dart';
 import 'package:fluent/data/services/question_service.dart';
 import 'package:fluent/data/services/lesson_service.dart';
+import 'package:fluent/data/services/test_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,20 +28,19 @@ import 'package:fluent/data/repository/course_repository.dart';
 import 'app_router.dart';
 import 'constants/strings.dart';
 
-// main.dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupDio();
 
   final prefs = await SharedPreferences.getInstance();
   final bool isUserLoggedIn = prefs.getBool('is_logged_in') ?? false;
-
   final String? userRole = prefs.getString('user_role');
 
   print("🔍 [main] isUserLoggedIn: $isUserLoggedIn");
   print("🔍 [main] userRole: $userRole");
 
   final Dio dioInstance = dio;
+
   final authService = AuthService(dioInstance);
   final authRepository = AuthRepository(authService);
 
@@ -55,13 +56,15 @@ void main() async {
   final courseService = CourseService(dioInstance);
   final courseRepository = CourseRepository(courseService);
 
-  String initialRoute = onboardingRoute;
+  final testService = TestService(dioInstance);
+  final testRepository = TestRepository(testService);
 
+  String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
-      initialRoute = teacherHomeRoute; // 🎓 صفحة المعلم (لوحة حالات الدروس)
+      initialRoute = teacherHomeRoute;
     } else {
-      initialRoute = studentHomeRoute; // 🎓 صفحة الطالب
+      initialRoute = studentHomeRoute;
     }
   }
 
@@ -72,6 +75,7 @@ void main() async {
       levelRepository: levelRepository,
       courseRepository: courseRepository,
       lessonRepository: lessonRepository,
+      testRepository: testRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -81,8 +85,9 @@ class MyApp extends StatefulWidget {
   final AuthRepository authRepository;
   final QuestionRepository questionRepository;
   final LevelRepository levelRepository;
-  final CourseRepository courseRepository; // ✅ جديد
-  final LessonRepository lessonRepository; // ✅ جديد
+  final CourseRepository courseRepository;
+  final LessonRepository lessonRepository;
+  final TestRepository testRepository;
   final String initialRoute;
   late final AppRouter appRouter;
 
@@ -91,8 +96,9 @@ class MyApp extends StatefulWidget {
     required this.authRepository,
     required this.questionRepository,
     required this.levelRepository,
-    required this.courseRepository, // ✅ جديد
-    required this.lessonRepository, // ✅ جديد
+    required this.courseRepository,
+    required this.lessonRepository,
+    required this.testRepository,
     required this.initialRoute,
   }) {
     appRouter = AppRouter(authRepository);
@@ -122,12 +128,16 @@ class _MyAppState extends State<MyApp> {
             ),
             RepositoryProvider<LevelRepository>.value(
               value: widget.levelRepository,
-            ), // ✅ جديد
+            ),
             RepositoryProvider<CourseRepository>.value(
               value: widget.courseRepository,
             ),
             RepositoryProvider<LessonRepository>.value(
               value: widget.lessonRepository,
+            ),
+            // ✅ مرة واحدة فقط
+            RepositoryProvider<TestRepository>.value(
+              value: widget.testRepository,
             ),
           ],
           child: MultiBlocProvider(
@@ -141,18 +151,15 @@ class _MyAppState extends State<MyApp> {
                 create: (_) => ResendOtpCubit(widget.authRepository),
               ),
               BlocProvider(create: (_) => LogoutCubit(widget.authRepository)),
-
               BlocProvider(
                 create: (_) => ForgotPasswordCubit(widget.authRepository),
               ),
               BlocProvider(
                 create: (_) => ResetPasswordCubit(widget.authRepository),
               ),
-
               BlocProvider(
                 create: (_) => GoogleLoginCubit(widget.authRepository),
               ),
-
               BlocProvider(
                 create: (_) => StudentLevelsCubit(widget.levelRepository),
               ),

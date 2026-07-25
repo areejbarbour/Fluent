@@ -1,6 +1,6 @@
 // const String baseUrl = 'http://10.0.0.2:8000';
-const String baseUrl = 'http://192.168.10.220:8000';
-//const String baseUrl = 'http://172.20.10.2:8000';
+const String baseUrl = 'http://192.168.10.224:8000';
+// const String baseUrl = 'http://172.20.10.2:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -43,6 +43,13 @@ const String teacherCourseDetailRoute = '/teacher/courses/detail';
 // ✅ Lesson Form Route
 const String lessonFormRoute = '/teacher/lessons/form';
 
+
+
+
+
+// ✅ Question Filter API Endpoint
+const String apiQuestionsFilter = '/api/questions/filter';
+
 // ✅ API Endpoints
 const String apiRegister = '/api/register';
 const String apiLogin = '/api/login';
@@ -51,6 +58,8 @@ const String apiCurrentUser = '/api/user';
 
 // ✅ Level API
 const String apiGetStudentLevels = '/api/getStudentLevels';
+
+const String testFormRoute = '/teacher/tests/form';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';
@@ -65,12 +74,26 @@ String apiQuestionBlockingTests(int id) => '/api/questions/$id/blocking-tests';
 
 // ✅ Teacher Lesson API Endpoints
 const String apiGetTeacherCourses = '/api/getTeacherCourses';
-String apiTeacherLessons(int courseId) => '/api/lessons/$courseId';
+//String apiTeacherLessons(int courseId) => '/api/lessons/$courseId';
 String apiLessonUpdate(int lessonId) => '/api/lessons/$lessonId/update';
 
 // ✅ OTP Endpoints - Dynamic with type parameter
 String apiVerifyOtp(String type) => '/api/verifyOtp/$type';
 String apiResendOtp(String type) => '/api/resendOtp/$type';
+
+// دروس الكورس (جديد)
+String apiTeacherLessons(int courseId) => '/api/lessons/$courseId/teacher';
+
+// تفاصيل درس (جديد)
+String apiLessonDetails(int lessonId) => '/api/lessons/$lessonId/details';
+
+String apiTestDetail(int id) => '/api/tests/$id';
+
+// إنشاء درس
+String apiCreateLesson(int courseId) => '/api/lessons/$courseId';
+
+// كل الاختبارات (جديد)
+const String apiTests = '/api/tests';
 
 // ✅ Forgot/Reset Password Endpoints
 const String apiForgotPassword = '/api/forgotPassword';
