@@ -56,6 +56,10 @@ import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/cubit/student/courses/course_cubit.dart';
 import 'package:fluent/data/repository/course_repository.dart';
+import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart' as student_lesson;
+import 'package:fluent/data/repository/lesson_detail_repository.dart';
+import 'package:fluent/presentation/screens/lessons/lesson_detail_screen.dart' as student_lesson_screen;
+
 
 class AppRouter {
   final AuthRepository authRepository;
@@ -200,6 +204,23 @@ class AppRouter {
           ),
         );
 
+        // ✅ Student: Lesson video + comments detail
+      case lessonDetailRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final lessonId = args['lessonId'] as int?;
+
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => student_lesson.LessonDetailCubit(
+              ctx.read<LessonDetailRepository>(),
+            )..fetchLessonDetail(lessonId ?? 0),
+            child: student_lesson_screen.LessonDetailScreen(
+              lessonId: lessonId,
+              lessonTitle: args['lessonTitle'] as String? ?? '',
+            ),
+          ),
+        );
+
       case questionsListRoute:
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
@@ -294,25 +315,6 @@ class AppRouter {
           ),
         );
 
-      // ✅ أضيفي هالـ case الجديد:
-      case 'lesson-detail':
-        final args = settings.arguments as Map<String, dynamic>;
-        final int lessonId = args['lessonId'] as int;
-        final String lessonTitle = args['lessonTitle'] as String? ?? 'Lesson';
-
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (ctx) => LessonDetailCubit(
-              lessonRepository: ctx.read<LessonRepository>(),
-              testRepository: ctx.read<TestRepository>(),
-            )..loadLessonDetails(lessonId),
-            child: LessonDetailScreen(
-              lessonId: lessonId,
-              lessonTitle: lessonTitle,
-            ),
-          ),
-        );
-
       case questionsListRoute:
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
@@ -366,3 +368,4 @@ class AppRouter {
     }
   }
 }
+ 

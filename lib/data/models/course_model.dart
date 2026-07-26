@@ -5,6 +5,7 @@ class CourseModel {
   final int estimatedDuration;
   final String status;
   final String image;
+  final String teacherName; // ← جديد
 
   CourseModel({
     required this.id,
@@ -13,9 +14,20 @@ class CourseModel {
     required this.estimatedDuration,
     required this.status,
     required this.image,
+    required this.teacherName,
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
+
+    String teacherName = "Fluent Instructor"; // قيمة افتراضية
+
+    final teacher = json['teacher'];
+    if (teacher is Map<String, dynamic>) {
+      final first = teacher['first_name']?.toString() ?? '';
+      final last = teacher['last_name']?.toString() ?? '';
+      teacherName = "$first $last".trim();
+      if (teacherName.isEmpty) teacherName = "Fluent Instructor";
+    }
     return CourseModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
@@ -23,6 +35,7 @@ class CourseModel {
       estimatedDuration: json['estimated_duration'] ?? 0,
       status: json['status']?.toString() ?? '',
       image: json['image']?.toString() ?? '',
+      teacherName: teacherName,
     );
   }
 }
