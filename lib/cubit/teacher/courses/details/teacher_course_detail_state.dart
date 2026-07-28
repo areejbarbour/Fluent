@@ -35,13 +35,15 @@ class TeacherCourseDetailLoaded extends TeacherCourseDetailState {
     );
   }
 
-  /// اختبار الكورس (إن وُجد)
-  TestModel? get courseTest {
-    final matches = tests.where(
-      (t) =>
-          t.testableType.toLowerCase() == 'course' && t.testableId == course.id,
-    );
-    return matches.isEmpty ? null : matches.first;
+  /// كل اختبارات الكورس (مش واحد فقط)
+  List<TestModel> get courseTests {
+    return tests
+        .where(
+          (t) =>
+              t.testableType.toLowerCase() == 'course' &&
+              t.testableId == course.id, // أو courseId إذا موجود
+        )
+        .toList();
   }
 
   /// اختبار درس معيّن

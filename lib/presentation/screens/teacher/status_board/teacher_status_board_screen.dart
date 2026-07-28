@@ -8,6 +8,7 @@ import 'package:fluent/data/models/content_status.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart'; // ➕ جديد
+import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,46 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // ➕ دالة جديدة لجلب تفاصيل الاختبار قبل التعديل (نفس منطق شاشة الكورس)
+  Future<void> _openTestForm(BuildContext context, TestModel test) async {
+    TestModel? fullTest;
+
+    // 1. جلب الاختبار الكامل مع الأسئلة من الباك إند
+    final repo = context.read<TestRepository>();
+    final result = await repo.getTestById(test.id);
+
+    if (!context.mounted) return;
+
+    if (result['success'] == true && result['data'] is TestModel) {
+      fullTest = result['data'] as TestModel;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Failed to load test details'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // 2. فتح شاشة التعديل مع الاختبار الكامل (الذي يحتوي الآن على الأسئلة)
+    final editResult = await Navigator.pushNamed(
+      context,
+      testFormRoute,
+      arguments: {
+        'testableType': test.testableType.toLowerCase(),
+        'testableId': test.testableId,
+        'title': test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+        'initialTest': fullTest, // ✅ الآن يحتوي على الأسئلة
+      },
+    );
+
+    // 3. تحديث لوحة الحالات بعد العودة في حال تم التعديل بنجاح
+    if (editResult == true && context.mounted) {
+      context.read<TeacherStatusBoardCubit>().refresh();
+    }
   }
 
   @override
@@ -115,7 +156,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                                       "Tests you create will appear here",
                                   rowBuilder: _buildTestRow,
                                   isCoursesTab:
-                                      false, // Tests show all statuses like lessons
+                                      false, // Lessons & Tests: hide published/closed
                                 ),
                               ],
                             );
@@ -371,6 +412,8 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
   }) {
     if (total == 0) return _buildEmpty(emptyTitle, emptySubtitle);
 
+    // Courses: pending / published / archived / closed only
+    // Lessons & Tests: hide published & closed (teacher workflow focuses on editable statuses)
     final statusesToShow = isCoursesTab
         ? ContentStatus.values
               .where(
@@ -382,7 +425,12 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                 ].contains(s.value),
               )
               .toList()
-        : ContentStatus.values;
+        : ContentStatus.values
+              .where(
+                (s) =>
+                    s != ContentStatus.published && s != ContentStatus.closed,
+              )
+              .toList();
 
     return RefreshIndicator(
       color: AppColors.yellow,
@@ -615,7 +663,20 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
 
   Widget _buildLessonRow(LessonModel lesson) {
     final color = StatusUI.statusColor(lesson.status);
+
     return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          lessonDetailRoute,
+          arguments: {
+            'lessonId': lesson.id,
+            'lessonTitle': lesson.titleEn.isNotEmpty
+                ? lesson.titleEn
+                : lesson.titleAr,
+          },
+        );
+      },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
         decoration: BoxDecoration(
@@ -675,17 +736,26 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                 ],
               ),
             ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white.withOpacity(0.4),
+              size: 18.sp,
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ➕ دالة بناء صف الاختبار (مطابقة تماماً لاحترافيتك)
+  // ➕ دالة بناء صف الاختبار — بنفس روح الكورسات والدروس
   Widget _buildTestRow(TestModel test) {
     final color = StatusUI.statusColor(test.status);
+    final statusLabel = StatusUI.statusLabel(test.status);
     final isCourseTest = test.testableType.toLowerCase() == 'course';
-
+    final targetLabel = isCourseTest
+        ? 'Course #${test.testableId}'
+        : 'Lesson #${test.testableId}';
+    final typeLabel = isCourseTest ? 'Course Test' : 'Lesson Test';
     final canEdit = ![
       'in_review',
       'archived',
@@ -693,27 +763,13 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     ].contains(test.status.toLowerCase());
 
     return GestureDetector(
-      onTap: canEdit
-          ? () {
-              Navigator.pushNamed(
-                context,
-                testFormRoute,
-                arguments: {
-                  'testableType': test.testableType.toLowerCase(),
-                  'testableId': test.testableId,
-                  'title': test.titleEn.isNotEmpty
-                      ? test.titleEn
-                      : test.titleAr,
-                  'initialTest': test, // ✅ تمرير كائن الاختبار كاملاً للتعديل
-                },
-              ).then((result) {
-                if (result == true && context.mounted) {
-                  context.read<TeacherStatusBoardCubit>().refresh();
-                }
-              });
-            }
-          : null, // إذا لم يكن مسموحاً بالتعديل، يكون الـ onTap null
-
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          testDetailViewRoute,
+          arguments: {'testId': test.id},
+        );
+      },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
         decoration: BoxDecoration(
@@ -722,10 +778,11 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
           border: Border.all(color: Colors.white.withOpacity(0.12)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 5.w,
-              height: 32.h,
+              height: 44.h,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(4.r),
@@ -736,17 +793,37 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      _statusChip(label: statusLabel, color: color),
+                    ],
+                  ),
+                  SizedBox(height: 3.h),
                   Text(
-                    test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+                    targetLabel,
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.55),
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 3.h),
+                  SizedBox(height: 6.h),
                   Wrap(
                     spacing: 5.w,
                     runSpacing: 3.h,
@@ -755,25 +832,81 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                         icon: isCourseTest
                             ? Icons.menu_book_outlined
                             : Icons.play_lesson_outlined,
-                        label: isCourseTest ? 'Course Test' : 'Lesson Quiz',
+                        label: typeLabel,
                         color: AppColors.sky,
                       ),
                       _miniChip(
                         icon: Icons.check_circle_outline,
-                        label: 'Pass: ${test.passingScore}%',
+                        label: 'Pass ${test.passingScore}%',
                         color: AppColors.yellow,
-                      ),
-                      _miniChip(
-                        icon: Icons.tag_outlined,
-                        label: 'ID #${test.id}',
-                        color: Colors.white70,
                       ),
                     ],
                   ),
+                  if (canEdit) ...[
+                    SizedBox(height: 8.h),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        // ✅ تم التعديل هنا لاستدعاء الدالة الجديدة
+                        onTap: () => _openTestForm(context, test),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 5.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.sky.withOpacity(0.16),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: AppColors.sky.withOpacity(0.35),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 12.sp,
+                                color: AppColors.sky,
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                'Edit',
+                                style: GoogleFonts.poppins(
+                                  color: AppColors.sky,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip({required String label, required Color color}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: color.withOpacity(0.45)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

@@ -1,14 +1,27 @@
-import 'package:fluent/cubit/teacher/lessons/lesson_detail_state.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:ui';
+import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
+import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_state.dart';
 import 'package:fluent/cubit/teacher/lessons/lesson_detail_cubit.dart';
+import 'package:fluent/cubit/teacher/lessons/lesson_detail_state.dart';
+import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/helper/lessons/lesson_helpers.dart';
+import 'package:fluent/helper/questions/question_helpers.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 
 class LessonDetailScreen extends StatefulWidget {
   final int lessonId;
   final String lessonTitle;
 
   const LessonDetailScreen({
+    super.key,
     required this.lessonId,
     required this.lessonTitle,
   });
@@ -18,6 +31,12 @@ class LessonDetailScreen extends StatefulWidget {
 }
 
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
+  VideoPlayerController? _videoController;
+  bool _videoReady = false;
+  bool _videoError = false;
+  bool _isPlaying = false;
+  String? _currentVideoUrl;
+
   @override
   void initState() {
     super.initState();
@@ -25,254 +44,307 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.lessonTitle),
-        elevation: 0,
-      ),
-      body: BlocBuilder<LessonDetailCubit, LessonDetailState>(
-        builder: (context, state) {
-          if (state is LessonDetailLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
+  void dispose() {
+    _disposeVideo();
+    super.dispose();
+  }
 
-          if (state is LessonDetailError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(state.message),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context
-                          .read<LessonDetailCubit>()
-                          .loadLessonDetails(widget.lessonId);
-                    },
-                    child: Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+  void _disposeVideo() {
+    _videoController?.removeListener(_onVideoTick);
+    _videoController?.dispose();
+    _videoController = null;
+    _videoReady = false;
+    _videoError = false;
+    _isPlaying = false;
+  }
 
-          if (state is LessonDetailLoaded) {
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ✅ معلومات الدرس
-                  _buildLessonInfo(state.lesson),
+  void _onVideoTick() {
+    if (!mounted || _videoController == null) return;
+    final playing = _videoController!.value.isPlaying;
+    if (playing != _isPlaying) {
+      setState(() => _isPlaying = playing);
+    } else {
+      setState(() {}); // progress bar
+    }
+  }
 
-                  SizedBox(height: 32),
+  Future<void> _initVideo(String? url) async {
+    if (url == null || url.trim().isEmpty) {
+      _disposeVideo();
+      if (mounted) setState(() {});
+      return;
+    }
+    if (_currentVideoUrl == url && _videoReady) return;
 
-                  // ✅ قسم الاختبارات
-                  _buildTestsSection(context, state.tests),
+    _disposeVideo();
+    _currentVideoUrl = url;
 
-                  SizedBox(height: 32),
+    try {
+      final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      _videoController = controller;
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.addListener(_onVideoTick);
+      setState(() {
+        _videoReady = true;
+        _videoError = false;
+      });
+    } catch (e) {
+      print('_initVideo error: $e');
+      if (mounted) {
+        setState(() {
+          _videoReady = false;
+          _videoError = true;
+        });
+      }
+    }
+  }
 
-                  // ✅ قسم التعليقات (إن وجدت)
-                  if (state.comments.isNotEmpty)
-                    _buildCommentsSection(state.comments),
-                ],
-              ),
-            );
-          }
+  void _togglePlay() {
+    final c = _videoController;
+    if (c == null || !_videoReady) return;
+    if (c.value.isPlaying) {
+      c.pause();
+    } else {
+      c.play();
+    }
+  }
 
-          return SizedBox.expand(
-            child: Center(child: Text('Unknown state')),
+  // ─── Status rules (حالة الدرس فقط) ───
+  bool _canEditLesson(String status) {
+    final s = status.toLowerCase();
+    return !{'closed', 'archived', 'approved', 'in_review'}.contains(s);
+  }
+
+  bool _canDeleteLesson(String status) {
+    final s = status.toLowerCase();
+    return {'draft', 'pending', 'changes_requested'}.contains(s);
+  }
+
+  String _extractVideoUrl(dynamic lesson) {
+    if (lesson is Map) {
+      final v = lesson['video']?.toString();
+      if (v != null && v.trim().isNotEmpty) return v;
+    }
+    if (lesson is LessonModel &&
+        lesson.videoUrl != null &&
+        lesson.videoUrl!.trim().isNotEmpty) {
+      return lesson.videoUrl!;
+    }
+    return '';
+  }
+
+  String _lessonField(dynamic lesson, String key, [String fallback = '—']) {
+    if (lesson is Map) {
+      final v = lesson[key];
+      if (v == null) return fallback;
+      final s = v.toString().trim();
+      return s.isEmpty ? fallback : s;
+    }
+    return fallback;
+  }
+
+  int _lessonInt(dynamic lesson, String key, [int fallback = 0]) {
+    if (lesson is Map) {
+      final v = lesson[key];
+      if (v is int) return v;
+      return int.tryParse(v?.toString() ?? '') ?? fallback;
+    }
+    return fallback;
+  }
+
+  void _goEditLesson(BuildContext context, dynamic lesson) {
+    final status = _lessonField(lesson, 'status', 'draft');
+    final lessonModel = lesson is LessonModel
+        ? lesson
+        : LessonModel(
+            id: _lessonInt(lesson, 'id', widget.lessonId),
+            titleEn: _lessonField(lesson, 'title_en', ''),
+            titleAr: _lessonField(lesson, 'title_ar', ''),
+            courseId: lesson is Map && lesson['course'] is Map
+                ? (lesson['course']['id'] is int
+                      ? lesson['course']['id']
+                      : int.tryParse('${lesson['course']['id']}') ?? 0)
+                : _lessonInt(lesson, 'course_id'),
+            status: status,
+            order: _lessonInt(lesson, 'order', 1),
+            xpPoints: _lessonInt(lesson, 'xp_points', 20),
+            videoUrl: _extractVideoUrl(lesson).isEmpty
+                ? null
+                : _extractVideoUrl(lesson),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _navigateToCreateTest(context),
-        tooltip: 'Create Test',
-        child: Icon(Icons.add),
-      ),
-    );
+
+    String? courseStatus;
+    if (lesson is Map && lesson['course'] is Map) {
+      courseStatus = lesson['course']['status']?.toString();
+    }
+
+    Navigator.pushNamed(
+      context,
+      lessonFormRoute,
+      arguments: {'lesson': lessonModel, 'courseStatus': courseStatus},
+    ).then((result) {
+      if (result == true && context.mounted) {
+        context.read<LessonDetailCubit>().loadLessonDetails(widget.lessonId);
+      }
+    });
   }
 
-  // ✅ بناء قسم معلومات الدرس
-  Widget _buildLessonInfo(dynamic lesson) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      color: Colors.grey[100],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Lesson Information',
-            style: Theme.of(context).textTheme.titleLarge,
+  void _confirmDeleteLesson(BuildContext context, dynamic lesson) {
+    final id = _lessonInt(lesson, 'id', widget.lessonId);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+          side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
+        ),
+        title: Text(
+          'Delete Lesson?',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
           ),
-          SizedBox(height: 16),
-          _infoRow('Title (EN)', lesson['title_en'] ?? '—'),
-          _infoRow('Title (AR)', lesson['title_ar'] ?? '—'),
-          _infoRow('Status', lesson['status']?.toString() ?? '—'),
-          _infoRow('XP Points', lesson['xp_points']?.toString() ?? '—'),
-          if (lesson['video'] != null)
-            _infoRow('Video', 'Uploaded ✓'),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 120,
+        ),
+        content: Text(
+          'This will permanently delete the lesson with all its tests and details. This cannot be undone.',
+          style: GoogleFonts.poppins(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 13.sp,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
             child: Text(
-              label,
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white70),
             ),
           ),
-          Expanded(child: Text(value)),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<LessonDeleteCubit>().deleteLesson(id);
+            },
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ✅ بناء قسم الاختبارات
-  Widget _buildTestsSection(BuildContext context, List<TestModel> tests) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Tests (${tests.length})',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              if (tests.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => _navigateToCreateTest(context),
-                  icon: Icon(Icons.add),
-                  label: Text('Add Test'),
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<LessonDeleteCubit, LessonDeleteState>(
+          listener: (context, state) {
+            if (state is LessonDeleteSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.greenAccent,
                 ),
-            ],
-          ),
-          SizedBox(height: 16),
-          if (tests.isEmpty)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.description_outlined,
-                      size: 48,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'No tests yet',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => _navigateToCreateTest(context),
-                      child: Text('Create First Test'),
-                    ),
-                  ],
+              );
+              Navigator.pop(context, true);
+            }
+            if (state is LessonDeleteFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error),
+                  backgroundColor: Colors.redAccent,
                 ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: tests.length,
-              itemBuilder: (context, index) {
-                final test = tests[index];
-                return _buildTestCard(context, test);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ✅ بطاقة الاختبار
-  Widget _buildTestCard(BuildContext context, TestModel test) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+              );
+            }
+          },
+        ),
+      ],
+      child: Scaffold(
+        body: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        test.titleEn,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        test.titleAr,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
+            _buildBackground(),
+            SafeArea(
+              child: Column(
+                children: [
+                  SizedBox(height: 8.h),
+                  _buildTopBar(context),
+                  Expanded(
+                    child: BlocConsumer<LessonDetailCubit, LessonDetailState>(
+                      listener: (context, state) {
+                        if (state is LessonDetailLoaded) {
+                          final url = _extractVideoUrl(state.lesson);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) _initVideo(url.isEmpty ? null : url);
+                          });
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is LessonDetailLoading ||
+                            state is LessonDetailInitial) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.yellow,
+                            ),
+                          );
+                        }
+
+                        if (state is LessonDetailError) {
+                          return _buildError(context, state.message);
+                        }
+
+                        if (state is LessonDetailLoaded) {
+                          return RefreshIndicator(
+                            color: AppColors.yellow,
+                            onRefresh: () async {
+                              await context
+                                  .read<LessonDetailCubit>()
+                                  .loadLessonDetails(widget.lessonId);
+                            },
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16.w,
+                                vertical: 12.h,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLessonInfo(state.lesson),
+                                  SizedBox(height: 16.h),
+                                  _buildVideoSection(),
+                                  SizedBox(height: 16.h),
+                                  _buildActionButtons(context, state.lesson),
+                                  SizedBox(height: 20.h),
+                                  _buildTestsSection(context, state.tests),
+                                  if (state.comments.isNotEmpty) ...[
+                                    SizedBox(height: 20.h),
+                                    _buildCommentsSection(state.comments),
+                                  ],
+                                  SizedBox(height: 32.h),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   ),
-                ),
-                _statusBadge(test.status),
-              ],
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                _testInfoChip('Questions', test.questions.length.toString()),
-                SizedBox(width: 12),
-                _testInfoChip(
-                  'Passing Score',
-                  '${test.passingScore}%',
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // ✅ زر الاطلاع
-                TextButton.icon(
-                  onPressed: () => _navigateToTestDetail(context, test.id),
-                  icon: Icon(Icons.visibility),
-                  label: Text('View'),
-                ),
-                SizedBox(width: 8),
-                // ✅ زر التعديل (إذا كان ممكناً)
-                if (test.canEdit)
-                  TextButton.icon(
-                    onPressed: () =>
-                        _navigateToEditTest(context, test.id),
-                    icon: Icon(Icons.edit),
-                    label: Text('Edit'),
-                  ),
-                SizedBox(width: 8),
-                // ✅ زر الحذف (إذا كان ممكناً)
-                if (test.canDelete)
-                  TextButton.icon(
-                    onPressed: () => _confirmDeleteTest(context, test.id),
-                    icon: Icon(Icons.delete, color: Colors.red),
-                    label: Text('Delete', style: TextStyle(color: Colors.red)),
-                  ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -280,163 +352,655 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // ✅ بطاقة معلومات الاختبار
-  Widget _testInfoChip(String label, String value) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(4),
+  // ─── Background ───
+  Widget _buildBackground() => Stack(
+    children: [
+      Container(decoration: QuestionUI.backgroundGradient()),
+      Positioned(
+        top: -120.h,
+        right: -100.w,
+        child: QuestionUI.glowingCircle(AppColors.yellow, 320.w)
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .move(
+              begin: Offset.zero,
+              end: const Offset(-15, 10),
+              duration: 5000.ms,
+            ),
       ),
+      Positioned(
+        bottom: -160.h,
+        left: -110.w,
+        child: QuestionUI.glowingCircle(AppColors.sky, 380.w)
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .move(
+              begin: Offset.zero,
+              end: const Offset(20, -15),
+              duration: 6000.ms,
+            ),
+      ),
+    ],
+  );
+
+  // ─── Top bar ───
+  Widget _buildTopBar(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          IconButton(
+            onPressed: () {
+              _disposeVideo();
+              Navigator.pop(context);
+            },
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20.sp,
+            ),
           ),
-          SizedBox(width: 4),
-          Text(
-            value,
-            style: TextStyle(fontWeight: FontWeight.bold),
+          Container(
+            width: 38.w,
+            height: 38.w,
+            decoration: BoxDecoration(
+              color: AppColors.yellow.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: AppColors.yellow.withOpacity(0.5)),
+            ),
+            child: const Icon(
+              Icons.play_lesson_rounded,
+              color: AppColors.yellow,
+              size: 20,
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              widget.lessonTitle,
+              style: GoogleFonts.cinzelDecorative(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                shadows: [
+                  Shadow(color: AppColors.sky.withOpacity(0.7), blurRadius: 10),
+                ],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ✅ badge الحالة
-  Widget _statusBadge(String status) {
-    final colors = {
-      'draft': Colors.grey,
-      'pending': Colors.blue,
-      'in_review': Colors.orange,
-      'changes_requested': Colors.red,
-      'approved': Colors.green[600],
-      'published': Colors.green,
-      'archived': Colors.grey[600],
-      'closed': Colors.black,
-    };
-
-    final color = colors[status.toLowerCase()] ?? Colors.grey;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+  // ─── Error ───
+  Widget _buildError(BuildContext context, String message) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent, size: 48.sp),
+            SizedBox(height: 12.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+                fontSize: 13.sp,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            ElevatedButton.icon(
+              onPressed: () => context
+                  .read<LessonDetailCubit>()
+                  .loadLessonDetails(widget.lessonId),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.yellow,
+                foregroundColor: AppColors.dark,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ✅ قسم التعليقات
-  Widget _buildCommentsSection(List<dynamic> comments) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+  // ─── Lesson info ───
+  Widget _buildLessonInfo(dynamic lesson) {
+    final titleEn = _lessonField(lesson, 'title_en');
+    final titleAr = _lessonField(lesson, 'title_ar');
+    final status = _lessonField(lesson, 'status', 'draft');
+    final order = _lessonInt(lesson, 'order', 1);
+    final xp = _lessonInt(lesson, 'xp_points', 20);
+    final statusColor = StatusUI.statusColor(status);
+
+    String? courseName;
+    if (lesson is Map && lesson['course'] is Map) {
+      courseName = lesson['course']['name']?.toString();
+    }
+
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(14.w),
+      borderColor: statusColor.withOpacity(0.4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Comments (${comments.length})',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          SizedBox(height: 16),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: comments.length,
-            itemBuilder: (context, index) {
-              final comment = comments[index];
-              return Card(
-                margin: EdgeInsets.only(bottom: 8),
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (titleEn != '—')
                       Text(
-                        comment['user']?['first_name'] ?? 'Anonymous',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        titleEn,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      SizedBox(height: 4),
-                      Text(comment['comment'] ?? ''),
-                      SizedBox(height: 4),
+                    if (titleAr != '—') ...[
+                      SizedBox(height: 4.h),
                       Text(
-                        comment['created_at'] ?? '',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        titleAr,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 13.sp,
+                        ),
+                        textDirection: TextDirection.rtl,
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              );
-            },
+              ),
+              _statusBadge(status, statusColor),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 6.h,
+            children: [
+              if (courseName != null && courseName.isNotEmpty)
+                _miniChip(Icons.menu_book_outlined, courseName, AppColors.sky),
+              _miniChip(
+                Icons.low_priority_rounded,
+                'Order $order',
+                Colors.white70,
+              ),
+              _miniChip(Icons.star_rounded, '$xp XP', AppColors.yellow),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // ✅ دوال الملاحة
-  void _navigateToCreateTest(BuildContext context) {
-    // الانتقال إلى شاشة إنشاء اختبار للدرس
-    Navigator.of(context).pushNamed(
-      '/test-form',
-      arguments: {
-        'testableType': 'lesson',
-        'testableId': widget.lessonId,
-        'action': 'create',
-      },
-    ).then((_) {
-      // تحديث الاختبارات بعد الإنشاء
-      context.read<LessonDetailCubit>().refreshTests(widget.lessonId);
-    });
-  }
-
-  void _navigateToEditTest(BuildContext context, int testId) {
-    Navigator.of(context).pushNamed(
-      '/test-form',
-      arguments: {
-        'testId': testId,
-        'action': 'edit',
-      },
-    ).then((_) {
-      // تحديث الاختبارات بعد التعديل
-      context.read<LessonDetailCubit>().refreshTests(widget.lessonId);
-    });
-  }
-
-  void _navigateToTestDetail(BuildContext context, int testId) {
-    Navigator.of(context).pushNamed(
-      '/test-detail',
-      arguments: {'testId': testId},
+  // ─── Video ───
+  Widget _buildVideoSection() {
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
+      borderColor: AppColors.sky.withOpacity(0.35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.videocam_rounded, color: AppColors.sky, size: 18.sp),
+              SizedBox(width: 8.w),
+              Text(
+                'Lesson Video',
+                style: GoogleFonts.poppins(
+                  color: AppColors.sky,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          if (_videoError)
+            _videoPlaceholder(
+              icon: Icons.error_outline,
+              text: 'Failed to load video',
+              action: 'Retry',
+              onAction: () {
+                if (_currentVideoUrl != null) {
+                  final url = _currentVideoUrl;
+                  _currentVideoUrl = null;
+                  _initVideo(url);
+                }
+              },
+            )
+          else if (_videoReady && _videoController != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: AspectRatio(
+                aspectRatio: _videoController!.value.aspectRatio == 0
+                    ? 16 / 9
+                    : _videoController!.value.aspectRatio,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    VideoPlayer(_videoController!),
+                    // Play / Pause overlay
+                    GestureDetector(
+                      onTap: _togglePlay,
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedOpacity(
+                        opacity: _isPlaying ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(
+                          color: Colors.black38,
+                          child: Center(
+                            child: Container(
+                              width: 56.w,
+                              height: 56.w,
+                              decoration: BoxDecoration(
+                                color: AppColors.yellow.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                color: AppColors.dark,
+                                size: 36.sp,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Progress
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: VideoProgressIndicator(
+                        _videoController!,
+                        allowScrubbing: true,
+                        colors: const VideoProgressColors(
+                          playedColor: AppColors.yellow,
+                          bufferedColor: Colors.white24,
+                          backgroundColor: Colors.white12,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 6.h,
+                          horizontal: 8.w,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_currentVideoUrl != null && _currentVideoUrl!.isNotEmpty)
+            _videoPlaceholder(
+              icon: Icons.hourglass_top_rounded,
+              text: 'Loading video...',
+            )
+          else
+            _videoPlaceholder(
+              icon: Icons.videocam_off_outlined,
+              text: 'No video attached',
+            ),
+        ],
+      ),
     );
   }
 
-  void _confirmDeleteTest(BuildContext context, int testId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete Test?'),
-        content: Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel'),
+  Widget _videoPlaceholder({
+    required IconData icon,
+    required String text,
+    String? action,
+    VoidCallback? onAction,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 28.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white38, size: 36.sp),
+          SizedBox(height: 8.h),
+          Text(
+            text,
+            style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12.sp),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<LessonDetailCubit>().deleteTest(testId);
-            },
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
+          if (action != null && onAction != null) ...[
+            SizedBox(height: 10.h),
+            TextButton(
+              onPressed: onAction,
+              child: Text(
+                action,
+                style: GoogleFonts.poppins(color: AppColors.yellow),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Action buttons (Edit / Delete حسب حالة الدرس) ───
+  Widget _buildActionButtons(BuildContext context, dynamic lesson) {
+    final status = _lessonField(lesson, 'status', 'draft');
+    final canEdit = _canEditLesson(status);
+    final canDelete = _canDeleteLesson(status);
+
+    if (!canEdit && !canDelete) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        if (canEdit)
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => _goEditLesson(context, lesson),
+              icon: Icon(Icons.edit_rounded, size: 16.sp),
+              label: Text(
+                'Edit Lesson',
+                style: GoogleFonts.poppins(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.sky.withOpacity(0.2),
+                foregroundColor: AppColors.sky,
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+            ),
+          ),
+        if (canEdit && canDelete) SizedBox(width: 10.w),
+        if (canDelete)
+          Expanded(
+            child: BlocBuilder<LessonDeleteCubit, LessonDeleteState>(
+              builder: (context, state) {
+                final loading = state is LessonDeleteLoading;
+                return ElevatedButton.icon(
+                  onPressed: loading
+                      ? null
+                      : () => _confirmDeleteLesson(context, lesson),
+                  icon: loading
+                      ? SizedBox(
+                          width: 14.w,
+                          height: 14.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.redAccent,
+                          ),
+                        )
+                      : Icon(Icons.delete_outline, size: 16.sp),
+                  label: Text(
+                    'Delete',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent.withOpacity(0.2),
+                    foregroundColor: Colors.redAccent,
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ─── Tests (عرض فقط — كبسة = detail-view) ───
+  Widget _buildTestsSection(BuildContext context, List<TestModel> tests) {
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(14.w),
+      borderColor: AppColors.sky.withOpacity(0.35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.quiz_outlined, color: AppColors.sky, size: 18.sp),
+              SizedBox(width: 8.w),
+              Text(
+                'Tests (${tests.length})',
+                style: GoogleFonts.poppins(
+                  color: AppColors.sky,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          if (tests.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              child: Center(
+                child: Text(
+                  'No tests for this lesson',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 12.sp,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...tests.map((t) => _buildTestCard(context, t)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestCard(BuildContext context, TestModel test) {
+    final color = StatusUI.statusColor(test.status);
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          testDetailViewRoute,
+          arguments: {'testId': test.id},
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 10.h),
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: color.withOpacity(0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4.w,
+              height: 40.h,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 6.h),
+                  Wrap(
+                    spacing: 6.w,
+                    runSpacing: 4.h,
+                    children: [
+                      _miniChip(
+                        Icons.check_circle_outline,
+                        'Pass ${test.passingScore}%',
+                        AppColors.yellow,
+                      ),
+                      _miniChip(
+                        Icons.info_outline,
+                        test.status.toUpperCase(),
+                        color,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white.withOpacity(0.4),
+              size: 20.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Comments ───
+  Widget _buildCommentsSection(List<dynamic> comments) {
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(14.w),
+      borderColor: Colors.white.withOpacity(0.15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.comment_outlined,
+                color: AppColors.orange,
+                size: 18.sp,
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                'Comments (${comments.length})',
+                style: GoogleFonts.poppins(
+                  color: AppColors.orange,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          ...comments.map((c) {
+            final map = c is Map ? c : <String, dynamic>{};
+            final user = map['user'] is Map ? map['user'] as Map : {};
+            final name =
+                '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+            final text = map['comment']?.toString() ?? '';
+            final date = map['created_at']?.toString() ?? '';
+
+            return Container(
+              margin: EdgeInsets.only(bottom: 8.h),
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name.isEmpty ? 'Anonymous' : name,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    text,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                  if (date.isNotEmpty) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      date,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white38,
+                        fontSize: 10.sp,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── Helpers ───
+  Widget _statusBadge(String status, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _miniChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 12.sp),
+          SizedBox(width: 4.w),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

@@ -850,10 +850,38 @@ class _QuestionsListScreenState extends State<QuestionsListScreen>
   );
 
   Widget _buildFab() => FloatingActionButton.extended(
-    onPressed: () => Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const QuestionFormScreen()),
-    ),
+    onPressed: () async {
+      final result = await Navigator.push<dynamic>(
+        context,
+        MaterialPageRoute(builder: (_) => const QuestionFormScreen()),
+      );
+      if (!mounted) return;
+      // Create form now returns the Question object (or true from older flows)
+      if (result == true || result is Question) {
+        if (_hasActiveFilters || _fromTestCreation) {
+          context.read<QuestionFilterCubit>().applyFilters(
+            type: _filterType,
+            difficulty: _filterDifficulty,
+            minScore: _filterMinScore,
+            maxScore: _filterMaxScore,
+            search: _filterSearch,
+            sort: _filterSort,
+            courseId: _filterCourseId,
+            onlyEligible: _filterOnlyEligible,
+          );
+        } else {
+          context.read<QuestionListCubit>().loadInitial();
+        }
+        // If opened from test creation, auto-select the new question
+        if (_fromTestCreation && result is Question) {
+          setState(() {
+            if (!_selectedQuestionsForTest.any((e) => e.id == result.id)) {
+              _selectedQuestionsForTest.add(result);
+            }
+          });
+        }
+      }
+    },
     backgroundColor: AppColors.yellow,
     foregroundColor: AppColors.dark,
     icon: Icon(Icons.add, size: 20.sp),

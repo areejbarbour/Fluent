@@ -4,6 +4,7 @@ import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_state.dart';
+import 'package:fluent/data/models/test_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -96,6 +97,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         _buildQuickStats(),
                         SizedBox(height: 16.h),
                         _buildFeaturesSection(),
+                        SizedBox(height: 16.h),
+                        _buildTestsOverview(),
                         SizedBox(height: 16.h),
                         // _buildActivityOverview(),
                         // SizedBox(height: 16.h),
@@ -339,40 +342,63 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
               // ✅ هنا نستخدم BlocBuilder بأمان لجلب البيانات من الـ Cubit الجديد
               BlocBuilder<TeacherHomeCubit, TeacherHomeState>(
                 builder: (context, state) {
-                  int courses = 0, lessons = 0, questions = 0;
+                  int courses = 0, lessons = 0, questions = 0, tests = 0;
                   if (state is TeacherHomeLoaded) {
                     courses = state.totalCourses;
                     lessons = state.totalLessons;
                     questions = state.totalQuestions;
+                    tests = state.totalTests;
                   }
 
-                  return Row(
+                  // 2×2 grid so labels stay fully readable on narrow screens
+                  return Column(
                     children: [
-                      Expanded(
-                        child: _statPill(
-                          icon: Icons.library_books_rounded,
-                          iconColor: AppColors.sky,
-                          label: "Courses",
-                          value: courses,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statPill(
+                              icon: Icons.library_books_rounded,
+                              iconColor: AppColors.sky,
+                              label: "Courses",
+                              value: courses,
+                              onTap: () => _navigateTo(teacherCoursesRoute),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: _statPill(
+                              icon: Icons.play_lesson_rounded,
+                              iconColor: AppColors.yellow,
+                              label: "Lessons",
+                              value: lessons,
+                              onTap: () => _navigateTo(teacherStatusBoardRoute),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 6.w),
-                      Expanded(
-                        child: _statPill(
-                          icon: Icons.play_lesson_rounded,
-                          iconColor: AppColors.yellow,
-                          label: "Lessons",
-                          value: lessons,
-                        ),
-                      ),
-                      SizedBox(width: 6.w),
-                      Expanded(
-                        child: _statPill(
-                          icon: Icons.quiz_outlined,
-                          iconColor: const Color(0xffB388FF),
-                          label: "Questions",
-                          value: questions,
-                        ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statPill(
+                              icon: Icons.quiz_outlined,
+                              iconColor: const Color(0xffB388FF),
+                              label: "Questions",
+                              value: questions,
+                              onTap: () => _navigateTo(questionsListRoute),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: _statPill(
+                              icon: Icons.assignment_rounded,
+                              iconColor: AppColors.orange,
+                              label: "Tests",
+                              value: tests,
+                              onTap: () => _navigateTo(teacherStatusBoardRoute),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   );
@@ -450,19 +476,19 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     required String label,
     required int value,
     String suffix = "",
+    VoidCallback? onTap,
   }) {
-    return _glassContainer(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
+    final pill = _glassContainer(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
       radius: 16.r,
       gradientColors: [
         Colors.white.withOpacity(.12),
         Colors.white.withOpacity(.04),
       ],
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: EdgeInsets.all(5.r),
+            padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -472,40 +498,37 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                 ],
               ),
             ),
-            child: Icon(icon, color: iconColor, size: 14.sp),
+            child: Icon(icon, color: iconColor, size: 18.sp),
           ),
-          SizedBox(width: 6.w),
-          Flexible(
+          SizedBox(width: 10.w),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: TweenAnimationBuilder<int>(
-                    tween: IntTween(begin: 0, end: value),
-                    duration: 1100.ms,
-                    curve: Curves.easeOutCubic,
-                    builder: (context, v, _) => Text(
-                      "${_formatNumber(v)}$suffix",
-                      maxLines: 1,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.sp,
-                      ),
+                TweenAnimationBuilder<int>(
+                  tween: IntTween(begin: 0, end: value),
+                  duration: 1100.ms,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, v, _) => Text(
+                    "${_formatNumber(v)}$suffix",
+                    maxLines: 1,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16.sp,
                     ),
                   ),
                 ),
+                SizedBox(height: 2.h),
                 Text(
                   label,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
                   style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.6),
-                    fontSize: 8.sp,
-                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(.75),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -514,25 +537,55 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
         ],
       ),
     );
+
+    if (onTap == null) return pill;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: pill,
+    );
   }
 
   Widget _buildQuickStats() {
-    return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 6, child: _contentCreationCard()),
-            SizedBox(width: 8.w),
-            Expanded(flex: 5, child: _performanceCard()),
-          ],
-        )
-        .animate()
-        .fadeIn(delay: 250.ms, duration: 500.ms)
-        .moveY(begin: 10, end: 0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stackVertically = constraints.maxWidth < 360;
+        final creation = _contentCreationCard();
+        final performance = _performanceCard();
+
+        if (stackVertically) {
+          return Column(
+                children: [
+                  creation,
+                  SizedBox(height: 10.h),
+                  performance,
+                ],
+              )
+              .animate()
+              .fadeIn(delay: 250.ms, duration: 500.ms)
+              .moveY(begin: 10, end: 0);
+        }
+
+        return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 6, child: creation),
+                SizedBox(width: 10.w),
+                Expanded(flex: 5, child: performance),
+              ],
+            )
+            .animate()
+            .fadeIn(delay: 250.ms, duration: 500.ms)
+            .moveY(begin: 10, end: 0);
+      },
+    );
   }
 
   Widget _contentCreationCard() {
     return _glassContainer(
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(14.w),
       radius: 20.r,
       gradientColors: [
         AppColors.primary.withOpacity(.65),
@@ -545,16 +598,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
           Row(
             children: [
               _ringIcon(Icons.add_circle_outline_rounded, AppColors.sky),
-              SizedBox(width: 5.w),
-              Flexible(
+              SizedBox(width: 8.w),
+              Expanded(
                 child: Text(
                   "Content Creation",
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 11.sp,
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
@@ -563,32 +615,36 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
           SizedBox(height: 8.h),
           Text(
             "Create engaging lessons and questions",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.85),
-              fontSize: 10.sp,
+              fontSize: 11.sp,
+              height: 1.35,
             ),
           ),
-          SizedBox(height: 10.h),
-          Wrap(
-            // ✅ استخدام Wrap لمنع التداخل
-            spacing: 6.w,
-            runSpacing: 6.h,
-            children: [
-              _quickActionChip(
-                Icons.play_lesson_outlined,
-                "New Lesson",
-                AppColors.yellow,
-                () => _navigateTo(teacherStatusBoardRoute),
-              ),
-              _quickActionChip(
-                Icons.quiz_outlined,
-                "New Question",
-                const Color(0xffB388FF),
-                () => _navigateTo(questionsListRoute),
-              ),
-            ],
+          SizedBox(height: 12.h),
+          // Full-width action buttons — labels always visible
+          _quickActionButton(
+            Icons.play_lesson_outlined,
+            "New Lesson",
+            AppColors.yellow,
+            () =>
+                _navigateTo(teacherCoursesRoute), // pick course → create lesson
+          ),
+          SizedBox(height: 8.h),
+          _quickActionButton(
+            Icons.quiz_outlined,
+            "New Question",
+            const Color(0xffB388FF),
+            () => _navigateTo(questionsListRoute),
+          ),
+          SizedBox(height: 8.h),
+          _quickActionButton(
+            Icons.assignment_outlined,
+            "New Test",
+            AppColors.orange,
+            () => _navigateTo(
+              teacherCoursesRoute,
+            ), // pick course/lesson → create test
           ),
         ],
       ),
@@ -596,48 +652,175 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   }
 
   Widget _performanceCard() {
-    return _glassContainer(
-      padding: EdgeInsets.all(12.w),
-      radius: 20.r,
-      gradientColors: [
-        AppColors.sky.withOpacity(.15),
-        AppColors.primary.withOpacity(.35),
-      ],
-      borderColor: Colors.white.withOpacity(.18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return BlocBuilder<TeacherHomeCubit, TeacherHomeState>(
+      builder: (context, state) {
+        int courses = 0, lessons = 0, questions = 0, tests = 0;
+        int published = 0, draft = 0, pending = 0, inReview = 0;
+        if (state is TeacherHomeLoaded) {
+          courses = state.totalCourses;
+          lessons = state.totalLessons;
+          questions = state.totalQuestions;
+          tests = state.totalTests;
+          published = state.publishedTests;
+          draft = state.draftTests;
+          pending = state.pendingTests;
+          inReview = state.inReviewTests;
+        }
+
+        final maxContent = [
+          courses,
+          lessons,
+          questions,
+          tests,
+        ].fold<int>(1, (a, b) => a > b ? a : b);
+
+        return _glassContainer(
+          padding: EdgeInsets.all(14.w),
+          radius: 20.r,
+          gradientColors: [
+            AppColors.sky.withOpacity(.15),
+            AppColors.primary.withOpacity(.35),
+          ],
+          borderColor: Colors.white.withOpacity(.18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ringIcon(Icons.insights_rounded, AppColors.yellow),
-              SizedBox(width: 5.w),
+              Row(
+                children: [
+                  _ringIcon(Icons.insights_rounded, AppColors.yellow),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      "Overview",
+                      maxLines: 1,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              _statBar(
+                "Courses",
+                courses / maxContent,
+                AppColors.sky,
+                count: courses,
+              ),
+              SizedBox(height: 8.h),
+              _statBar(
+                "Lessons",
+                lessons / maxContent,
+                AppColors.yellow,
+                count: lessons,
+              ),
+              SizedBox(height: 8.h),
+              _statBar(
+                "Questions",
+                questions / maxContent,
+                const Color(0xffB388FF),
+                count: questions,
+              ),
+              SizedBox(height: 8.h),
+              _statBar(
+                "Tests",
+                tests / maxContent,
+                AppColors.orange,
+                count: tests,
+              ),
+              if (tests > 0) ...[
+                SizedBox(height: 12.h),
+                Container(height: 1, color: Colors.white.withOpacity(0.1)),
+                SizedBox(height: 10.h),
+                Text(
+                  "Test status",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Wrap(
+                  spacing: 6.w,
+                  runSpacing: 6.h,
+                  children: [
+                    _statusMiniChip("Published", published, Colors.greenAccent),
+                    _statusMiniChip("Draft", draft, Colors.white70),
+                    _statusMiniChip("Pending", pending, AppColors.lightOrange),
+                    _statusMiniChip("In Review", inReview, AppColors.sky),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statusMiniChip(String label, int count, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        "$label · $count",
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _quickActionButton(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12.r),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.16),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: color.withOpacity(0.45)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 16.sp),
+              SizedBox(width: 8.w),
               Expanded(
                 child: Text(
-                  "Performance",
+                  label,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    color: Colors.white,
+                    color: color,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
-                    fontSize: 11.sp,
                   ),
                 ),
               ),
+              Icon(Icons.arrow_forward_ios_rounded, color: color, size: 12.sp),
             ],
           ),
-          SizedBox(height: 10.h),
-          // ✅ تم تغيير التصميم ليصبح عمودياً (تحت بعض) بدلاً من جنب بعض لمنع التداخل
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _statBar("Courses", 0.75, AppColors.sky),
-              SizedBox(height: 6.h),
-              _statBar("Lessons", 0.60, AppColors.yellow),
-              SizedBox(height: 6.h),
-              _statBar("Questions", 0.85, const Color(0xffB388FF)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -708,54 +891,61 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     );
   }
 
-  Widget _statBar(String label, double progress, Color color) {
+  Widget _statBar(String label, double progress, Color color, {int? count}) {
+    final clamped = progress.clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    height: 5.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.15),
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: progress,
-                    child: Container(
-                      height: 5.h,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [color, color.withOpacity(0.7)],
-                        ),
-                        borderRadius: BorderRadius.circular(10.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withOpacity(.6),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                label,
+                maxLines: 1,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.85),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            SizedBox(width: 6.w),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: Colors.white.withOpacity(.7),
-                fontSize: 7.sp,
+            if (count != null)
+              Text(
+                "$count",
+                style: GoogleFonts.poppins(
+                  color: color,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
           ],
+        ),
+        SizedBox(height: 4.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10.r),
+          child: Stack(
+            children: [
+              Container(
+                height: 6.h,
+                width: double.infinity,
+                color: Colors.white.withOpacity(.15),
+              ),
+              FractionallySizedBox(
+                widthFactor: clamped,
+                child: Container(
+                  height: 6.h,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [color, color.withOpacity(0.7)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: color.withOpacity(.5), blurRadius: 6),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1058,6 +1248,510 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     );
   }
 
+  Widget _buildTestsOverview() {
+    return BlocBuilder<TeacherHomeCubit, TeacherHomeState>(
+      builder: (context, state) {
+        int totalTests = 0;
+        int published = 0;
+        int draft = 0;
+        int pending = 0;
+        int inReview = 0;
+        int approved = 0;
+        int archived = 0;
+        int closed = 0;
+        int changesRequested = 0;
+        List<TestModel> recent = const [];
+
+        if (state is TeacherHomeLoaded) {
+          totalTests = state.totalTests;
+          published = state.publishedTests;
+          draft = state.draftTests;
+          pending = state.pendingTests;
+          inReview = state.inReviewTests;
+          approved = state.approvedTests;
+          archived = state.archivedTests;
+          closed = state.closedTests;
+          changesRequested = state.changesRequestedTests;
+          recent = state.recentTests;
+        }
+
+        return _glassContainer(
+              padding: EdgeInsets.all(14.w),
+              radius: 18.r,
+              gradientColors: [
+                Colors.white.withOpacity(.08),
+                Colors.white.withOpacity(.03),
+              ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.assignment_rounded,
+                        color: AppColors.orange,
+                        size: 16.sp,
+                      ),
+                      SizedBox(width: 6.w),
+                      Text(
+                        "Tests Overview",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => _navigateTo(teacherStatusBoardRoute),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.orange.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: AppColors.orange.withOpacity(0.35),
+                            ),
+                          ),
+                          child: Text(
+                            "View All",
+                            style: GoogleFonts.poppins(
+                              color: AppColors.orange,
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+
+                  // ✅ تفصيل حالات الاختبارات (يظهر فقط لو في اختبارات)
+                  if (totalTests > 0) ...[
+                    _testsProgressBar(
+                      published: published,
+                      draft: draft,
+                      pending: pending,
+                      inReview: inReview,
+                      approved: approved,
+                      archived: archived,
+                      closed: closed,
+                      changesRequested: changesRequested,
+                      total: totalTests,
+                    ),
+                    SizedBox(height: 12.h),
+                  ],
+
+                  // ✅ أحدث الاختبارات
+                  if (state is TeacherHomeLoading)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22.w,
+                          height: 22.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: AppColors.orange,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (recent.isEmpty)
+                    _emptyTestsState()
+                  else
+                    ...List.generate(recent.length, (i) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: i == recent.length - 1 ? 0 : 8.h,
+                        ),
+                        child: _recentTestTile(recent[i], i)
+                            .animate()
+                            .fadeIn(delay: (120 * i).ms, duration: 400.ms)
+                            .moveX(begin: 12, end: 0),
+                      );
+                    }),
+                ],
+              ),
+            )
+            .animate()
+            .fadeIn(delay: 450.ms, duration: 500.ms)
+            .moveY(begin: 10, end: 0);
+      },
+    );
+  }
+
+  Widget _testsProgressBar({
+    required int published,
+    required int draft,
+    required int pending,
+    required int inReview,
+    required int approved,
+    required int archived,
+    required int closed,
+    required int changesRequested,
+    required int total,
+  }) {
+    // ✅ نسبة كل حالة من الإجمالي
+    double pct(int n) => total == 0 ? 0 : n / total;
+
+    // ✅ الشريط الملوّن (stacked)
+    final segments = <_TestSegment>[
+      _TestSegment(Colors.greenAccent, pct(published)),
+      _TestSegment(AppColors.sky, pct(approved)),
+      _TestSegment(AppColors.lightOrange, pct(pending)),
+      _TestSegment(const Color(0xffB388FF), pct(inReview)),
+      _TestSegment(Colors.redAccent, pct(changesRequested)),
+      _TestSegment(Colors.white70, pct(draft)),
+      _TestSegment(Colors.purpleAccent, pct(archived)),
+      _TestSegment(Colors.blueGrey, pct(closed)),
+    ].where((s) => s.ratio > 0).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ✅ Stacked Progress Bar
+        Row(
+          children: [
+            Text(
+              "Status Breakdown",
+              style: GoogleFonts.poppins(
+                color: Colors.white.withOpacity(.75),
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              "$total total",
+              style: GoogleFonts.poppins(
+                color: AppColors.orange,
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 6.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10.r),
+          child: Container(
+            height: 8.h,
+            color: Colors.white.withOpacity(.10),
+            child: Row(
+              children: [
+                for (final s in segments)
+                  Expanded(
+                    flex: (s.ratio * 1000).round().clamp(1, 100000),
+                    child: Container(color: s.color),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 8.h),
+        // ✅ Legend (الأكثر أهمية)
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 4.h,
+          children: [
+            if (published > 0)
+              _legendDot(Colors.greenAccent, "Live", published),
+            if (approved > 0) _legendDot(AppColors.sky, "Approved", approved),
+            if (pending > 0)
+              _legendDot(AppColors.lightOrange, "Pending", pending),
+            if (inReview > 0)
+              _legendDot(const Color(0xffB388FF), "Review", inReview),
+            if (changesRequested > 0)
+              _legendDot(Colors.redAccent, "Changes", changesRequested),
+            if (draft > 0) _legendDot(Colors.white70, "Draft", draft),
+            if (archived > 0)
+              _legendDot(Colors.purpleAccent, "Archived", archived),
+            if (closed > 0) _legendDot(Colors.blueGrey, "Closed", closed),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _legendDot(Color color, String label, int count) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6.w,
+            height: 6.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: [
+                BoxShadow(color: color.withOpacity(.5), blurRadius: 4),
+              ],
+            ),
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            "$label ",
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(.65),
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            "$count",
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _recentTestTile(TestModel test, int index) {
+    final color = _testStatusColor(test.normalizedStatus);
+    final title = test.titleEn.isNotEmpty
+        ? test.titleEn
+        : (test.titleAr.isNotEmpty ? test.titleAr : 'Untitled Test');
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        testDetailViewRoute,
+        arguments: {'testId': test.id},
+      ),
+      child: Container(
+        padding: EdgeInsets.all(10.w),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: color.withOpacity(0.30)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36.w,
+              height: 36.w,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.18),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withOpacity(0.45)),
+              ),
+              child: Icon(
+                test.isCourseTest
+                    ? Icons.library_books_rounded
+                    : Icons.play_lesson_rounded,
+                color: color,
+                size: 16.sp,
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Row(
+                    children: [
+                      _testStatusBadge(test.normalizedStatus, color),
+                      SizedBox(width: 6.w),
+                      Icon(
+                        Icons.help_outline,
+                        color: Colors.white.withOpacity(.55),
+                        size: 10.sp,
+                      ),
+                      SizedBox(width: 2.w),
+                      Text(
+                        "${test.questions.length} Q",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(.55),
+                          fontSize: 8.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      Container(
+                        width: 2.w,
+                        height: 2.w,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.4),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      Flexible(
+                        child: Text(
+                          "Pass ${test.passingScore}%",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(.55),
+                            fontSize: 8.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: color.withOpacity(.7),
+              size: 12.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _testStatusBadge(String status, Color color) {
+    final label = _testStatusLabel(status);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.20),
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 7.sp,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  String _testStatusLabel(String status) {
+    switch (status) {
+      case 'published':
+        return 'LIVE';
+      case 'in_review':
+        return 'REVIEW';
+      case 'changes_requested':
+        return 'CHANGES';
+      case 'approved':
+        return 'APPROVED';
+      case 'archived':
+        return 'ARCHIVED';
+      case 'closed':
+        return 'CLOSED';
+      case 'pending':
+        return 'PENDING';
+      case 'draft':
+      default:
+        return 'DRAFT';
+    }
+  }
+
+  Color _testStatusColor(String status) {
+    switch (status) {
+      case 'published':
+        return Colors.greenAccent;
+      case 'pending':
+        return AppColors.lightOrange;
+      case 'in_review':
+        return const Color(0xffB388FF);
+      case 'changes_requested':
+        return Colors.redAccent;
+      case 'approved':
+        return AppColors.sky;
+      case 'archived':
+        return Colors.purpleAccent;
+      case 'closed':
+        return Colors.blueGrey;
+      case 'draft':
+      default:
+        return Colors.white70;
+    }
+  }
+
+  Widget _emptyTestsState() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 10.w),
+      decoration: BoxDecoration(
+        color: AppColors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.orange.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38.w,
+            height: 38.w,
+            decoration: BoxDecoration(
+              color: AppColors.orange.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.orange.withOpacity(0.35)),
+            ),
+            child: Icon(
+              Icons.assignment_outlined,
+              color: AppColors.orange,
+              size: 18.sp,
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "No tests yet",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  "Create tests from a course to assess students",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.65),
+                    fontSize: 9.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecentActivity() {
     return _glassContainer(
           padding: EdgeInsets.all(14.w),
@@ -1207,6 +1901,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     }
     return buffer.toString();
   }
+}
+
+// ✅ بيانات كل جزء في شريط الـ Stacked Progress
+class _TestSegment {
+  final Color color;
+  final double ratio;
+  const _TestSegment(this.color, this.ratio);
 }
 
 class _TwinklingStars extends StatelessWidget {

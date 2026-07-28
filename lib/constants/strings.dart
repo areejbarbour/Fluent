@@ -40,8 +40,13 @@ const String teacherCoursesRoute = '/teacher/courses';
 // ✅ Teacher Course Detail route
 const String teacherCourseDetailRoute = '/teacher/courses/detail';
 
+// ✅ Course Tests Screen Route
+const String courseTestsRoute = '/teacher/courses/tests';
+
 // ✅ Lesson Form Route
 const String lessonFormRoute = '/teacher/lessons/form';
+
+const String lessonDetailRoute = '/teacher/lessons/detail';
 
 // ✅ Question Filter API Endpoint
 const String apiQuestionsFilter = '/api/questions/filter';
@@ -57,6 +62,7 @@ const String apiGetStudentLevels = '/api/getStudentLevels';
 
 const String testFormRoute = '/teacher/tests/form';
 
+const String testDetailViewRoute = '/teacher/tests/detail-view';
 const String lessonDetailRoute = '/lesson-detail';
 
 

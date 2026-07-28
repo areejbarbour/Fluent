@@ -259,7 +259,8 @@ class _FormViewState extends State<_FormView> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context, true);
+      // Return the created Question so callers (e.g. test question picker) can use it
+      Navigator.pop(context, state.question);
     } else if (state is QuestionCreateFailure) {
       _showError(context, state.error, state.errors);
     }
@@ -435,10 +436,9 @@ class _FormViewState extends State<_FormView> {
           SizedBox(height: 12.h),
           _buildDifficultyAndScore(),
           SizedBox(height: 12.h),
-          if (_type == QuestionType.fill) ...[
-            _buildTextQuestionField(),
-            SizedBox(height: 12.h),
-          ],
+          // text_question: available for all types (required only for FILL)
+          _buildTextQuestionField(),
+          SizedBox(height: 12.h),
           _buildMediaPickers(),
           SizedBox(height: 12.h),
           _buildAnswersSection(),
@@ -577,19 +577,32 @@ class _FormViewState extends State<_FormView> {
   }
 
   Widget _buildTextQuestionField() {
+    final isFill = _type == QuestionType.fill;
     return QuestionUI.glass(
       padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Question Text",
-            style: GoogleFonts.poppins(
-              color: AppColors.yellow,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
+          Row(
+            children: [
+              Text(
+                "Question Text",
+                style: GoogleFonts.poppins(
+                  color: AppColors.yellow,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                isFill ? '(required)' : '(optional)',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontSize: 10.sp,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 10.h),
           TextFormField(
@@ -597,8 +610,15 @@ class _FormViewState extends State<_FormView> {
             maxLines: 4,
             onChanged: (_) => setState(() {}),
             style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
-            decoration: _inputDecoration("e.g. The capital of France is {1}."),
+            decoration: _inputDecoration(
+              isFill
+                  ? "e.g. The capital of France is {1}."
+                  : "Optional body / stem for this question",
+            ),
             validator: (v) {
+              // Backend: required only for FILL; optional for other types
+              if (!isFill) return null;
+
               if (v == null || v.trim().isEmpty) {
                 return 'Question text is required for Fill type';
               }
@@ -626,8 +646,7 @@ class _FormViewState extends State<_FormView> {
               return null;
             },
           ),
-          SizedBox(height: 14.h),
-          _buildLiveFillPreview(),
+          if (isFill) ...[SizedBox(height: 14.h), _buildLiveFillPreview()],
         ],
       ),
     );
@@ -1658,8 +1677,12 @@ class _FormViewState extends State<_FormView> {
     formData.fields.add(MapEntry('difficulty', _difficulty.value));
     formData.fields.add(MapEntry('score', _score.toString()));
 
-    if (_type == QuestionType.fill && _textQuestion.text.trim().isNotEmpty) {
+    // Send text_question for any type when provided (required for FILL)
+    if (_textQuestion.text.trim().isNotEmpty) {
       formData.fields.add(MapEntry('text_question', _textQuestion.text.trim()));
+    } else if (_type == QuestionType.fill) {
+      // Keep explicit empty send only if needed; validator already blocks empty FILL
+      formData.fields.add(const MapEntry('text_question', ''));
     }
 
     for (int i = 0; i < _answers.length; i++) {
