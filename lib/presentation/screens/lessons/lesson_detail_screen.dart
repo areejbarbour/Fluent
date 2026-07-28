@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -30,6 +31,9 @@ class LessonDetailScreen extends StatefulWidget {
 }
 
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
+  bool _isSendingComment = false;
+  int? _busyCommentId;
+
   @override
   void initState() {
     super.initState();
@@ -41,10 +45,462 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     });
   }
 
+  Future<void> _handleAddComment(String text) async {
+    setState(() => _isSendingComment = true);
+    final error = await context
+        .read<LessonDetailCubit>()
+        .submitComment(widget.lessonId ?? 0, text);
+    if (!mounted) return;
+    setState(() => _isSendingComment = false);
+
+    if (error != null) _showErrorSnack(error);
+  }
+
+  void _showErrorSnack(String message) {
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.white, size: 18),
+            SizedBox(width: 8.w),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showCommentActions(LessonCommentModel comment) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26.r)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 28.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.dark.withOpacity(.97),
+                    AppColors.primary.withOpacity(.9),
+                  ],
+                ),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(26.r)),
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(.14)),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.25),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                  SizedBox(height: 18.h),
+                  _actionTile(
+                    icon: Icons.edit_rounded,
+                    label: "Edit comment",
+                    iconColors: const [AppColors.sky, Color(0xFFB388FF)],
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _openEditDialog(comment);
+                    },
+                  ),
+                  SizedBox(height: 10.h),
+                  _actionTile(
+                    icon: Icons.delete_outline_rounded,
+                    label: "Delete comment",
+                    iconColors: const [Color(0xFFFF6B6B), Color(0xFFE53935)],
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _confirmDelete(comment);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _actionTile({
+    required IconData icon,
+    required String label,
+    required List<Color> iconColors,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.06),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: Colors.white.withOpacity(.10)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34.w,
+              height: 34.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(colors: iconColors),
+              ),
+              child: Icon(icon, color: Colors.white, size: 17.sp),
+            ),
+            SizedBox(width: 12.w),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openEditDialog(LessonCommentModel comment) {
+    final controller = TextEditingController(text: comment.comment);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(.6),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24.r),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              child: Container(
+                padding: EdgeInsets.all(20.w),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24.r),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.dark.withOpacity(.95),
+                      AppColors.primary.withOpacity(.85),
+                    ],
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(.16)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 34.w,
+                          height: 34.w,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [AppColors.sky, Color(0xFFB388FF)],
+                            ),
+                          ),
+                          child: Icon(Icons.edit_rounded,
+                              color: Colors.white, size: 16.sp),
+                        ),
+                        SizedBox(width: 10.w),
+                        Text(
+                          "Edit Comment",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.06),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: Colors.white.withOpacity(.14)),
+                      ),
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        minLines: 1,
+                        maxLines: 5,
+                        style: GoogleFonts.poppins(
+                            color: Colors.white, fontSize: 12.5.sp),
+                        cursorColor: AppColors.yellow,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.symmetric(vertical: 11.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.08),
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(.14)),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(.8),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              final newText = controller.text.trim();
+                              Navigator.pop(dialogContext);
+                              if (newText.isNotEmpty &&
+                                  newText != comment.comment) {
+                                _handleEditComment(comment.id, newText);
+                              }
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.symmetric(vertical: 11.h),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppColors.orange,
+                                    AppColors.yellow
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.yellow.withOpacity(.4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                "Save",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(LessonCommentModel comment) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(.6),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24.r),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              child: Container(
+                padding: EdgeInsets.all(20.w),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24.r),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.dark.withOpacity(.95),
+                      AppColors.primary.withOpacity(.85),
+                    ],
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(.16)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 46.w,
+                      height: 46.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF6B6B).withOpacity(.15),
+                        border: Border.all(
+                            color: const Color(0xFFFF6B6B).withOpacity(.4)),
+                      ),
+                      child: Icon(Icons.delete_outline_rounded,
+                          color: const Color(0xFFFF6B6B), size: 22.sp),
+                    ),
+                    SizedBox(height: 14.h),
+                    Text(
+                      "Delete this comment?",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      "This can't be undone.",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.6),
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.symmetric(vertical: 11.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.08),
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(.14)),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(.8),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.pop(dialogContext);
+                              _handleDeleteComment(comment.id);
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.symmetric(vertical: 11.h),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF6B6B),
+                                    Color(0xFFE53935)
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        const Color(0xFFFF6B6B).withOpacity(.4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                "Delete",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleEditComment(int commentId, String newText) async {
+    setState(() => _busyCommentId = commentId);
+    final error = await context
+        .read<LessonDetailCubit>()
+        .editComment(commentId, newText);
+    if (!mounted) return;
+    setState(() => _busyCommentId = null);
+    if (error != null) _showErrorSnack(error);
+  }
+
+  Future<void> _handleDeleteComment(int commentId) async {
+    setState(() => _busyCommentId = commentId);
+    final error =
+        await context.read<LessonDetailCubit>().removeComment(commentId);
+    if (!mounted) return;
+    setState(() => _busyCommentId = null);
+    if (error != null) _showErrorSnack(error);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.dark,
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           _buildBackground(),
@@ -76,6 +532,17 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                       return const SizedBox.shrink();
                     },
                   ),
+                ),
+                BlocBuilder<LessonDetailCubit, LessonDetailState>(
+                  builder: (context, state) {
+                    if (state is! LessonDetailSuccess) {
+                      return const SizedBox.shrink();
+                    }
+                    return _CommentComposer(
+                      isSending: _isSendingComment,
+                      onSubmit: _handleAddComment,
+                    );
+                  },
                 ),
               ],
             ),
@@ -181,14 +648,14 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       children: [
         SizedBox(height: 4.h),
         if (lesson != null && lesson.video.isNotEmpty)
-          _LuxuryVideoPlayer(videoUrl: lesson.video)
+          _LuxuryVideoPlayer(videoUrl: lesson.video, title: lesson.title)
         else
           _noVideoCard(),
         SizedBox(height: 16.h),
         if (lesson != null) _buildLessonInfoCard(lesson),
-        SizedBox(height: 22.h),
+        SizedBox(height: 24.h),
         _buildCommentsHeader(comments.length),
-        SizedBox(height: 12.h),
+        SizedBox(height: 14.h),
         if (comments.isEmpty)
           _emptyCommentsCard()
         else
@@ -198,10 +665,14 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   child: _CommentCard(
                     comment: entry.value,
                     index: entry.key,
+                    isBusy: _busyCommentId == entry.value.id,
+                    onMoreTap: entry.value.isOwn
+                        ? () => _showCommentActions(entry.value)
+                        : null,
                   ),
                 ),
               ),
-        SizedBox(height: 40.h),
+        SizedBox(height: 16.h),
       ],
     );
   }
@@ -233,39 +704,81 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(22.r),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22.r),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(.10),
+                AppColors.sky.withOpacity(.14),
                 Colors.white.withOpacity(.04),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(.15)),
+            border: Border.all(color: Colors.white.withOpacity(.16)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.sky.withOpacity(.14),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  lesson.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w800,
+              Container(
+                width: 46.w,
+                height: 46.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.sky, Color(0xFFB388FF)],
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.sky.withOpacity(.5),
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.play_circle_fill_rounded,
+                    color: Colors.white, size: 24.sp),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "VIDEO LESSON",
+                      style: GoogleFonts.poppins(
+                        color: AppColors.sky.withOpacity(.85),
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      lesson.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 15.5.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(width: 10.w),
               Container(
                 padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.orange, AppColors.yellow],
@@ -304,13 +817,23 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   Widget _buildCommentsHeader(int count) {
     return Row(
       children: [
-        Icon(Icons.forum_rounded, color: AppColors.sky, size: 17.sp),
-        SizedBox(width: 8.w),
+        Container(
+          width: 30.w,
+          height: 30.w,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [AppColors.sky, Color(0xFFB388FF)],
+            ),
+          ),
+          child: Icon(Icons.forum_rounded, color: Colors.white, size: 15.sp),
+        ),
+        SizedBox(width: 10.w),
         Text(
           "Comments",
           style: GoogleFonts.poppins(
             color: Colors.white,
-            fontSize: 15.sp,
+            fontSize: 15.5.sp,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -331,6 +854,31 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             ),
           ),
         ),
+        const Spacer(),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.06),
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: Colors.white.withOpacity(.12)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sort_rounded,
+                  color: Colors.white.withOpacity(.6), size: 13.sp),
+              SizedBox(width: 4.w),
+              Text(
+                "Newest",
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.6),
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -341,7 +889,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 26.h),
+          padding: EdgeInsets.symmetric(vertical: 28.h),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18.r),
@@ -351,14 +899,32 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.chat_bubble_outline_rounded,
-                  color: Colors.white.withOpacity(.35), size: 26.sp),
-              SizedBox(height: 8.h),
+              Container(
+                width: 46.w,
+                height: 46.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(.06),
+                  border: Border.all(color: Colors.white.withOpacity(.12)),
+                ),
+                child: Icon(Icons.chat_bubble_outline_rounded,
+                    color: Colors.white.withOpacity(.4), size: 22.sp),
+              ),
+              SizedBox(height: 10.h),
               Text(
                 "No comments yet",
                 style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.55),
-                  fontSize: 12.sp,
+                  color: Colors.white.withOpacity(.65),
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                "Be the first to share your thoughts",
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.4),
+                  fontSize: 10.5.sp,
                 ),
               ),
             ],
@@ -503,23 +1069,29 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
 class _LuxuryVideoPlayer extends StatefulWidget {
   final String videoUrl;
-  const _LuxuryVideoPlayer({required this.videoUrl});
+  final String? title;
+  const _LuxuryVideoPlayer({required this.videoUrl, this.title});
 
   @override
   State<_LuxuryVideoPlayer> createState() => _LuxuryVideoPlayerState();
 }
 
-class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
+class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
+    with SingleTickerProviderStateMixin {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _hasError = false;
   bool _showControls = true;
   bool _isMuted = false;
   Timer? _hideTimer;
+  late final AnimationController _borderController;
 
   @override
   void initState() {
     super.initState();
+    _borderController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 6))
+          ..repeat();
     _initializePlayer();
   }
 
@@ -593,14 +1165,13 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     final hours = d.inHours;
-    return hours > 0
-        ? "$hours:$minutes:$seconds"
-        : "$minutes:$seconds";
+    return hours > 0 ? "$hours:$minutes:$seconds" : "$minutes:$seconds";
   }
 
   @override
   void dispose() {
     _cancelHideTimer();
+    _borderController.dispose();
     _controller?.removeListener(_onControllerUpdate);
     _controller?.dispose();
     super.dispose();
@@ -608,45 +1179,56 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24.r),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withOpacity(.14)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.sky.withOpacity(.18),
-              blurRadius: 26,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: AspectRatio(
-          aspectRatio:
-              _isInitialized ? _controller!.value.aspectRatio : 16 / 9,
-          child: _hasError
-              ? _buildErrorPlaceholder()
-              : !_isInitialized
-                  ? _buildLoadingPlaceholder()
-                  : GestureDetector(
-                      onTap: _onTapVideo,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          VideoPlayer(_controller!),
-                          AnimatedOpacity(
-                            opacity: _showControls ? 1 : 0,
-                            duration: 220.ms,
-                            child: IgnorePointer(
-                              ignoring: !_showControls,
-                              child: _buildControlsOverlay(),
+    return AnimatedBuilder(
+      animation: _borderController,
+      builder: (context, _) {
+        return CustomPaint(
+          foregroundPainter: _AnimatedBorderPainter(
+            animationValue: _borderController.value,
+            radius: 24.r,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24.r),
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.sky.withOpacity(.18),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: AspectRatio(
+                aspectRatio: _isInitialized
+                    ? _controller!.value.aspectRatio
+                    : 16 / 9,
+                child: _hasError
+                    ? _buildErrorPlaceholder()
+                    : !_isInitialized
+                        ? _buildLoadingPlaceholder()
+                        : GestureDetector(
+                            onTap: _onTapVideo,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                VideoPlayer(_controller!),
+                                AnimatedOpacity(
+                                  opacity: _showControls ? 1 : 0,
+                                  duration: 220.ms,
+                                  child: IgnorePointer(
+                                    ignoring: !_showControls,
+                                    child: _buildControlsOverlay(),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-        ),
-      ),
+              ),
+            ),
+          ),
+        );
+      },
     ).animate().fadeIn(duration: 400.ms).scale(
           begin: const Offset(.97, .97),
           end: const Offset(1, 1),
@@ -712,9 +1294,9 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(.35),
+            Colors.black.withOpacity(.45),
             Colors.transparent,
-            Colors.black.withOpacity(.55),
+            Colors.black.withOpacity(.6),
           ],
           stops: const [0.0, 0.5, 1.0],
         ),
@@ -722,24 +1304,37 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
       child: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(10.w),
+            padding: EdgeInsets.fromLTRB(12.w, 10.h, 10.w, 0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (widget.title != null && widget.title!.isNotEmpty)
+                  Expanded(
+                    child: Text(
+                      widget.title!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.92),
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 GestureDetector(
                   onTap: _toggleMute,
                   child: Container(
                     padding: EdgeInsets.all(7.r),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(.35),
+                      color: Colors.black.withOpacity(.4),
+                      border: Border.all(color: Colors.white.withOpacity(.2)),
                     ),
                     child: Icon(
                       _isMuted
                           ? Icons.volume_off_rounded
                           : Icons.volume_up_rounded,
                       color: Colors.white,
-                      size: 16.sp,
+                      size: 15.sp,
                     ),
                   ),
                 ),
@@ -776,8 +1371,7 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
           ),
           const Spacer(),
           Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             child: Row(
               children: [
                 Text(
@@ -837,23 +1431,30 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer> {
   }
 }
 
+// ================== كرت التعليق (تصميم فخم أكتر) ==================
+
 class _CommentCard extends StatelessWidget {
   final LessonCommentModel comment;
   final int index;
+  final VoidCallback? onMoreTap;
+  final bool isBusy;
 
-  const _CommentCard({required this.comment, required this.index});
+  const _CommentCard({
+    required this.comment,
+    required this.index,
+    this.onMoreTap,
+    this.isBusy = false,
+  });
 
-  static const List<Color> _avatarColors = [
-    AppColors.sky,
-    AppColors.orange,
-    Color(0xFF4ADE80),
-    AppColors.yellow,
-    Color(0xFFB388FF),
-    Color(0xFFFF6FB5),
+  static const List<List<Color>> _avatarGradients = [
+    [AppColors.sky, Color(0xFFB388FF)],
+    [AppColors.orange, AppColors.yellow],
+    [Color(0xFF4ADE80), Color(0xFF22C55E)],
+    [Color(0xFFFF6FB5), Color(0xFFB861F5)],
   ];
 
-  Color _colorForUser(int userId) =>
-      _avatarColors[userId % _avatarColors.length];
+  List<Color> _gradientForUser(int seed) =>
+      _avatarGradients[seed % _avatarGradients.length];
 
   String _timeAgo(String? isoDate) {
     if (isoDate == null || isoDate.isEmpty) return "";
@@ -871,97 +1472,222 @@ class _CommentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = comment.user;
-    final name = user != null && user.fullName.isNotEmpty
-        ? user.fullName
-        : "Fluent User";
+    final isOwn = comment.isOwn;
+    final name = isOwn
+        ? (user != null && user.fullName.isNotEmpty ? user.fullName : "You")
+        : (user != null && user.fullName.isNotEmpty
+            ? user.fullName
+            : "Fluent User");
     final initial = name.isNotEmpty ? name[0].toUpperCase() : "?";
-    final color = _colorForUser(user?.id ?? comment.id);
+    final gradient = isOwn
+        ? const [AppColors.orange, AppColors.yellow]
+        : _gradientForUser(user?.id ?? comment.id);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(18.r),
+      borderRadius: BorderRadius.circular(20.r),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18.r),
+            borderRadius: BorderRadius.circular(20.r),
             gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(.08),
-                Colors.white.withOpacity(.03),
-              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isOwn
+                  ? [
+                      AppColors.yellow.withOpacity(.14),
+                      AppColors.orange.withOpacity(.05),
+                    ]
+                  : [
+                      Colors.white.withOpacity(.09),
+                      Colors.white.withOpacity(.03),
+                    ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36.w,
-                height: 36.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient:
-                      LinearGradient(colors: [color, color.withOpacity(.6)]),
-                  border:
-                      Border.all(color: Colors.white.withOpacity(.4), width: 1),
-                  boxShadow: [
-                    BoxShadow(color: color.withOpacity(.5), blurRadius: 8),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    initial,
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.sp,
+            border: Border.all(
+              color: isOwn
+                  ? AppColors.yellow.withOpacity(.35)
+                  : Colors.white.withOpacity(.13),
+            ),
+            boxShadow: isOwn
+                ? [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(.15),
+                      blurRadius: 14,
                     ),
+                  ]
+                : null,
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // شريط لوني جانبي مطابق للون الأفاتار
+                Container(
+                  width: 4.w,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: gradient,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius:
+                        BorderRadius.horizontal(left: Radius.circular(20.r)),
                   ),
                 ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5.sp,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 36.w,
+                              height: 36.w,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(colors: gradient),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(.5),
+                                    width: 1.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: gradient.first.withOpacity(.45),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initial,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5.sp,
+                                ),
+                              ),
                             ),
-                          ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12.5.sp,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isOwn) ...[
+                                        SizedBox(width: 6.w),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 6.w, vertical: 1.5.h),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                AppColors.orange,
+                                                AppColors.yellow
+                                              ],
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(20.r),
+                                          ),
+                                          child: Text(
+                                            "You",
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 8.5.sp,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  SizedBox(height: 1.h),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.access_time_rounded,
+                                          size: 9.sp,
+                                          color: Colors.white.withOpacity(.4)),
+                                      SizedBox(width: 3.w),
+                                      Text(
+                                        _timeAgo(comment.createdAt),
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white.withOpacity(.45),
+                                          fontSize: 9.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (onMoreTap != null)
+                              GestureDetector(
+                                onTap: isBusy ? null : onMoreTap,
+                                child: Container(
+                                  width: 28.w,
+                                  height: 28.w,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(.06),
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(.10)),
+                                  ),
+                                  child: isBusy
+                                      ? SizedBox(
+                                          width: 12.w,
+                                          height: 12.w,
+                                          child: const CircularProgressIndicator(
+                                            strokeWidth: 1.6,
+                                            color: AppColors.yellow,
+                                          ),
+                                        )
+                                      : Icon(Icons.more_vert_rounded,
+                                          color: Colors.white.withOpacity(.55),
+                                          size: 16.sp),
+                                ),
+                              )
+                            else
+                              Icon(Icons.format_quote_rounded,
+                                  color: Colors.white.withOpacity(.10),
+                                  size: 22.sp),
+                          ],
                         ),
-                        SizedBox(width: 6.w),
+                        SizedBox(height: 10.h),
+                        Container(
+                          height: 1,
+                          color: Colors.white.withOpacity(.06),
+                        ),
+                        SizedBox(height: 10.h),
                         Text(
-                          _timeAgo(comment.createdAt),
+                          comment.comment,
                           style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(.45),
-                            fontSize: 9.5.sp,
+                            color: Colors.white.withOpacity(.85),
+                            fontSize: 12.sp,
+                            height: 1.55,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 5.h),
-                    Text(
-                      comment.comment,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.85),
-                        fontSize: 11.5.sp,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -970,6 +1696,248 @@ class _CommentCard extends StatelessWidget {
         .fadeIn(delay: (100 + index * 60).ms, duration: 350.ms)
         .moveX(begin: 10, end: 0, curve: Curves.easeOutCubic);
   }
+}
+
+class _CommentComposer extends StatefulWidget {
+  final ValueChanged<String> onSubmit;
+  final bool isSending;
+
+  const _CommentComposer({
+    required this.onSubmit,
+    this.isSending = false,
+  });
+
+  @override
+  State<_CommentComposer> createState() => _CommentComposerState();
+}
+
+class _CommentComposerState extends State<_CommentComposer>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  late final AnimationController _borderController;
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _borderController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 6))
+          ..repeat();
+    _controller.addListener(() {
+      final has = _controller.text.trim().isNotEmpty;
+      if (has != _hasText) setState(() => _hasText = has);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    _borderController.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit() {
+    if (widget.isSending) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSubmit(text);
+    _controller.clear();
+    setState(() => _hasText = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 14.h),
+      child: AnimatedBuilder(
+        animation: _borderController,
+        builder: (context, _) {
+          return CustomPaint(
+            foregroundPainter: _AnimatedBorderPainter(
+              animationValue: _borderController.value,
+              radius: 26.r,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26.r),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(26.r),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.dark.withOpacity(.55),
+                        AppColors.primary.withOpacity(.35),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34.w,
+                        height: 34.w,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.sky, Color(0xFFB388FF)],
+                          ),
+                        ),
+                        child: Icon(Icons.person_rounded,
+                            color: Colors.white, size: 18.sp),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          minLines: 1,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: GoogleFonts.poppins(
+                              color: Colors.white, fontSize: 12.5.sp),
+                          cursorColor: AppColors.yellow,
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            hintText: "Write a comment...",
+                            hintStyle: GoogleFonts.poppins(
+                              color: Colors.white.withOpacity(.4),
+                              fontSize: 12.5.sp,
+                            ),
+                          ),
+                          onSubmitted: (_) => _handleSubmit(),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      GestureDetector(
+                        onTap: _handleSubmit,
+                        child: AnimatedContainer(
+                          duration: 200.ms,
+                          width: 38.w,
+                          height: 38.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: _hasText
+                                ? const LinearGradient(colors: [
+                                    AppColors.orange,
+                                    AppColors.yellow
+                                  ])
+                                : LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(.14),
+                                      Colors.white.withOpacity(.08),
+                                    ],
+                                  ),
+                            boxShadow: _hasText
+                                ? [
+                                    BoxShadow(
+                                      color:
+                                          AppColors.yellow.withOpacity(.5),
+                                      blurRadius: 12,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: widget.isSending
+                              ? Padding(
+                                  padding: EdgeInsets.all(9.r),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.send_rounded,
+                                  color: _hasText
+                                      ? Colors.black
+                                      : Colors.white38,
+                                  size: 17.sp,
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AnimatedBorderPainter extends CustomPainter {
+  final double animationValue;
+  final double radius;
+
+  _AnimatedBorderPainter({
+    required this.animationValue,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    final startAngle = animationValue * math.pi * 2;
+
+    final glowPaint = Paint()
+      ..shader = SweepGradient(
+        startAngle: startAngle,
+        colors: const [
+          Color(0x00FFD35B),
+          Color(0x88FFD35B),
+          Color(0x00F5A201),
+          Color(0x88A8E8F9),
+          Color(0x00B388FF),
+          Color(0x88FF6FB5),
+          Color(0x00FFD35B),
+        ],
+        stops: const [0.0, 0.14, 0.32, 0.5, 0.68, 0.86, 1.0],
+      ).createShader(rect.outerRect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+
+    canvas.drawRRect(rect.deflate(3.5), glowPaint);
+
+    final borderPaint = Paint()
+      ..shader = SweepGradient(
+        startAngle: startAngle,
+        colors: const [
+          Color(0xffA8E8F9),
+          Color(0xffFFD35B),
+          Color(0xffF5A201),
+          Color(0xffB388FF),
+          Color(0xffA8E8F9),
+        ],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+      ).createShader(rect.outerRect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawRRect(rect.deflate(0.5), borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
 }
 
 class _TwinklingStars extends StatelessWidget {

@@ -1,3 +1,4 @@
+
 class LessonVideoModel {
   final int id;
   final String title;
@@ -14,71 +15,73 @@ class LessonVideoModel {
   factory LessonVideoModel.fromJson(Map<String, dynamic> json) {
     return LessonVideoModel(
       id: json['id'] ?? 0,
-      title: json['title'] ?? '',
+      title: json['title']?.toString() ?? '',
       xpPoints: json['xp_points'] ?? 0,
       video: json['video']?.toString() ?? '',
     );
   }
 }
 
-class CommentUserModel {
+class LessonCommentUserModel {
   final int id;
   final String firstName;
   final String lastName;
   final String email;
-  final bool isActive;
-  final bool emailVerified;
-  final String? createdAt;
 
-  CommentUserModel({
+  LessonCommentUserModel({
     required this.id,
     required this.firstName,
     required this.lastName,
     required this.email,
-    required this.isActive,
-    required this.emailVerified,
-    this.createdAt,
   });
 
-  factory CommentUserModel.fromJson(Map<String, dynamic> json) {
-    return CommentUserModel(
+  String get fullName =>
+      [firstName, lastName].where((e) => e.trim().isNotEmpty).join(' ');
+
+  factory LessonCommentUserModel.fromJson(Map<String, dynamic> json) {
+    return LessonCommentUserModel(
       id: json['id'] ?? 0,
-      firstName: json['first_name'] ?? '',
-      lastName: json['last_name'] ?? '',
-      email: json['email'] ?? '',
-      isActive: (json['is_active'] == 1 || json['is_active'] == true),
-      emailVerified: json['email_verified'] == true,
-      createdAt: json['created_at']?.toString(),
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
     );
   }
-
-  String get fullName => "$firstName $lastName".trim();
 }
 
 class LessonCommentModel {
   final int id;
   final String comment;
-  final CommentUserModel? user;
+  final LessonCommentUserModel? user;
   final String? createdAt;
-  final String? updatedAt;
+  final bool isOwn;
 
   LessonCommentModel({
     required this.id,
     required this.comment,
     required this.user,
-    this.createdAt,
-    this.updatedAt,
+    required this.createdAt,
+    this.isOwn = false,
   });
+
+  LessonCommentModel copyWith({bool? isOwn}) {
+    return LessonCommentModel(
+      id: id,
+      comment: comment,
+      user: user,
+      createdAt: createdAt,
+      isOwn: isOwn ?? this.isOwn,
+    );
+  }
 
   factory LessonCommentModel.fromJson(Map<String, dynamic> json) {
     return LessonCommentModel(
       id: json['id'] ?? 0,
       comment: json['comment']?.toString() ?? '',
       user: json['user'] != null
-          ? CommentUserModel.fromJson(Map<String, dynamic>.from(json['user']))
+          ? LessonCommentUserModel.fromJson(
+              Map<String, dynamic>.from(json['user']))
           : null,
       createdAt: json['created_at']?.toString(),
-      updatedAt: json['updated_at']?.toString(),
     );
   }
 }
@@ -93,19 +96,17 @@ class LessonDetailModel {
   });
 
   factory LessonDetailModel.fromJson(Map<String, dynamic> json) {
-    List<LessonCommentModel> parseComments(dynamic list) {
-      if (list is! List) return [];
-      return list
-          .whereType<Map>()
-          .map((e) => LessonCommentModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    }
+    final commentsList =
+        (json['comments'] is List) ? json['comments'] as List : [];
 
     return LessonDetailModel(
       lesson: json['lesson'] != null
           ? LessonVideoModel.fromJson(Map<String, dynamic>.from(json['lesson']))
           : null,
-      comments: parseComments(json['comments']),
+      comments: commentsList
+          .whereType<Map>()
+          .map((e) => LessonCommentModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 }
