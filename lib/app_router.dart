@@ -208,7 +208,7 @@ class AppRouter {
         );
 
         // ✅ Student: Lesson video + comments detail
-      case lessonDetailRoute:
+      case lessonStudentDetailRoute:
         final args = settings.arguments as Map<String, dynamic>;
         final lessonId = args['lessonId'] as int?;
 

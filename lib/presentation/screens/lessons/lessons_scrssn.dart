@@ -110,12 +110,14 @@ class _LessonsScreenState extends State<LessonsScreen>
   @override
   void initState() {
     super.initState();
-    _pathFlowController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 4))
-          ..repeat();
-    _borderFlowController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 6))
-          ..repeat();
+    _pathFlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+    _borderFlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
     _scrollController = ScrollController()
       ..addListener(() {
         _scrollOffset.value = _scrollController.offset;
@@ -203,10 +205,13 @@ class _LessonsScreenState extends State<LessonsScreen>
                       controller: _scrollController,
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.symmetric(
-                          horizontal: 20.w, vertical: 10.h),
+                        horizontal: 20.w,
+                        vertical: 10.h,
+                      ),
                       child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minWidth: constraints.maxWidth),
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -232,15 +237,15 @@ class _LessonsScreenState extends State<LessonsScreen>
                                 lessons: _lessons,
                                 flowController: _pathFlowController,
                                 onLessonTap: (lesson) {
-                                 Navigator.pushNamed(
-                                   context,
-                                   lessonDetailRoute,
-                                      arguments: {
-                                    'lessonId': lesson.id ?? 0,
-                                       'lessonTitle': lesson.title,
-                                        },
-                                        );
-                                       },
+                                  Navigator.pushNamed(
+                                    context,
+                                    lessonStudentDetailRoute,
+                                    arguments: {
+                                      'lessonId': lesson.id ?? 0,
+                                      'lessonTitle': lesson.title,
+                                    },
+                                  );
+                                },
                                 // onLessonTap: (lesson) {
                                 //   widget.onLessonTap?.call(lesson);
                                 // },
@@ -289,8 +294,11 @@ class _LessonsScreenState extends State<LessonsScreen>
           ),
           child: Column(
             children: [
-              Icon(Icons.wifi_off_rounded,
-                  color: Colors.white.withOpacity(.7), size: 28.sp),
+              Icon(
+                Icons.wifi_off_rounded,
+                color: Colors.white.withOpacity(.7),
+                size: 28.sp,
+              ),
               SizedBox(height: 8.h),
               Text(
                 message,
@@ -306,8 +314,10 @@ class _LessonsScreenState extends State<LessonsScreen>
                     .read<StudentLessonsCubit>()
                     .fetchStudentLessons(widget.courseId ?? 0),
                 child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [AppColors.orange, AppColors.yellow],
@@ -602,7 +612,9 @@ class _LessonsScreenState extends State<LessonsScreen>
                       children: [
                         Container(
                           padding: EdgeInsets.symmetric(
-                              horizontal: 8.w, vertical: 3.h),
+                            horizontal: 8.w,
+                            vertical: 3.h,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.yellow.withOpacity(.18),
                             borderRadius: BorderRadius.circular(20.r),
@@ -630,9 +642,11 @@ class _LessonsScreenState extends State<LessonsScreen>
                         SizedBox(height: 10.h),
                         Row(
                           children: [
-                            Icon(Icons.person_rounded,
-                                color: Colors.white.withOpacity(.5),
-                                size: 13.sp),
+                            Icon(
+                              Icons.person_rounded,
+                              color: Colors.white.withOpacity(.5),
+                              size: 13.sp,
+                            ),
                             SizedBox(width: 4.w),
                             Expanded(
                               child: Text(
@@ -657,7 +671,11 @@ class _LessonsScreenState extends State<LessonsScreen>
               SizedBox(height: 12.h),
               Row(
                 children: [
-                  Icon(Icons.menu_book_rounded, color: AppColors.sky, size: 15.sp),
+                  Icon(
+                    Icons.menu_book_rounded,
+                    color: AppColors.sky,
+                    size: 15.sp,
+                  ),
                   SizedBox(width: 6.w),
                   Expanded(
                     child: Text(
@@ -690,8 +708,11 @@ class _LessonsScreenState extends State<LessonsScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.local_fire_department_rounded,
-                  color: AppColors.orange, size: 16.sp),
+              Icon(
+                Icons.local_fire_department_rounded,
+                color: AppColors.orange,
+                size: 16.sp,
+              ),
               SizedBox(width: 6.w),
               Expanded(
                 child: Text(
@@ -705,7 +726,11 @@ class _LessonsScreenState extends State<LessonsScreen>
               ),
               Row(
                 children: [
-                  Icon(Icons.star_rounded, color: AppColors.yellow, size: 13.sp),
+                  Icon(
+                    Icons.star_rounded,
+                    color: AppColors.yellow,
+                    size: 13.sp,
+                  ),
                   SizedBox(width: 3.w),
                   Text(
                     "${widget.xp} XP",
@@ -736,15 +761,16 @@ class _LessonsScreenState extends State<LessonsScreen>
                         shape: BoxShape.circle,
                         gradient: done
                             ? const LinearGradient(
-                                colors: [AppColors.orange, AppColors.yellow])
+                                colors: [AppColors.orange, AppColors.yellow],
+                              )
                             : null,
                         color: done ? null : Colors.white.withOpacity(.08),
                         border: isToday
                             ? Border.all(
                                 color: AppColors.yellow.withOpacity(.9),
-                                width: 1.6)
-                            : Border.all(
-                                color: Colors.white.withOpacity(.14)),
+                                width: 1.6,
+                              )
+                            : Border.all(color: Colors.white.withOpacity(.14)),
                         boxShadow: done
                             ? [
                                 BoxShadow(
@@ -770,8 +796,7 @@ class _LessonsScreenState extends State<LessonsScreen>
                             ? AppColors.yellow
                             : Colors.white.withOpacity(.45),
                         fontSize: 9.sp,
-                        fontWeight:
-                            isToday ? FontWeight.w800 : FontWeight.w500,
+                        fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
                       ),
                     ),
                   ],
@@ -809,8 +834,9 @@ class _LessonsScreenState extends State<LessonsScreen>
                   child: CircularProgressIndicator(
                     value: 1,
                     strokeWidth: 4.w,
-                    valueColor:
-                        AlwaysStoppedAnimation(Colors.white.withOpacity(.12)),
+                    valueColor: AlwaysStoppedAnimation(
+                      Colors.white.withOpacity(.12),
+                    ),
                   ),
                 ),
                 SizedBox.expand(
@@ -822,8 +848,9 @@ class _LessonsScreenState extends State<LessonsScreen>
                       value: v,
                       strokeWidth: 4.w,
                       strokeCap: StrokeCap.round,
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.orange),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.orange,
+                      ),
                       backgroundColor: Colors.transparent,
                     ),
                   ),
@@ -898,8 +925,11 @@ class _LessonsScreenState extends State<LessonsScreen>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.card_giftcard_rounded,
-                          color: AppColors.yellow, size: 12.sp)
+                  Icon(
+                        Icons.card_giftcard_rounded,
+                        color: AppColors.yellow,
+                        size: 12.sp,
+                      )
                       .animate(onPlay: (c) => c.repeat(reverse: true))
                       .scale(
                         begin: const Offset(1, 1),
@@ -975,7 +1005,9 @@ class _LessonsScreenState extends State<LessonsScreen>
                         ? []
                         : [
                             BoxShadow(
-                                color: color.withOpacity(.7), blurRadius: 5)
+                              color: color.withOpacity(.7),
+                              blurRadius: 5,
+                            ),
                           ],
                   ),
                 ),
@@ -1057,7 +1089,9 @@ class _LessonsScreenState extends State<LessonsScreen>
 
                             if (i == 0) {
                               Navigator.popUntil(
-                                  context, (route) => route.isFirst);
+                                context,
+                                (route) => route.isFirst,
+                              );
                               return;
                             }
 
@@ -1067,19 +1101,27 @@ class _LessonsScreenState extends State<LessonsScreen>
                             switch (i) {
                               case 1:
                                 navigationFuture = Navigator.pushNamed(
-                                    context, wordBankRoute);
+                                  context,
+                                  wordBankRoute,
+                                );
                                 break;
                               case 2:
                                 navigationFuture = Navigator.pushNamed(
-                                    context, podcastsRoute);
+                                  context,
+                                  podcastsRoute,
+                                );
                                 break;
                               case 3:
                                 navigationFuture = Navigator.pushNamed(
-                                    context, aiConversationRoute);
+                                  context,
+                                  aiConversationRoute,
+                                );
                                 break;
                               case 4:
                                 navigationFuture = Navigator.pushNamed(
-                                    context, profileRoute);
+                                  context,
+                                  profileRoute,
+                                );
                                 break;
                             }
 
@@ -1093,7 +1135,9 @@ class _LessonsScreenState extends State<LessonsScreen>
                             duration: 250.ms,
                             curve: Curves.easeOut,
                             padding: EdgeInsets.symmetric(
-                                vertical: 10.h, horizontal: 2.w),
+                              vertical: 10.h,
+                              horizontal: 2.w,
+                            ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1160,7 +1204,7 @@ class _LessonsScreenState extends State<LessonsScreen>
                                             gradient: const LinearGradient(
                                               colors: [
                                                 AppColors.yellow,
-                                                AppColors.orange
+                                                AppColors.orange,
                                               ],
                                             ),
                                             boxShadow: [
@@ -1236,14 +1280,16 @@ class _LessonsScreenState extends State<LessonsScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: gradientColors ??
+              colors:
+                  gradientColors ??
                   [
                     Colors.white.withOpacity(.10),
                     Colors.white.withOpacity(.04),
                   ],
             ),
             border: Border.all(
-                color: borderColor ?? Colors.white.withOpacity(.15)),
+              color: borderColor ?? Colors.white.withOpacity(.15),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(.15),
@@ -1323,8 +1369,11 @@ class _CourseOrbitRing extends StatelessWidget {
                     : [BoxShadow(color: color.withOpacity(.7), blurRadius: 6)],
               ),
               child: lesson.status == LessonStatus.completed
-                  ? Icon(Icons.check_rounded,
-                      size: dotSize * 0.6, color: Colors.black)
+                  ? Icon(
+                      Icons.check_rounded,
+                      size: dotSize * 0.6,
+                      color: Colors.black,
+                    )
                   : null,
             );
 
@@ -1347,8 +1396,7 @@ class _CourseOrbitRing extends StatelessWidget {
             child: CircularProgressIndicator(
               value: 1,
               strokeWidth: 8.w,
-              valueColor:
-                  AlwaysStoppedAnimation(Colors.white.withOpacity(.08)),
+              valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(.08)),
             ),
           ),
           SizedBox(
@@ -1370,8 +1418,11 @@ class _CourseOrbitRing extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_awesome_rounded,
-                      color: AppColors.yellow, size: 16.sp)
+              Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.yellow,
+                    size: 16.sp,
+                  )
                   .animate(onPlay: (c) => c.repeat(reverse: true))
                   .scale(
                     begin: const Offset(1, 1),
@@ -1417,32 +1468,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),
@@ -1525,10 +1577,7 @@ class _AnimatedBorderPainter extends CustomPainter {
   final double animationValue;
   final double radius;
 
-  _AnimatedBorderPainter({
-    required this.animationValue,
-    required this.radius,
-  });
+  _AnimatedBorderPainter({required this.animationValue, required this.radius});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1695,33 +1744,35 @@ class _PathTransition extends StatelessWidget {
             ];
             return Align(
               alignment: positions[i],
-              child: Container(
-                width: (2 + (i % 2) * 1.5).w,
-                height: (2 + (i % 2) * 1.5).w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i.isEven ? AppColors.yellow : Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (i.isEven ? AppColors.yellow : Colors.white)
-                          .withOpacity(.7),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .fade(
-                    begin: 0,
-                    end: 1,
-                    duration: (1200 + i * 200).ms,
-                    delay: (i * 180).ms,
-                  )
-                  .scale(
-                    begin: const Offset(0.4, 0.4),
-                    end: const Offset(1.3, 1.3),
-                  ),
+              child:
+                  Container(
+                        width: (2 + (i % 2) * 1.5).w,
+                        height: (2 + (i % 2) * 1.5).w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i.isEven ? AppColors.yellow : Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  (i.isEven ? AppColors.yellow : Colors.white)
+                                      .withOpacity(.7),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      )
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .fade(
+                        begin: 0,
+                        end: 1,
+                        duration: (1200 + i * 200).ms,
+                        delay: (i * 180).ms,
+                      )
+                      .scale(
+                        begin: const Offset(0.4, 0.4),
+                        end: const Offset(1.3, 1.3),
+                      ),
             );
           }),
         ],
@@ -1833,7 +1884,8 @@ class _LessonPathPainter extends CustomPainter {
 
       final bounds = Rect.fromPoints(p0, p1).inflate(40);
 
-      final isLocked = lessons[i].status == LessonStatus.locked ||
+      final isLocked =
+          lessons[i].status == LessonStatus.locked ||
           lessons[i + 1].status == LessonStatus.locked;
 
       if (isLocked) {
@@ -1845,11 +1897,7 @@ class _LessonPathPainter extends CustomPainter {
   }
 
   void _drawActiveSegment(Canvas canvas, Path path, Rect bounds) {
-    final gradientColors = [
-      AppColors.orange,
-      AppColors.yellow,
-      AppColors.sky,
-    ];
+    final gradientColors = [AppColors.orange, AppColors.yellow, AppColors.sky];
 
     canvas.drawPath(
       path,
@@ -1966,7 +2014,9 @@ class _LessonRow extends StatelessWidget {
 
     final maxLeft = containerWidth - cardWidth - edgePadding;
     final clampedLeft = desiredLeft.clamp(
-        edgePadding, maxLeft < edgePadding ? edgePadding : maxLeft);
+      edgePadding,
+      maxLeft < edgePadding ? edgePadding : maxLeft,
+    );
 
     return SizedBox(
       height: 160.h,
@@ -1982,11 +2032,7 @@ class _LessonRow extends StatelessWidget {
           Positioned(
             left: nodeDx - 40.w,
             top: 24.h,
-            child: _LessonNode(
-              lesson: lesson,
-              index: index,
-              onTap: onTap,
-            ),
+            child: _LessonNode(lesson: lesson, index: index, onTap: onTap),
           ),
           Positioned(
             left: clampedLeft,
@@ -2009,37 +2055,37 @@ class _CurrentRibbon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.orange, AppColors.yellow],
-        ),
-        borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.yellow.withOpacity(.7),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.flag_rounded, color: Colors.black, size: 11.sp),
-          SizedBox(width: 3.w),
-          Text(
-            "Current",
-            style: GoogleFonts.poppins(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-              fontSize: 9.5.sp,
-              letterSpacing: .5,
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.orange, AppColors.yellow],
             ),
+            borderRadius: BorderRadius.circular(14.r),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.yellow.withOpacity(.7),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-        ],
-      ),
-    )
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.flag_rounded, color: Colors.black, size: 11.sp),
+              SizedBox(width: 3.w),
+              Text(
+                "Current",
+                style: GoogleFonts.poppins(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5.sp,
+                  letterSpacing: .5,
+                ),
+              ),
+            ],
+          ),
+        )
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .shimmer(duration: 1800.ms, color: Colors.white.withOpacity(.6))
         .scale(
@@ -2072,7 +2118,9 @@ class _LessonNode extends StatelessWidget {
               const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8.w),
               const Expanded(
-                child: Text("Finish the previous lesson to unlock this one! 💪"),
+                child: Text(
+                  "Finish the previous lesson to unlock this one! 💪",
+                ),
               ),
             ],
           ),
@@ -2097,8 +2145,10 @@ class _LessonNode extends StatelessWidget {
     final isQuiz = lesson.status == LessonStatus.quiz;
     final isCompleted = lesson.status == LessonStatus.completed;
 
-    final double size =
-        (isQuiz ? 82.w : (isCurrent ? 80.w : 70.w)).clamp(56.0, 92.0);
+    final double size = (isQuiz ? 82.w : (isCurrent ? 80.w : 70.w)).clamp(
+      56.0,
+      92.0,
+    );
 
     List<Color> gradientColors;
     if (isLocked) {
@@ -2116,73 +2166,77 @@ class _LessonNode extends StatelessWidget {
 
     Widget aura = const SizedBox.shrink();
     if (isCurrent) {
-      aura = Container(
-        width: size + 30.w,
-        height: size + 30.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              AppColors.yellow.withOpacity(.5),
-              AppColors.yellow.withOpacity(0),
-            ],
-          ),
-        ),
-      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.15, 1.15),
-            duration: 1400.ms,
-            curve: Curves.easeInOut,
-          );
+      aura =
+          Container(
+                width: size + 30.w,
+                height: size + 30.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.yellow.withOpacity(.5),
+                      AppColors.yellow.withOpacity(0),
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.15, 1.15),
+                duration: 1400.ms,
+                curve: Curves.easeInOut,
+              );
     }
 
     Widget rotatingRing = const SizedBox.shrink();
     if (isCurrent) {
-      rotatingRing = Container(
-        width: size + 18.w,
-        height: size + 18.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.yellow.withOpacity(.4),
-            width: 1.5,
-          ),
-          gradient: const SweepGradient(
-            colors: [
-              AppColors.yellow,
-              Colors.transparent,
-              AppColors.orange,
-              Colors.transparent,
-              AppColors.yellow,
-            ],
-            stops: [0.0, 0.3, 0.5, 0.8, 1.0],
-          ),
-        ),
-      ).animate(onPlay: (c) => c.repeat()).rotate(
-            duration: 6.seconds,
-            curve: Curves.linear,
-          );
+      rotatingRing =
+          Container(
+                width: size + 18.w,
+                height: size + 18.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.yellow.withOpacity(.4),
+                    width: 1.5,
+                  ),
+                  gradient: const SweepGradient(
+                    colors: [
+                      AppColors.yellow,
+                      Colors.transparent,
+                      AppColors.orange,
+                      Colors.transparent,
+                      AppColors.yellow,
+                    ],
+                    stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .rotate(duration: 6.seconds, curve: Curves.linear);
     }
 
     Widget quizCrown = const SizedBox.shrink();
     if (isQuiz) {
       quizCrown = Positioned(
         top: -8.h,
-        child: Icon(
-          Icons.workspace_premium_rounded,
-          color: const Color(0xFFFFD35B),
-          size: 18.sp,
-          shadows: const [
-            Shadow(color: Color(0xffB861F5), blurRadius: 12),
-            Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
-          ],
-        )
-            .animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(
-              begin: const Offset(1, 1),
-              end: const Offset(1.15, 1.15),
-              duration: 1400.ms,
-            ),
+        child:
+            Icon(
+                  Icons.workspace_premium_rounded,
+                  color: const Color(0xFFFFD35B),
+                  size: 18.sp,
+                  shadows: const [
+                    Shadow(color: Color(0xffB861F5), blurRadius: 12),
+                    Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+                  ],
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 1400.ms,
+                ),
       );
     }
 
@@ -2248,8 +2302,11 @@ class _LessonNode extends StatelessWidget {
                   ),
                 ],
               ),
-              child:
-                  Icon(Icons.check_rounded, size: 12.sp, color: Colors.white),
+              child: Icon(
+                Icons.check_rounded,
+                size: 12.sp,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -2268,28 +2325,29 @@ class _LessonNode extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => _handleTap(context),
-      child: SizedBox(
-        width: size + 30.w,
-        height: size + 30.w,
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            aura,
-            rotatingRing,
-            if (isQuiz) quizCrown else const SizedBox.shrink(),
-            node,
-          ],
-        ),
-      ),
-    )
+          onTap: () => _handleTap(context),
+          child: SizedBox(
+            width: size + 30.w,
+            height: size + 30.w,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                aura,
+                rotatingRing,
+                if (isQuiz) quizCrown else const SizedBox.shrink(),
+                node,
+              ],
+            ),
+          ),
+        )
         .animate()
         .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
         .scale(
-            begin: const Offset(.7, .7),
-            end: const Offset(1, 1),
-            curve: Curves.easeOutBack);
+          begin: const Offset(.7, .7),
+          end: const Offset(1, 1),
+          curve: Curves.easeOutBack,
+        );
   }
 }
 
@@ -2334,30 +2392,30 @@ class _LessonInfoCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: isLocked
-          ? null
-          : () {
-              HapticFeedback.lightImpact();
-              onTap();
-            },
-      child: SizedBox(
-        width: width,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isCurrent
-                      ? [
-                          AppColors.yellow.withOpacity(.22),
-                          AppColors.orange.withOpacity(.12),
-                        ]
-                      : isQuiz
+          onTap: isLocked
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  onTap();
+                },
+          child: SizedBox(
+            width: width,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20.r),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isCurrent
+                          ? [
+                              AppColors.yellow.withOpacity(.22),
+                              AppColors.orange.withOpacity(.12),
+                            ]
+                          : isQuiz
                           ? [
                               const Color(0xffB861F5).withOpacity(.22),
                               const Color(0xffFF6FB5).withOpacity(.12),
@@ -2366,25 +2424,25 @@ class _LessonInfoCard extends StatelessWidget {
                               Colors.white.withOpacity(.10),
                               Colors.white.withOpacity(.04),
                             ],
-                ),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                  color: isCurrent
-                      ? AppColors.yellow.withOpacity(.6)
-                      : isQuiz
+                    ),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(
+                      color: isCurrent
+                          ? AppColors.yellow.withOpacity(.6)
+                          : isQuiz
                           ? const Color(0xffFF6FB5).withOpacity(.5)
                           : Colors.white.withOpacity(.15),
-                  width: isCurrent || isQuiz ? 1.5 : 1,
-                ),
-                boxShadow: isCurrent
-                    ? [
-                        BoxShadow(
-                          color: AppColors.yellow.withOpacity(.4),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : isQuiz
+                      width: isCurrent || isQuiz ? 1.5 : 1,
+                    ),
+                    boxShadow: isCurrent
+                        ? [
+                            BoxShadow(
+                              color: AppColors.yellow.withOpacity(.4),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : isQuiz
                         ? [
                             BoxShadow(
                               color: const Color(0xffB861F5).withOpacity(.4),
@@ -2393,163 +2451,177 @@ class _LessonInfoCard extends StatelessWidget {
                             ),
                           ]
                         : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isQuiz)
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-                      ).createShader(bounds),
-                      child: Text(
-                        "🏆 Final Quiz",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                          letterSpacing: .3,
-                        ),
-                      ),
-                    )
-                  else
-                    Text(
-                      lesson.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.sp,
-                        letterSpacing: .2,
-                      ),
-                    ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    lesson.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.72),
-                      fontSize: 10.5.sp,
-                    ),
                   ),
-                  SizedBox(height: 8.h),
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(statusIcon, size: 13.sp, color: statusColor),
-                      SizedBox(width: 4.w),
-                      Flexible(
-                        child: Text(
-                          statusText,
+                      if (isQuiz)
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                          ).createShader(bounds),
+                          child: Text(
+                            "🏆 Final Quiz",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.sp,
+                              letterSpacing: .3,
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          lesson.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.poppins(
-                            color: statusColor,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.sp,
+                            letterSpacing: .2,
                           ),
                         ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        lesson.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(.72),
+                          fontSize: 10.5.sp,
+                        ),
                       ),
-                      const Spacer(),
-                      if (!isLocked) ...[
-                        Icon(Icons.star_rounded,
-                            size: 11.sp, color: AppColors.yellow),
-                        SizedBox(width: 2.w),
-                        Text(
-                          "${lesson.xpReward}",
-                          style: GoogleFonts.poppins(
-                            color: AppColors.yellow,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w700,
+                      SizedBox(height: 8.h),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 13.sp, color: statusColor),
+                          SizedBox(width: 4.w),
+                          Flexible(
+                            child: Text(
+                              statusText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: statusColor,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          if (!isLocked) ...[
+                            Icon(
+                              Icons.star_rounded,
+                              size: 11.sp,
+                              color: AppColors.yellow,
+                            ),
+                            SizedBox(width: 2.w),
+                            Text(
+                              "${lesson.xpReward}",
+                              style: GoogleFonts.poppins(
+                                color: AppColors.yellow,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (isCurrent && lesson.progress > 0) ...[
+                        SizedBox(height: 8.h),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10.r),
+                          child: Stack(
+                            children: [
+                              Container(
+                                height: 6.h,
+                                color: Colors.white.withOpacity(.15),
+                              ),
+                              FractionallySizedBox(
+                                widthFactor: lesson.progress.clamp(0.0, 1.0),
+                                child: Container(
+                                  height: 6.h,
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.orange,
+                                        AppColors.yellow,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  if (isCurrent && lesson.progress > 0) ...[
-                    SizedBox(height: 8.h),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10.r),
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 6.h,
-                            color: Colors.white.withOpacity(.15),
-                          ),
-                          FractionallySizedBox(
-                            widthFactor: lesson.progress.clamp(0.0, 1.0),
-                            child: Container(
-                              height: 6.h,
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [AppColors.orange, AppColors.yellow],
+                      if (isCurrent) ...[
+                        SizedBox(height: 10.h),
+                        GestureDetector(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                onTap();
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 7.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.orange,
+                                      AppColors.yellow,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.yellow.withOpacity(.6),
+                                      blurRadius: 14,
+                                      spreadRadius: .5,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "Continue",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11.sp,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.black,
+                                      size: 14.sp,
+                                    ),
+                                  ],
                                 ),
                               ),
+                            )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .shimmer(
+                              duration: 1800.ms,
+                              color: Colors.white.withOpacity(.7),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (isCurrent) ...[
-                    SizedBox(height: 10.h),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        onTap();
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 14.w, vertical: 7.h),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.orange, AppColors.yellow],
-                          ),
-                          borderRadius: BorderRadius.circular(20.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.yellow.withOpacity(.6),
-                              blurRadius: 14,
-                              spreadRadius: .5,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              "Continue",
-                              style: GoogleFonts.poppins(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11.sp,
-                              ),
-                            ),
-                            SizedBox(width: 4.w),
-                            Icon(Icons.play_arrow_rounded,
-                                color: Colors.black, size: 14.sp),
-                          ],
-                        ),
-                      ),
-                    )
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .shimmer(
-                          duration: 1800.ms,
-                          color: Colors.white.withOpacity(.7),
-                        ),
-                  ],
-                ],
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    )
+        )
         .animate()
         .fadeIn(delay: 250.ms, duration: 500.ms)
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
