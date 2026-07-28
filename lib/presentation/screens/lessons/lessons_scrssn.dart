@@ -6,8 +6,13 @@ import 'package:fluent/constants/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:fluent/cubit/student/lessons/lesson_cubit.dart';
+import 'package:fluent/cubit/student/lessons/lesson_state.dart';
+import 'package:fluent/data/models/student_lesson_model.dart';
 
 enum LessonStatus { completed, current, locked, quiz }
 
@@ -18,7 +23,7 @@ class LessonData {
   final LessonStatus status;
   final IconData icon;
   final int xpReward;
-  final double progress; 
+  final double progress;
 
   const LessonData({
     this.id,
@@ -55,10 +60,11 @@ class LessonsScreen extends StatefulWidget {
   final String userName;
   final int xp;
   final int streakDays;
-  final double courseProgress; 
-  final List<LessonData> lessons;
+  final double courseProgress;
+
   final DailyChallengeData dailyChallenge;
-  final List<bool> weeklyStreak; 
+  final List<bool> weeklyStreak;
+
   final void Function(LessonData lesson)? onLessonTap;
   final VoidCallback? onBack;
 
@@ -72,57 +78,6 @@ class LessonsScreen extends StatefulWidget {
     this.xp = 12540,
     this.streakDays = 15,
     this.courseProgress = 0.45,
-    this.lessons = const [
-      LessonData(
-        id: 1,
-        title: "Present Simple Basics",
-        subtitle: "Video · 8 mins",
-        status: LessonStatus.completed,
-        icon: Icons.play_circle_fill_rounded,
-        xpReward: 20,
-      ),
-      LessonData(
-        id: 2,
-        title: "Sentence Structure",
-        subtitle: "Reading · 6 mins",
-        status: LessonStatus.completed,
-        icon: Icons.menu_book_rounded,
-        xpReward: 25,
-      ),
-      LessonData(
-        id: 3,
-        title: "Common Mistakes",
-        subtitle: "Exercise · 10 mins",
-        status: LessonStatus.current,
-        icon: Icons.edit_note_rounded,
-        xpReward: 30,
-        progress: .4,
-      ),
-      LessonData(
-        id: 4,
-        title: "Listening Practice",
-        subtitle: "Audio · 12 mins",
-        status: LessonStatus.locked,
-        icon: Icons.headphones_rounded,
-        xpReward: 30,
-      ),
-      LessonData(
-        id: 5,
-        title: "Speaking Drill",
-        subtitle: "Speaking · 15 mins",
-        status: LessonStatus.locked,
-        icon: Icons.mic_rounded,
-        xpReward: 35,
-      ),
-      LessonData(
-        id: 6,
-        title: "Final Quiz",
-        subtitle: "Test · 20 mins",
-        status: LessonStatus.quiz,
-        icon: Icons.emoji_events_rounded,
-        xpReward: 100,
-      ),
-    ],
     this.dailyChallenge = const DailyChallengeData(
       title: "Complete 2 lessons today",
       current: 1,
@@ -146,9 +101,11 @@ class _LessonsScreenState extends State<LessonsScreen>
   late final ScrollController _scrollController;
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
 
+  List<LessonData> _lessons = [];
+
   int get _completedCount =>
-      widget.lessons.where((l) => l.status == LessonStatus.completed).length;
-  int get _totalCount => widget.lessons.isNotEmpty ? widget.lessons.length : 1;
+      _lessons.where((l) => l.status == LessonStatus.completed).length;
+  int get _totalCount => _lessons.isNotEmpty ? _lessons.length : 1;
 
   @override
   void initState() {
@@ -163,6 +120,13 @@ class _LessonsScreenState extends State<LessonsScreen>
       ..addListener(() {
         _scrollOffset.value = _scrollController.offset;
       });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cubit = context.read<StudentLessonsCubit>();
+      if (cubit.state is StudentLessonsInitial) {
+        cubit.fetchStudentLessons(widget.courseId ?? 0);
+      }
+    });
   }
 
   @override
@@ -172,6 +136,49 @@ class _LessonsScreenState extends State<LessonsScreen>
     _scrollController.dispose();
     _scrollOffset.dispose();
     super.dispose();
+  }
+
+  IconData _iconForStatus(LessonStatus status) {
+    switch (status) {
+      case LessonStatus.completed:
+        return Icons.menu_book_rounded;
+      case LessonStatus.current:
+        return Icons.edit_note_rounded;
+      case LessonStatus.locked:
+        return Icons.lock_rounded;
+      case LessonStatus.quiz:
+        return Icons.emoji_events_rounded;
+    }
+  }
+
+  LessonData _toLessonData(StudentLessonModel lesson, LessonStatus status) {
+    return LessonData(
+      id: lesson.id,
+      title: lesson.title,
+      subtitle: "Lesson ${lesson.order}",
+      status: status,
+      icon: _iconForStatus(status),
+      xpReward: lesson.xpPoints,
+      progress: 0,
+    );
+  }
+
+  List<LessonData> _mapLessons(StudentLessonsModel data) {
+    final combined = <MapEntry<StudentLessonModel, LessonStatus>>[];
+
+    for (final l in data.completedLessons) {
+      combined.add(MapEntry(l, LessonStatus.completed));
+    }
+    if (data.currentLesson != null) {
+      combined.add(MapEntry(data.currentLesson!, LessonStatus.current));
+    }
+    for (final l in data.lockedLessons) {
+      combined.add(MapEntry(l, LessonStatus.locked));
+    }
+
+    combined.sort((a, b) => a.key.order.compareTo(b.key.order));
+
+    return combined.map((e) => _toLessonData(e.key, e.value)).toList();
   }
 
   @override
@@ -184,42 +191,67 @@ class _LessonsScreenState extends State<LessonsScreen>
           _TwinklingStars(count: 45),
           _FloatingClouds(),
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const BouncingScrollPhysics(),
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minWidth: constraints.maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildTopBar(),
-                        SizedBox(height: 16.h),
-                        _buildCourseHeroCard(),
-                        SizedBox(height: 14.h),
-                        _buildStudentStatusBar(),
-                        SizedBox(height: 14.h),
-                        _buildDailyChallengeCard(),
-                        SizedBox(height: 14.h),
-                        _buildProgressOverview(),
-                        SizedBox(height: 8.h),
-                        _PathTransition(),
-                        SizedBox(height: 4.h),
-                        _LessonsPath(
-                          lessons: widget.lessons,
-                          flowController: _pathFlowController,
-                          onLessonTap: (lesson) {
-                            widget.onLessonTap?.call(lesson);
-                          },
+            child: BlocBuilder<StudentLessonsCubit, StudentLessonsState>(
+              builder: (context, state) {
+                if (state is StudentLessonsSuccess) {
+                  _lessons = _mapLessons(state.data);
+                }
+
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 20.w, vertical: 10.h),
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minWidth: constraints.maxWidth),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTopBar(),
+                            SizedBox(height: 16.h),
+                            _buildCourseHeroCard(),
+                            SizedBox(height: 14.h),
+                            _buildStudentStatusBar(),
+                            SizedBox(height: 14.h),
+                            _buildDailyChallengeCard(),
+                            SizedBox(height: 14.h),
+                            if (state is StudentLessonsLoading ||
+                                state is StudentLessonsInitial)
+                              _lessonsLoadingCard()
+                            else if (state is StudentLessonsFailure)
+                              _lessonsErrorCard(state.message)
+                            else ...[
+                              _buildProgressOverview(),
+                              SizedBox(height: 8.h),
+                              _PathTransition(),
+                              SizedBox(height: 4.h),
+                              _LessonsPath(
+                                lessons: _lessons,
+                                flowController: _pathFlowController,
+                                onLessonTap: (lesson) {
+                                 Navigator.pushNamed(
+                                   context,
+                                   lessonDetailRoute,
+                                      arguments: {
+                                    'lessonId': lesson.id ?? 0,
+                                       'lessonTitle': lesson.title,
+                                        },
+                                        );
+                                       },
+                                // onLessonTap: (lesson) {
+                                //   widget.onLessonTap?.call(lesson);
+                                // },
+                              ),
+                            ],
+                            SizedBox(height: 110.h),
+                          ],
                         ),
-                        SizedBox(height: 110.h),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -227,6 +259,75 @@ class _LessonsScreenState extends State<LessonsScreen>
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _lessonsLoadingCard() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 60.h),
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator(color: AppColors.yellow),
+    );
+  }
+
+  Widget _lessonsErrorCard(String message) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.r),
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(.10),
+                Colors.white.withOpacity(.04),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.15)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.wifi_off_rounded,
+                  color: Colors.white.withOpacity(.7), size: 28.sp),
+              SizedBox(height: 8.h),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.85),
+                  fontSize: 12.sp,
+                ),
+              ),
+              SizedBox(height: 10.h),
+              GestureDetector(
+                onTap: () => context
+                    .read<StudentLessonsCubit>()
+                    .fetchStudentLessons(widget.courseId ?? 0),
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.orange, AppColors.yellow],
+                    ),
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Text(
+                    "Retry",
+                    style: GoogleFonts.poppins(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -489,7 +590,7 @@ class _LessonsScreenState extends State<LessonsScreen>
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _CourseOrbitRing(
-                    lessons: widget.lessons,
+                    lessons: _lessons,
                     progress: widget.courseProgress,
                     size: 92.w,
                   ),
@@ -859,9 +960,9 @@ class _LessonsScreenState extends State<LessonsScreen>
           ),
           const Spacer(),
           Row(
-            children: List.generate(widget.lessons.length, (i) {
-              final color = dotColor(widget.lessons[i].status);
-              final isLocked = widget.lessons[i].status == LessonStatus.locked;
+            children: List.generate(_lessons.length, (i) {
+              final color = dotColor(_lessons[i].status);
+              final isLocked = _lessons[i].status == LessonStatus.locked;
               return Padding(
                 padding: EdgeInsets.only(left: 5.w),
                 child: Container(
@@ -2454,4 +2555,3 @@ class _LessonInfoCard extends StatelessWidget {
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
   }
 }
-

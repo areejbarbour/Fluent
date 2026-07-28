@@ -15,6 +15,8 @@ import 'package:fluent/cubit/student/courses/course_state.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/presentation/screens/lessons/lessons_scrssn.dart';
+import 'package:fluent/cubit/student/lessons/lesson_cubit.dart';
+import 'package:fluent/data/repository/student_lesson_repository.dart';
 class LevelCoursesScreen extends StatefulWidget {
   final int? levelId; 
   final String userName;
@@ -48,10 +50,8 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
 
   late final AnimationController _borderFlowController;
 
-  // ✅ صارت تتعبى من الباك بدل ما تكون Hardcoded
   List<CourseData> _courses = [];
 
-  // ✅ ألوان دورية نلوّن فيها كل كورس (بما إنو الباك ما بيرجع لون خاص بكل كورس)
   static const List<Color> _courseAccentColors = [
     AppColors.sky,
     AppColors.orange,
@@ -72,8 +72,8 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
       id: course.id,
       order: course.order,
       title: course.name,
-      // ⚠️ TODO: الباك ما بيرجع اسم مدرّس لكل كورس حالياً — نص عام مؤقت
-      teacher: "Fluent Instructor",
+      teacher: course.teacherName,
+      //teacher: "Fluent Instructor",
       teacherAvatar: Icons.person_rounded,
       imageUrl: course.image.isNotEmpty
           ? course.image
@@ -367,10 +367,13 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
 
                          final course = _courses[courseIndex];
 
-                          Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => LessonsScreen(
+                         Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (ctx) =>
+          StudentLessonsCubit(ctx.read<StudentLessonRepository>()),
+      child: LessonsScreen(
         courseId: course.id,
         courseTitle: course.title,
         courseSubtitle: "${widget.levelTitle} · ${course.teacher}",
@@ -379,11 +382,12 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
         xp: widget.xp,
         streakDays: widget.streakDays,
         courseProgress: course.progress,
-        onLessonTap: (lesson) {
-        },
+        onLessonTap: (lesson) {},
       ),
     ),
-  );
+  ),
+);
+
 }
             },
             borderAnimation: _borderFlowController,
@@ -908,148 +912,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
   );
 }
 
-  // Widget _buildBottomNav() {
-  //   final items = [
-  //     (Icons.home_rounded, "HOME", Icons.refresh_rounded),
-  //     (Icons.menu_book_rounded, "WORD BANK", null),
-  //     (Icons.mic_rounded, "PODCASTS", null),
-  //     (Icons.headset_rounded, "AI CONVERSATION", null),
-  //     (Icons.person_rounded, "PROFILE", null),
-  //   ];
-
-  //   return Container(
-  //     margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
-  //     child: AnimatedBuilder(
-  //       animation: _borderFlowController,
-  //       builder: (context, _) {
-  //         return CustomPaint(
-  //           foregroundPainter: _AnimatedBorderPainter(
-  //               animationValue: _borderFlowController.value, radius: 28.r),
-  //           child: ClipRRect(
-  //             borderRadius: BorderRadius.circular(28.r),
-  //             child: BackdropFilter(
-  //               filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-  //               child: Container(
-  //                 height: 76.h,
-  //                 decoration: BoxDecoration(
-  //                   gradient: LinearGradient(colors: [
-  //                     AppColors.dark.withOpacity(.55),
-  //                     AppColors.primary.withOpacity(.35)
-  //                   ]),
-  //                   borderRadius: BorderRadius.circular(28.r),
-  //                   boxShadow: [
-  //                     BoxShadow(
-  //                         color: AppColors.sky.withOpacity(.25), blurRadius: 25),
-  //                     BoxShadow(
-  //                         color: Colors.black.withOpacity(.4),
-  //                         blurRadius: 30,
-  //                         offset: const Offset(0, 10))
-  //                   ],
-  //                 ),
-  //                 child: Row(
-  //                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //                   children: List.generate(items.length, (i) {
-  //                     final selected = i == _selectedNavIndex;
-  //                     final (icon, label, badge) = items[i];
-  //                     return Expanded(
-  //                       child: GestureDetector(
-  //                         onTap: () {
-  //                           HapticFeedback.selectionClick();
-  //                           setState(() => _selectedNavIndex = i);
-  //                         },
-  //                         behavior: HitTestBehavior.opaque,
-  //                         child: AnimatedContainer(
-  //                           duration: 250.ms,
-  //                           padding: EdgeInsets.symmetric(vertical: 10.h),
-  //                           child: Column(
-  //                             mainAxisSize: MainAxisSize.min,
-  //                             mainAxisAlignment: MainAxisAlignment.center,
-  //                             children: [
-  //                               Stack(
-  //                                 clipBehavior: Clip.none,
-  //                                 children: [
-  //                                   AnimatedScale(
-  //                                     scale: selected ? 1.12 : 1.0,
-  //                                     duration: 300.ms,
-  //                                     child: Container(
-  //                                       padding: EdgeInsets.all(7.r),
-  //                                       decoration: BoxDecoration(
-  //                                         shape: BoxShape.circle,
-  //                                         gradient: selected
-  //                                             ? RadialGradient(colors: [
-  //                                                 AppColors.yellow
-  //                                                     .withOpacity(.35),
-  //                                                 AppColors.orange
-  //                                                     .withOpacity(.15)
-  //                                               ])
-  //                                             : null,
-  //                                         boxShadow: selected
-  //                                             ? [
-  //                                                 BoxShadow(
-  //                                                     color: AppColors.yellow
-  //                                                         .withOpacity(.5),
-  //                                                     blurRadius: 14,
-  //                                                     spreadRadius: 1)
-  //                                               ]
-  //                                             : null,
-  //                                       ),
-  //                                       child: Icon(icon,
-  //                                           color: selected
-  //                                               ? AppColors.yellow
-  //                                               : Colors.white.withOpacity(.75),
-  //                                           size: 22.sp),
-  //                                     ),
-  //                                   ),
-  //                                   if (badge != null)
-  //                                     Positioned(
-  //                                       top: -2,
-  //                                       right: -4,
-  //                                       child: Container(
-  //                                         padding: EdgeInsets.all(2.r),
-  //                                         decoration: BoxDecoration(
-  //                                             gradient: const LinearGradient(
-  //                                                 colors: [
-  //                                                   AppColors.yellow,
-  //                                                   AppColors.orange
-  //                                                 ]),
-  //                                             shape: BoxShape.circle),
-  //                                         child: Icon(badge,
-  //                                             size: 8.sp, color: Colors.black),
-  //                                       ),
-  //                                     ),
-  //                                 ],
-  //                               ),
-  //                               SizedBox(height: 4.h),
-  //                               AnimatedDefaultTextStyle(
-  //                                 duration: 250.ms,
-  //                                 style: GoogleFonts.poppins(
-  //                                   color: selected
-  //                                       ? AppColors.yellow
-  //                                       : Colors.white.withOpacity(.7),
-  //                                   fontSize: 9.sp,
-  //                                   fontWeight:
-  //                                       selected ? FontWeight.w800 : FontWeight.w500,
-  //                                 ),
-  //                                 child: Text(label,
-  //                                     maxLines: 1,
-  //                                     overflow: TextOverflow.ellipsis,
-  //                                     textAlign: TextAlign.center),
-  //                               ),
-  //                             ],
-  //                           ),
-  //                         ),
-  //                       ),
-  //                     );
-  //                   }),
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     ),
-  //   );
-  // }
 
   String _formatNumber(int n) {
     final s = n.toString();
@@ -1088,7 +950,6 @@ class _LevelOrbitRing extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // ✅ النقاط المدارية (كل نقطة = كورس)
           ...List.generate(courses.length, (i) {
             final angle = -math.pi / 2 + i * (2 * math.pi / courses.length);
             final radius = size / 2 + 16.w;
@@ -1270,7 +1131,6 @@ class AnimatedCourseCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  // ✅ توهج متحرك، فقط للكورس المميز/الحالي
                   if (isHighlighted)
                     Positioned.fill(
                       child: CustomPaint(
@@ -1342,93 +1202,292 @@ class AnimatedCourseCard extends StatelessWidget {
   }
 
   Widget _buildAvatar(double avatarSize) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        SizedBox(
-          width: avatarSize,
-          height: avatarSize,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
+  final double imageSize = avatarSize - 14.w;
+
+  return Stack(
+    clipBehavior: Clip.none,
+    alignment: Alignment.center,
+    children: [
+      SizedBox(
+        width: avatarSize,
+        height: avatarSize,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // خلفية progress خفيفة
+            SizedBox.expand(
+              child: CircularProgressIndicator(
+                value: 1,
+                strokeWidth: 3.2.w,
+                valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(.08)),
+              ),
+            ),
+
+            // progress الفعلي
+            if (!course.isLocked)
               SizedBox.expand(
                 child: CircularProgressIndicator(
-                  value: 1,
-                  strokeWidth: 3.w,
-                  valueColor:
-                      AlwaysStoppedAnimation(Colors.white.withOpacity(.10)),
+                  value: course.progress.clamp(0.0, 1.0),
+                  strokeWidth: 3.2.w,
+                  strokeCap: StrokeCap.round,
+                  valueColor: AlwaysStoppedAnimation(course.accentColor),
+                  backgroundColor: Colors.transparent,
                 ),
               ),
-              if (!course.isLocked)
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: course.progress.clamp(0.0, 1.0),
-                    strokeWidth: 3.w,
-                    strokeCap: StrokeCap.round,
-                    valueColor: AlwaysStoppedAnimation(course.accentColor),
-                    backgroundColor: Colors.transparent,
+
+            Container(
+              width: imageSize,
+              height: imageSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: course.isLocked
+                      ? [
+                          Colors.white.withOpacity(.15),
+                          Colors.white.withOpacity(.05),
+                        ]
+                      : [
+                          course.accentColor.withOpacity(.9),
+                          course.accentColor.withOpacity(.4),
+                        ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: course.isLocked
+                        ? Colors.black.withOpacity(.3)
+                        : course.accentColor.withOpacity(.45),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              padding: EdgeInsets.all(2.2.w), // سمك الحدود
+              child: ClipOval(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // الصورة
+                    course.imageUrl.isNotEmpty
+                        ? Image.network(
+                            course.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fallbackIcon(),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.black26,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      color: course.accentColor.withOpacity(.8),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : _fallbackIcon(),
+
+                    if (course.isLocked || course.isCompleted)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: course.isLocked
+                                ? [
+                                    Colors.black.withOpacity(.55),
+                                    Colors.black.withOpacity(.75),
+                                  ]
+                                : [
+                                    const Color(0xFF4ADE80).withOpacity(.25),
+                                    const Color(0xFF4ADE80).withOpacity(.55),
+                                  ],
+                          ),
+                        ),
+                      ),
+
+                    // أيقونة الحالة (قفل أو صح)
+                    if (course.isLocked || course.isCompleted)
+                      Center(
+                        child: Container(
+                          padding: EdgeInsets.all(6.r),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withOpacity(.45),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            course.isLocked
+                                ? Icons.lock_rounded
+                                : Icons.check_rounded,
+                            color: Colors.white,
+                            size: 16.sp,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              Container(
-                width: avatarSize - 15.w,
-                height: avatarSize - 15.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: course.isLocked
-                        ? [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)]
-                        : [
-                            course.accentColor.withOpacity(.85),
-                            course.accentColor.withOpacity(.45),
-                          ],
-                  ),
-                ),
-                child: Icon(
-                  course.isLocked
-                      ? Icons.lock_rounded
-                      : (course.isCompleted
-                          ? Icons.check_rounded
-                          : _getCourseIcon(index)),
-                  color: Colors.white,
-                  size: 20.sp,
-                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      Positioned(
+        top: -3.h,
+        left: -3.w,
+        child: Container(
+          width: 20.w,
+          height: 20.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: course.isLocked
+                  ? [Colors.grey.shade800, Colors.grey.shade900]
+                  : [
+                      course.accentColor,
+                      course.accentColor.withOpacity(.7),
+                    ],
+            ),
+            border: Border.all(
+              color: AppColors.dark,
+              width: 1.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.4),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-        ),
-
-        Positioned(
-          top: -4.h,
-          left: -4.w,
-          child: Container(
-            padding: EdgeInsets.all(4.r),
-            constraints: BoxConstraints(minWidth: 18.w, minHeight: 18.w),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.dark,
-              border: Border.all(
-                color: course.isLocked
-                    ? Colors.white24
-                    : course.accentColor.withOpacity(.8),
-                width: 1.2,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              "${index + 1}",
-              style: GoogleFonts.poppins(
-                fontSize: 8.5.sp,
-                fontWeight: FontWeight.w800,
-                color: course.isLocked ? Colors.white38 : Colors.white,
-              ),
+          alignment: Alignment.center,
+          child: Text(
+            "${index + 1}",
+            style: GoogleFonts.poppins(
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
+// أيقونة احتياطية لو الصورة ما تحملت
+Widget _fallbackIcon() {
+  return Container(
+    color: Colors.grey.shade900,
+    child: Icon(
+      course.isCompleted
+          ? Icons.check_rounded
+          : _getCourseIcon(index),
+      color: Colors.white.withOpacity(.7),
+      size: 22.sp,
+    ),
+  );
+}
+
+  // Widget _buildAvatar(double avatarSize) {
+  //   return Stack(
+  //     clipBehavior: Clip.none,
+  //     children: [
+  //       SizedBox(
+  //         width: avatarSize,
+  //         height: avatarSize,
+  //         child: Stack(
+  //           alignment: Alignment.center,
+  //           children: [
+  //             SizedBox.expand(
+  //               child: CircularProgressIndicator(
+  //                 value: 1,
+  //                 strokeWidth: 3.w,
+  //                 valueColor:
+  //                     AlwaysStoppedAnimation(Colors.white.withOpacity(.10)),
+  //               ),
+  //             ),
+  //             if (!course.isLocked)
+  //               SizedBox.expand(
+  //                 child: CircularProgressIndicator(
+  //                   value: course.progress.clamp(0.0, 1.0),
+  //                   strokeWidth: 3.w,
+  //                   strokeCap: StrokeCap.round,
+  //                   valueColor: AlwaysStoppedAnimation(course.accentColor),
+  //                   backgroundColor: Colors.transparent,
+  //                 ),
+  //               ),
+  //             Container(
+  //               width: avatarSize - 15.w,
+  //               height: avatarSize - 15.w,
+  //               decoration: BoxDecoration(
+  //                 shape: BoxShape.circle,
+  //                 gradient: LinearGradient(
+  //                   begin: Alignment.topLeft,
+  //                   end: Alignment.bottomRight,
+  //                   colors: course.isLocked
+  //                       ? [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)]
+  //                       : [
+  //                           course.accentColor.withOpacity(.85),
+  //                           course.accentColor.withOpacity(.45),
+  //                         ],
+  //                 ),
+  //               ),
+  //               child: Icon(
+  //                 course.isLocked
+  //                     ? Icons.lock_rounded
+  //                     : (course.isCompleted
+  //                         ? Icons.check_rounded
+  //                         : _getCourseIcon(index)),
+  //                 color: Colors.white,
+  //                 size: 20.sp,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+
+  //       Positioned(
+  //         top: -4.h,
+  //         left: -4.w,
+  //         child: Container(
+  //           padding: EdgeInsets.all(4.r),
+  //           constraints: BoxConstraints(minWidth: 18.w, minHeight: 18.w),
+  //           decoration: BoxDecoration(
+  //             shape: BoxShape.circle,
+  //             color: AppColors.dark,
+  //             border: Border.all(
+  //               color: course.isLocked
+  //                   ? Colors.white24
+  //                   : course.accentColor.withOpacity(.8),
+  //               width: 1.2,
+  //             ),
+  //           ),
+  //           alignment: Alignment.center,
+  //           child: Text(
+  //             "${index + 1}",
+  //             style: GoogleFonts.poppins(
+  //               fontSize: 8.5.sp,
+  //               fontWeight: FontWeight.w800,
+  //               color: course.isLocked ? Colors.white38 : Colors.white,
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildInfo() {
     return Column(

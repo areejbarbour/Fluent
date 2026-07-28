@@ -58,6 +58,10 @@ import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/cubit/student/courses/course_cubit.dart';
 import 'package:fluent/data/repository/course_repository.dart';
+import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart' as student_lesson;
+import 'package:fluent/data/repository/lesson_detail_repository.dart';
+import 'package:fluent/presentation/screens/lessons/lesson_detail_screen.dart' as student_lesson_screen;
+
 
 class AppRouter {
   final AuthRepository authRepository;
@@ -199,6 +203,23 @@ class AppRouter {
               levelTitle: args['levelTitle'] as String? ?? "Level 8",
               levelSubtitle:
                   args['levelSubtitle'] as String? ?? "Grammar Mastery",
+            ),
+          ),
+        );
+
+        // ✅ Student: Lesson video + comments detail
+      case lessonDetailRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final lessonId = args['lessonId'] as int?;
+
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => student_lesson.LessonDetailCubit(
+              ctx.read<LessonDetailRepository>(),
+            )..fetchLessonDetail(lessonId ?? 0),
+            child: student_lesson_screen.LessonDetailScreen(
+              lessonId: lessonId,
+              lessonTitle: args['lessonTitle'] as String? ?? '',
             ),
           ),
         );
@@ -397,3 +418,4 @@ class AppRouter {
     }
   }
 }
+ 
