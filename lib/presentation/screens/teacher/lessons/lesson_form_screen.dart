@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -53,41 +52,39 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
       _xpCtrl;
   PlatformFile? _selectedVideo;
 
-  // اختبار الدرس
-  TestModel? _currentTest;
+  List<TestModel> _lessonTests = [];
   bool _isLoadingTest = false;
 
-  // تفاصيل الدرس من /details
   String? _currentVideoUrl;
   int _commentsCount = 0;
   bool _isLoadingDetails = false;
 
   bool get isEditMode => widget.lesson != null;
 
-  bool get isRestrictedEdit {
-    if (!isEditMode && widget.courseStatus != 'pending') {
-      return true;
-    }
-    if (isEditMode && widget.lesson != null) {
-      final restrictedLessonStatuses = [
-        'closed',
-        'archived',
-        'approved',
-        'in_review',
-      ];
-      if (restrictedLessonStatuses.contains(widget.courseStatus)) {
-        return true;
-      }
-    }
-    return false;
+  /// حالة الدرس الفعلية (مش الكورس)
+  String get _lessonStatus => (widget.lesson?.status ?? '').toLowerCase();
+
+  /// إنشاء درس جديد: فقط إذا الكورس pending
+  bool get canCreateLesson {
+    if (isEditMode) return true;
+    return (widget.courseStatus ?? '').toLowerCase() == 'pending';
   }
 
-  bool get isPublishedEdit => isEditMode && widget.courseStatus == 'published';
+  /// تعديل كامل ممنوع حسب حالة الدرس
+  bool get isRestrictedEdit {
+    if (!isEditMode) return !canCreateLesson;
+    const blocked = {'closed', 'archived', 'approved', 'in_review'};
+    return blocked.contains(_lessonStatus);
+  }
 
+  /// درس منشور → order + video مقفولين
+  bool get isPublishedEdit => isEditMode && _lessonStatus == 'published';
+
+  /// حذف حسب حالة الدرس فقط
   bool get canDelete {
-    if (!isEditMode || widget.lesson == null) return false;
-    final deletableStatuses = ['draft', 'changes_requested', 'pending'];
-    return deletableStatuses.contains(widget.courseStatus);
+    if (!isEditMode) return false;
+    const deletable = {'draft', 'pending', 'changes_requested'};
+    return deletable.contains(_lessonStatus);
   }
 
   @override
@@ -104,11 +101,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
 
     if (isEditMode && widget.lesson != null) {
       _fetchLessonDetails();
-      _fetchLessonTest();
+      _fetchLessonTests();
     }
   }
 
-  /// تفاصيل الدرس: فيديو + تعليقات + أحدث بيانات
   Future<void> _fetchLessonDetails() async {
     if (widget.lesson == null) return;
 
@@ -148,16 +144,15 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         setState(() => _isLoadingDetails = false);
       }
     } catch (e) {
-      print('❌ _fetchLessonDetails error: $e');
+      print('_fetchLessonDetails error: $e');
       if (mounted) setState(() => _isLoadingDetails = false);
     }
   }
 
-  /// اختبار الدرس من GET /tests (بدون testId)
-  Future<void> _fetchLessonTest() async {
+  Future<void> _fetchLessonTests() async {
     if (widget.lesson == null) {
       setState(() {
-        _currentTest = null;
+        _lessonTests = [];
         _isLoadingTest = false;
       });
       return;
@@ -172,27 +167,29 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
 
       if (result['success'] == true) {
         final all = result['data'] as List<TestModel>;
-        final matches = all.where(
-          (t) =>
-              t.testableType.toLowerCase() == 'lesson' &&
-              t.testableId == widget.lesson!.id,
-        );
+        final matches = all
+            .where(
+              (t) =>
+                  t.testableType.toLowerCase() == 'lesson' &&
+                  t.testableId == widget.lesson!.id,
+            )
+            .toList();
         setState(() {
-          _currentTest = matches.isEmpty ? null : matches.first;
+          _lessonTests = matches;
           _isLoadingTest = false;
         });
       } else {
         setState(() {
-          _currentTest = null;
+          _lessonTests = [];
           _isLoadingTest = false;
         });
       }
     } catch (e, stack) {
-      print('❌ _fetchLessonTest error: $e');
-      print('❌ stack: $stack');
+      print('_fetchLessonTests error: $e');
+      print('stack: $stack');
       if (mounted) {
         setState(() {
-          _currentTest = null;
+          _lessonTests = [];
           _isLoadingTest = false;
         });
       }
@@ -229,6 +226,16 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
   }
 
   void _submit(BuildContext context) async {
+    if (isRestrictedEdit && !isPublishedEdit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This lesson cannot be modified in its current status'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
     if (!isEditMode && _selectedVideo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -246,16 +253,21 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     final formData = FormData.fromMap({
       'title_en': _titleEnCtrl.text.trim(),
       'title_ar': _titleArCtrl.text.trim(),
+      'order': orderValue,
       'xp_points': xpValue,
-      if (!isPublishedEdit) 'order': orderValue,
-      if (_selectedVideo != null &&
-          _selectedVideo!.path != null &&
-          !isPublishedEdit)
-        'video': await MultipartFile.fromFile(
-          _selectedVideo!.path!,
-          filename: _selectedVideo!.name,
-        ),
     });
+
+    if (_selectedVideo != null && _selectedVideo!.path != null) {
+      formData.files.add(
+        MapEntry(
+          'video',
+          await MultipartFile.fromFile(
+            _selectedVideo!.path!,
+            filename: _selectedVideo!.name,
+          ),
+        ),
+      );
+    }
 
     if (isEditMode) {
       context.read<LessonFormCubit>().updateLesson(widget.lesson!.id, formData);
@@ -273,25 +285,15 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           borderRadius: BorderRadius.circular(20.r),
           side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
         ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 24,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              "Delete Lesson?",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        title: Text(
+          'Delete Lesson?',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Text(
-          "This action cannot be undone. The lesson will be permanently removed.",
+          'This will permanently delete the lesson with all its tests and details. This cannot be undone.',
           style: GoogleFonts.poppins(
             color: Colors.white.withOpacity(0.8),
             fontSize: 13.sp,
@@ -301,7 +303,7 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              "Cancel",
+              'Cancel',
               style: GoogleFonts.poppins(color: Colors.white70),
             ),
           ),
@@ -311,7 +313,7 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
               context.read<LessonDeleteCubit>().deleteLesson(widget.lesson!.id);
             },
             child: Text(
-              "Delete",
+              'Delete',
               style: GoogleFonts.poppins(
                 color: Colors.redAccent,
                 fontWeight: FontWeight.w700,
@@ -323,7 +325,94 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     );
   }
 
-  void _confirmDeleteTest(BuildContext context) {
+  // 📁 lib/presentation/screens/teacher/lessons/lesson_form_screen.dart
+
+  // ❌ احذف الدالة القديمة واستبدلها بهذه:
+
+  Future<void> _openEditTest(TestModel test) async {
+    // ✅ 1. عرض مؤشر تحميل
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.yellow),
+      ),
+    );
+
+    try {
+      // ✅ 2. جلب الاختبار الكامل مع الأسئلة من الباك إند
+      final repo = context.read<TestRepository>();
+      final result = await repo.getTestById(test.id);
+
+      // ✅ 3. إغلاق مؤشر التحميل
+      if (mounted) Navigator.pop(context);
+
+      if (!mounted) return;
+
+      if (result['success'] == true && result['data'] is TestModel) {
+        final fullTest = result['data'] as TestModel;
+
+        // ✅ 4. فتح شاشة التعديل مع الاختبار الكامل
+        final editResult = await Navigator.pushNamed(
+          context,
+          testFormRoute,
+          arguments: {
+            'testableType': 'lesson',
+            'testableId': widget.lesson!.id,
+            'title': widget.lesson!.titleEn.isNotEmpty
+                ? widget.lesson!.titleEn
+                : widget.lesson!.titleAr,
+            'initialTest': fullTest, // ✅ الآن يحتوي على الأسئلة
+          },
+        );
+
+        // ✅ 5. تحديث قائمة الاختبارات بعد العودة
+        if (editResult == true && mounted) {
+          _fetchLessonTests();
+        }
+      } else {
+        // ❌ عرض رسالة خطأ
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to load test details'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // ✅ إغلاق مؤشر التحميل في حالة الخطأ
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _openCreateTest() {
+    Navigator.pushNamed(
+      context,
+      testFormRoute,
+      arguments: {
+        'testableType': 'lesson',
+        'testableId': widget.lesson!.id,
+        'title': widget.lesson!.titleEn.isNotEmpty
+            ? widget.lesson!.titleEn
+            : widget.lesson!.titleAr,
+      },
+    ).then((_) {
+      if (mounted) _fetchLessonTests();
+    });
+  }
+
+  void _confirmDeleteTest(TestModel test) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -332,25 +421,15 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           borderRadius: BorderRadius.circular(20.r),
           side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
         ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 24,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              "Delete Test?",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        title: Text(
+          'Delete Test?',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Text(
-          "This action cannot be undone. The test will be permanently removed.",
+          'Delete "${test.titleEn.isNotEmpty ? test.titleEn : test.titleAr}"?\nThis cannot be undone.',
           style: GoogleFonts.poppins(
             color: Colors.white.withOpacity(0.8),
             fontSize: 13.sp,
@@ -360,19 +439,17 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              "Cancel",
+              'Cancel',
               style: GoogleFonts.poppins(color: Colors.white70),
             ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              if (_currentTest != null) {
-                context.read<TestDeleteCubit>().deleteTest(_currentTest!.id);
-              }
+              context.read<TestDeleteCubit>().deleteTest(test.id);
             },
             child: Text(
-              "Delete",
+              'Delete',
               style: GoogleFonts.poppins(
                 color: Colors.redAccent,
                 fontWeight: FontWeight.w700,
@@ -386,63 +463,6 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isRestrictedEdit) {
-      return Scaffold(
-        body: Stack(
-          children: [
-            Container(decoration: QuestionUI.backgroundGradient()),
-            SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.lock_outline,
-                        color: Colors.redAccent,
-                        size: 64,
-                      ),
-                      SizedBox(height: 16.h),
-                      Text(
-                        "Action Not Allowed",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        widget.courseStatus == 'published'
-                            ? "This course is published. You cannot add, edit, or delete lessons."
-                            : "This lesson is in a restricted status and cannot be modified.",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white70,
-                          fontSize: 13.sp,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 24.h),
-                      ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back, size: 18),
-                        label: const Text("Go Back"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.yellow,
-                          foregroundColor: AppColors.dark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return MultiBlocListener(
       listeners: [
         BlocListener<LessonFormCubit, LessonFormState>(
@@ -451,13 +471,16 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    isEditMode ? 'Lesson updated!' : 'Lesson created!',
+                    isEditMode
+                        ? 'Lesson updated successfully'
+                        : 'Lesson created successfully',
                   ),
                   backgroundColor: Colors.greenAccent,
                 ),
               );
               Navigator.pop(context, true);
-            } else if (state is LessonFormFailure) {
+            }
+            if (state is LessonFormFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.error),
@@ -477,7 +500,8 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                 ),
               );
               Navigator.pop(context, true);
-            } else if (state is LessonDeleteFailure) {
+            }
+            if (state is LessonDeleteFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.error),
@@ -496,8 +520,9 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                   backgroundColor: Colors.greenAccent,
                 ),
               );
-              setState(() => _currentTest = null);
-            } else if (state is TestDeleteFailure) {
+              _fetchLessonTests();
+            }
+            if (state is TestDeleteFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.error),
@@ -519,54 +544,18 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         commentsCount: _commentsCount,
         isLoadingDetails: _isLoadingDetails,
         isEditMode: isEditMode,
+        isRestrictedEdit: isRestrictedEdit,
         isPublishedEdit: isPublishedEdit,
         canDelete: canDelete,
         lesson: widget.lesson,
-        currentTest: _currentTest,
+        lessonTests: _lessonTests,
         isLoadingTest: _isLoadingTest,
         onPickVideo: _pickVideo,
         onSubmit: () => _submit(context),
         onDelete: () => _confirmDelete(context),
-        onEditTest: _currentTest != null
-            ? () {
-                Navigator.pushNamed(
-                  context,
-                  testFormRoute,
-                  arguments: {
-                    'testableType': 'lesson',
-                    'testableId': widget.lesson!.id,
-                    'title': widget.lesson!.titleEn.isNotEmpty
-                        ? widget.lesson!.titleEn
-                        : widget.lesson!.titleAr,
-                    'initialTest': _currentTest,
-                  },
-                ).then((result) {
-                  if (result == true && mounted) {
-                    _fetchLessonTest();
-                  }
-                });
-              }
-            : null,
-        onCreateTest: () {
-          Navigator.pushNamed(
-            context,
-            testFormRoute,
-            arguments: {
-              'testableType': 'lesson',
-              'testableId': widget.lesson!.id,
-              'title': widget.lesson!.titleEn.isNotEmpty
-                  ? widget.lesson!.titleEn
-                  : widget.lesson!.titleAr,
-            },
-          ).then((result) {
-            if (result == true && mounted) {
-              _fetchLessonTest();
-            }
-          });
-        },
-        onDeleteTest: _currentTest != null
-            ? () => _confirmDeleteTest(context)
-            : null,
+        onEditTest: _openEditTest,
+        onCreateTest: _openCreateTest,
+        onDeleteTest: _confirmDeleteTest,
       ),
     );
   }
@@ -584,15 +573,16 @@ class _FormView extends StatelessWidget {
   final int commentsCount;
   final bool isLoadingDetails;
   final bool isEditMode;
+  final bool isRestrictedEdit;
   final bool isPublishedEdit;
   final bool canDelete;
   final LessonModel? lesson;
-  final TestModel? currentTest;
+  final List<TestModel> lessonTests;
   final bool isLoadingTest;
   final VoidCallback onPickVideo, onSubmit, onDelete;
-  final VoidCallback? onEditTest;
+  final void Function(TestModel test)? onEditTest;
   final VoidCallback? onCreateTest;
-  final VoidCallback? onDeleteTest;
+  final void Function(TestModel test)? onDeleteTest;
 
   const _FormView({
     required this.formKey,
@@ -605,10 +595,11 @@ class _FormView extends StatelessWidget {
     this.commentsCount = 0,
     this.isLoadingDetails = false,
     required this.isEditMode,
+    required this.isRestrictedEdit,
     required this.isPublishedEdit,
     required this.canDelete,
     required this.lesson,
-    required this.currentTest,
+    required this.lessonTests,
     required this.isLoadingTest,
     required this.onPickVideo,
     required this.onSubmit,
@@ -620,6 +611,8 @@ class _FormView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fieldsEnabled = !isRestrictedEdit || isPublishedEdit;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -642,11 +635,16 @@ class _FormView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (isRestrictedEdit && !isPublishedEdit) ...[
+                            _buildRestrictedBanner(),
+                            SizedBox(height: 12.h),
+                          ],
                           _buildTextField(
                             titleEnCtrl,
                             'Title (English)',
                             Icons.translate,
                             isArabic: false,
+                            isEnabled: fieldsEnabled,
                           ),
                           SizedBox(height: 10.h),
                           _buildTextField(
@@ -654,6 +652,7 @@ class _FormView extends StatelessWidget {
                             'Title (Arabic)',
                             Icons.translate,
                             isArabic: true,
+                            isEnabled: fieldsEnabled,
                           ),
                           SizedBox(height: 10.h),
                           Row(
@@ -664,7 +663,7 @@ class _FormView extends StatelessWidget {
                                   'Order',
                                   Icons.format_list_numbered,
                                   isNum: true,
-                                  isEnabled: !isPublishedEdit,
+                                  isEnabled: fieldsEnabled && !isPublishedEdit,
                                 ),
                               ),
                               SizedBox(width: 10.w),
@@ -674,7 +673,7 @@ class _FormView extends StatelessWidget {
                                   'XP Points',
                                   Icons.star_rounded,
                                   isNum: true,
-                                  isEnabled: true,
+                                  isEnabled: fieldsEnabled,
                                 ),
                               ),
                             ],
@@ -682,7 +681,7 @@ class _FormView extends StatelessWidget {
                           SizedBox(height: 16.h),
                           _buildVideoPicker(
                             context,
-                            isEnabled: !isPublishedEdit,
+                            isEnabled: fieldsEnabled && !isPublishedEdit,
                           ),
                           if (isEditMode && commentsCount > 0) ...[
                             SizedBox(height: 10.h),
@@ -711,8 +710,10 @@ class _FormView extends StatelessWidget {
                               ),
                             ),
                           ],
-                          SizedBox(height: 24.h),
-                          _buildSubmitButton(context),
+                          if (fieldsEnabled) ...[
+                            SizedBox(height: 24.h),
+                            _buildSubmitButton(context),
+                          ],
                           if (isEditMode) ...[
                             SizedBox(height: 20.h),
                             _buildTestSection(context),
@@ -734,25 +735,30 @@ class _FormView extends StatelessWidget {
     );
   }
 
-  // ─── Lesson Test Section ───
+  Widget _buildRestrictedBanner() {
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(12.w),
+      borderColor: Colors.redAccent.withOpacity(0.4),
+      child: Row(
+        children: [
+          Icon(Icons.lock_outline, color: Colors.redAccent, size: 18.sp),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              'This lesson is in a restricted status and cannot be modified.',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTestSection(BuildContext context) {
-    final canEdit =
-        currentTest != null &&
-        ![
-          'in_review',
-          'archived',
-          'closed',
-        ].contains(currentTest!.status.toLowerCase());
-
-    final canDeleteTest =
-        currentTest != null &&
-        ![
-          'published',
-          'archived',
-          'closed',
-          'in_review',
-        ].contains(currentTest!.status.toLowerCase());
-
     return QuestionUI.glass(
       padding: EdgeInsets.all(14.w),
       borderColor: AppColors.sky.withOpacity(0.4),
@@ -763,12 +769,14 @@ class _FormView extends StatelessWidget {
             children: [
               Icon(Icons.quiz_outlined, color: AppColors.sky, size: 20.sp),
               SizedBox(width: 8.w),
-              Text(
-                "Lesson Test",
-                style: GoogleFonts.poppins(
-                  color: AppColors.sky,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Lesson Tests (${lessonTests.length})',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.sky,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -778,129 +786,132 @@ class _FormView extends StatelessWidget {
             Center(
               child: Padding(
                 padding: EdgeInsets.all(20.h),
-                child: CircularProgressIndicator(color: AppColors.yellow),
+                child: const CircularProgressIndicator(color: AppColors.yellow),
               ),
             )
-          else if (currentTest != null)
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: AppColors.sky.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    currentTest!.titleEn.isNotEmpty
-                        ? currentTest!.titleEn
-                        : currentTest!.titleAr,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Wrap(
-                    spacing: 6.w,
-                    runSpacing: 4.h,
-                    children: [
-                      _testChip(
-                        icon: Icons.check_circle_outline,
-                        label: 'Pass: ${currentTest!.passingScore}%',
-                        color: AppColors.yellow,
-                      ),
-                      _testChip(
-                        icon: Icons.quiz,
-                        label: '${currentTest!.questions.length} Questions',
-                        color: AppColors.sky,
-                      ),
-                      _testChip(
-                        icon: Icons.info_outline,
-                        label: currentTest!.status.toUpperCase(),
-                        color: StatusUI.statusColor(currentTest!.status),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12.h),
-                  if (canEdit && onEditTest != null)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onEditTest,
-                        icon: Icon(Icons.edit, size: 16.sp),
-                        label: Text(
-                          "Edit Test",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.sky.withOpacity(0.2),
-                          foregroundColor: AppColors.sky,
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (!canEdit)
-                    Text(
-                      "Editing is not allowed in '${currentTest!.status.toUpperCase()}' status.",
-                      style: GoogleFonts.poppins(
-                        color: Colors.redAccent.withOpacity(0.8),
-                        fontSize: 10.sp,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  SizedBox(height: 8.h),
-                  if (canDeleteTest && onDeleteTest != null)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onDeleteTest,
-                        icon: Icon(Icons.delete_outline, size: 16.sp),
-                        label: Text(
-                          "Delete Test",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent.withOpacity(0.2),
-                          foregroundColor: Colors.redAccent,
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (!canDeleteTest)
-                    Text(
-                      "Deletion is permanently blocked for this status.",
-                      style: GoogleFonts.poppins(
-                        color: Colors.redAccent.withOpacity(0.8),
-                        fontSize: 10.sp,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                ],
+          else if (lessonTests.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.h),
+              child: Text(
+                'No tests yet for this lesson',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontSize: 12.sp,
+                ),
               ),
             )
           else
+            ...lessonTests.map((test) {
+              // ✅ حالة الاختبار فقط
+              final canEdit = test.canEdit;
+              final canDel = test.canDelete;
+
+              return Container(
+                margin: EdgeInsets.only(bottom: 10.h),
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.sky.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      test.titleEn.isNotEmpty ? test.titleEn : test.titleAr,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Wrap(
+                      spacing: 6.w,
+                      runSpacing: 4.h,
+                      children: [
+                        _testChip(
+                          icon: Icons.check_circle_outline,
+                          label: 'Pass: ${test.passingScore}%',
+                          color: AppColors.yellow,
+                        ),
+                        _testChip(
+                          icon: Icons.info_outline,
+                          label: test.status.toUpperCase(),
+                          color: StatusUI.statusColor(test.status),
+                        ),
+                      ],
+                    ),
+                    if (canEdit || canDel) ...[
+                      SizedBox(height: 10.h),
+                      Row(
+                        children: [
+                          if (canEdit && onEditTest != null)
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => onEditTest!(test),
+                                icon: Icon(Icons.edit, size: 14.sp),
+                                label: Text(
+                                  'Edit',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.sky.withOpacity(
+                                    0.2,
+                                  ),
+                                  foregroundColor: AppColors.sky,
+                                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (canEdit && canDel) SizedBox(width: 8.w),
+                          if (canDel && onDeleteTest != null)
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => onDeleteTest!(test),
+                                icon: Icon(Icons.delete_outline, size: 14.sp),
+                                label: Text(
+                                  'Delete',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent.withOpacity(
+                                    0.2,
+                                  ),
+                                  foregroundColor: Colors.redAccent,
+                                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          // Add Test: مسموح طالما الدرس مش restricted بالكامل
+          if (!isRestrictedEdit || isPublishedEdit) ...[
+            SizedBox(height: 8.h),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: onCreateTest,
                 icon: Icon(Icons.add, size: 18.sp),
                 label: Text(
-                  "Create Test for this Lesson",
+                  'Add Test',
                   style: GoogleFonts.poppins(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w700,
@@ -916,6 +927,7 @@ class _FormView extends StatelessWidget {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -983,8 +995,15 @@ class _FormView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20.sp,
+            ),
+          ),
           Container(
             width: 38.w,
             height: 38.w,
@@ -1004,7 +1023,7 @@ class _FormView extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                isEditMode ? "Edit Lesson" : "New Lesson",
+                isEditMode ? 'Edit Lesson' : 'New Lesson',
                 style: GoogleFonts.cinzelDecorative(
                   color: Colors.white,
                   fontSize: 18.sp,
@@ -1057,12 +1076,13 @@ class _FormView extends StatelessWidget {
           border: InputBorder.none,
         ),
         validator: (v) {
+          if (!isEnabled) return null;
           if (v == null || v.isEmpty) return 'Required';
           if (label.contains('English') && !enRegex.hasMatch(v)) {
-            return 'Only English letters, numbers, spaces, - and _ allowed';
+            return 'Only English letters, numbers, spaces allowed';
           }
           if (label.contains('Arabic') && !arRegex.hasMatch(v)) {
-            return 'Only Arabic letters, numbers, spaces, - and _ allowed';
+            return 'Only Arabic letters, numbers, spaces allowed';
           }
           return null;
         },
@@ -1092,7 +1112,7 @@ class _FormView extends StatelessWidget {
                   child: SizedBox(
                     width: 22.w,
                     height: 22.w,
-                    child: CircularProgressIndicator(
+                    child: const CircularProgressIndicator(
                       color: AppColors.sky,
                       strokeWidth: 2,
                     ),
@@ -1112,7 +1132,7 @@ class _FormView extends StatelessWidget {
                     ? 'Current video attached'
                     : (isEnabled
                           ? 'Tap to select video file'
-                          : 'Video cannot be changed for published lessons'),
+                          : 'Video cannot be changed'),
                 style: GoogleFonts.poppins(
                   color: isEnabled ? Colors.white : Colors.white54,
                   fontSize: 12.sp,
@@ -1175,7 +1195,7 @@ class _FormView extends StatelessWidget {
                   ? SizedBox(
                       width: 22.w,
                       height: 22.w,
-                      child: CircularProgressIndicator(
+                      child: const CircularProgressIndicator(
                         color: AppColors.dark,
                         strokeWidth: 2.5,
                       ),
@@ -1214,7 +1234,7 @@ class _FormView extends StatelessWidget {
                   ? SizedBox(
                       width: 20.w,
                       height: 20.w,
-                      child: CircularProgressIndicator(
+                      child: const CircularProgressIndicator(
                         color: Colors.redAccent,
                         strokeWidth: 2.5,
                       ),

@@ -11,6 +11,7 @@ import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
 import 'package:fluent/presentation/screens/teacher/questions/question_filter_sheet.dart';
+import 'package:fluent/presentation/screens/teacher/questions/question_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -53,11 +54,16 @@ class _TestFormScreenState extends State<TestFormScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ ملء البيانات تلقائياً إذا كنا في وضع التعديل
     if (isEditMode && widget.initialTest != null) {
       _titleEnCtrl.text = widget.initialTest!.titleEn;
       _titleArCtrl.text = widget.initialTest!.titleAr;
       _passingScoreCtrl.text = widget.initialTest!.passingScore.toString();
+      print(
+        "TestFormScreen: Initial Test Questions Count: ${widget.initialTest!.questions.length}",
+      );
+      print(
+        "TestFormScreen: Initial Test Questions Details: ${widget.initialTest!.questions}",
+      ); // اطبع التفاصيل
       _selectedQuestions = List.from(widget.initialTest!.questions);
     }
   }
@@ -711,11 +717,18 @@ class _QuestionPickerSheet extends StatefulWidget {
 class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
   late List<Question> _tempSelected;
 
+  /// Cached full question details (with answers) keyed by id
+  final Map<int, Question> _fullDetails = {};
+  final Set<int> _expandedIds = {};
+  final Set<int> _loadingDetailIds = {};
+
   @override
   void initState() {
     super.initState();
     _tempSelected = List.from(widget.selectedQuestions);
   }
+
+  Question _displayQuestion(Question q) => _fullDetails[q.id] ?? q;
 
   void _toggleSelection(Question q) {
     // لاختبار كورس: امنع اختيار غير المؤهل
@@ -733,13 +746,47 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
       return;
     }
 
+    final full = _displayQuestion(q);
     setState(() {
       if (_tempSelected.any((e) => e.id == q.id)) {
         _tempSelected.removeWhere((e) => e.id == q.id);
       } else {
-        _tempSelected.add(q);
+        _tempSelected.add(full);
       }
     });
+  }
+
+  Future<void> _toggleExpandDetails(Question q) async {
+    final id = q.id;
+    if (_expandedIds.contains(id)) {
+      setState(() => _expandedIds.remove(id));
+      return;
+    }
+
+    setState(() => _expandedIds.add(id));
+
+    final current = _displayQuestion(q);
+    if (current.answers.isNotEmpty) return;
+    if (_loadingDetailIds.contains(id)) return;
+
+    setState(() => _loadingDetailIds.add(id));
+    try {
+      final result = await context.read<QuestionRepository>().getQuestion(id);
+      if (!mounted) return;
+      if (result['success'] == true && result['data'] is Question) {
+        final full = result['data'] as Question;
+        setState(() {
+          _fullDetails[id] = full;
+          // Keep selection in sync with full object
+          final idx = _tempSelected.indexWhere((e) => e.id == id);
+          if (idx != -1) _tempSelected[idx] = full;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingDetailIds.remove(id));
+      }
+    }
   }
 
   Future<void> _openFilters() async {
@@ -772,6 +819,360 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
         onlyEligible: onlyEligible,
       );
     }
+  }
+
+  /// Create a new question (same form as Questions bank), then auto-select it.
+  /// Shown for lesson tests; new questions are immediately usable there.
+  Future<void> _createNewQuestion() async {
+    final result = await Navigator.push<dynamic>(
+      context,
+      MaterialPageRoute(builder: (_) => const QuestionFormScreen()),
+    );
+
+    if (!mounted) return;
+
+    if (result is Question) {
+      setState(() {
+        if (!_tempSelected.any((e) => e.id == result.id)) {
+          _tempSelected.add(result);
+        }
+      });
+
+      // Refresh bank list so the new question appears
+      context.read<QuestionFilterCubit>().applyFilters(
+        courseId: widget.isCourseTest ? widget.courseId : null,
+        onlyEligible: widget.isCourseTest ? true : null,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Question created and added to selection',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: Colors.greenAccent.shade400,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Widget _miniChip(String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String _answerLabel(QuestionAnswer a) {
+    if (a.textAnswer != null && a.textAnswer!.isNotEmpty) {
+      return a.textAnswer!;
+    }
+    if (a.leftText != null || a.rightText != null) {
+      return '${a.leftText ?? '—'}  ↔  ${a.rightText ?? '—'}';
+    }
+    return '—';
+  }
+
+  Widget _buildDetailedQuestionCard(Question raw, {required bool isSelected}) {
+    final q = _displayQuestion(raw);
+    final typeColor = QuestionUI.typeColor(q.type.value);
+    final isExpanded = _expandedIds.contains(q.id);
+    final isLoadingDetail = _loadingDetailIds.contains(q.id);
+    final hasImage = q.imageUrl != null && q.imageUrl!.isNotEmpty;
+    final hasAudio = q.audioUrl != null && q.audioUrl!.isNotEmpty;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(isSelected ? 0.14 : 0.08),
+            Colors.white.withOpacity(0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.yellow.withOpacity(0.55)
+              : AppColors.sky.withOpacity(0.28),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: select + titles ──
+          InkWell(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(14.r)),
+            onTap: () => _toggleSelection(raw),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: isSelected ? AppColors.yellow : Colors.white54,
+                    size: 22.sp,
+                  ),
+                  SizedBox(width: 10.w),
+                  Container(
+                    width: 36.w,
+                    height: 36.w,
+                    decoration: BoxDecoration(
+                      color: typeColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: typeColor.withOpacity(0.5)),
+                    ),
+                    child: Icon(
+                      QuestionUI.typeIcon(q.type.value),
+                      color: typeColor,
+                      size: 18.sp,
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (q.titleQuestionEn.isNotEmpty)
+                          Text(
+                            q.titleQuestionEn,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        if (q.titleQuestionAr.isNotEmpty) ...[
+                          SizedBox(height: 2.h),
+                          Text(
+                            q.titleQuestionAr,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 12.sp,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Body text ──
+          if (q.textQuestion != null && q.textQuestion!.trim().isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              child: Text(
+                q.textQuestion!,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 12.sp,
+                ),
+              ),
+            ),
+
+          // ── Chips ──
+          Padding(
+            padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
+            child: Wrap(
+              spacing: 6.w,
+              runSpacing: 6.h,
+              children: [
+                _miniChip(q.type.value, typeColor),
+                _miniChip(
+                  q.difficulty.value,
+                  QuestionUI.difficultyColor(q.difficulty.value),
+                ),
+                _miniChip('${q.score} pts', AppColors.yellow),
+                if (q.isEligible == true)
+                  _miniChip('Eligible', Colors.greenAccent),
+                if (q.isEligible == false)
+                  _miniChip('Not eligible', Colors.redAccent),
+                if (hasImage) _miniChip('Image', AppColors.sky),
+                if (hasAudio) _miniChip('Audio', AppColors.orange),
+              ],
+            ),
+          ),
+
+          // ── Expand details (answers + media) ──
+          Padding(
+            padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => _toggleExpandDetails(raw),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: AppColors.sky,
+                        size: 18.sp,
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        isExpanded ? 'Hide details' : 'Show full details',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.sky,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (isLoadingDetail) ...[
+                        SizedBox(width: 8.w),
+                        SizedBox(
+                          width: 12.w,
+                          height: 12.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.sky,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (isExpanded) ...[
+                  SizedBox(height: 8.h),
+                  if (hasImage)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10.r),
+                      child: Image.network(
+                        q.imageUrl!,
+                        height: 120.h,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Text(
+                          'Image unavailable',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white38,
+                            fontSize: 11.sp,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (hasAudio) ...[
+                    SizedBox(height: 6.h),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.audiotrack,
+                          color: AppColors.orange,
+                          size: 14.sp,
+                        ),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Text(
+                            q.audioUrl!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white54,
+                              fontSize: 10.sp,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Answers (${q.answers.length})',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  if (q.answers.isEmpty && !isLoadingDetail)
+                    Text(
+                      'No answers loaded',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white38,
+                        fontSize: 11.sp,
+                      ),
+                    )
+                  else
+                    ...q.answers.map((a) {
+                      final isCorrect = a.isCorrect == true;
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 6.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCorrect
+                              ? Colors.greenAccent.withOpacity(0.12)
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(
+                            color: isCorrect
+                                ? Colors.greenAccent.withOpacity(0.4)
+                                : Colors.white12,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isCorrect
+                                  ? Icons.check_circle
+                                  : Icons.circle_outlined,
+                              size: 16.sp,
+                              color: isCorrect
+                                  ? Colors.greenAccent
+                                  : Colors.white38,
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                _answerLabel(a),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ),
+                            if (a.order != null && a.order! > 0)
+                              _miniChip('Order ${a.order}', AppColors.sky),
+                            if (a.blankOrder != null && a.blankOrder! > 0)
+                              _miniChip(
+                                'Blank ${a.blankOrder}',
+                                AppColors.orange,
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -812,15 +1213,57 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
                       size: 24.sp,
                     ),
                     SizedBox(width: 10.w),
-                    Text(
-                      "Select Questions",
-                      style: GoogleFonts.cinzelDecorative(
-                        color: Colors.white,
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        "Select Questions",
+                        style: GoogleFonts.cinzelDecorative(
+                          color: Colors.white,
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
+                    // Create new question (lesson tests — usable immediately in bank)
+                    if (!widget.isCourseTest) ...[
+                      GestureDetector(
+                        onTap: _createNewQuestion,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 6.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.yellow.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: AppColors.yellow.withOpacity(0.5),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.add,
+                                color: AppColors.yellow,
+                                size: 16.sp,
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                'New',
+                                style: GoogleFonts.poppins(
+                                  color: AppColors.yellow,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                    ],
                     GestureDetector(
                       onTap: _openFilters,
                       child: Container(
@@ -897,38 +1340,9 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
                               (element) => element.id == q.id,
                             );
 
-                            return ListTile(
-                              leading: Icon(
-                                isSelected
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: isSelected
-                                    ? AppColors.yellow
-                                    : Colors.white54,
-                              ),
-                              title: Text(
-                                q.titleQuestionEn.isNotEmpty
-                                    ? q.titleQuestionEn
-                                    : q.titleQuestionAr,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 13.sp,
-                                ),
-                                maxLines: 2,
-                              ),
-                              subtitle: Text(
-                                "${q.type.value} • ${q.difficulty.value} • ${q.score} pts"
-                                "${q.isEligible == true
-                                    ? ' • Eligible'
-                                    : q.isEligible == false
-                                    ? ' • Not eligible'
-                                    : ''}",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white54,
-                                  fontSize: 11.sp,
-                                ),
-                              ),
-                              onTap: () => _toggleSelection(q),
+                            return _buildDetailedQuestionCard(
+                              q,
+                              isSelected: isSelected,
                             );
                           },
                         ),

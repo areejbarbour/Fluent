@@ -21,6 +21,7 @@ import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
+import 'package:fluent/presentation/screens/teacher/courses/course_tests_screen.dart';
 import 'package:fluent/presentation/screens/teacher/home/teacher_home_screen.dart';
 import 'package:fluent/presentation/screens/teacher/lessons/lesson_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/lessons/lesson_form_screen.dart';
@@ -34,6 +35,7 @@ import 'package:fluent/presentation/screens/home/student_home_screen.dart';
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:fluent/presentation/screens/teacher/questions/questions_list_screen.dart';
+import 'package:fluent/presentation/screens/teacher/tests/test_detail_view_screen.dart';
 import 'package:fluent/presentation/screens/teacher/tests/test_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -170,6 +172,7 @@ class AppRouter {
                 create: (ctx) => TeacherHomeCubit(
                   ctx.read<LessonRepository>(),
                   ctx.read<QuestionRepository>(),
+                  ctx.read<TestRepository>(),
                 )..loadDashboardData(), // جلب البيانات فور فتح الشاشة
               ),
             ],
@@ -294,18 +297,25 @@ class AppRouter {
           ),
         );
 
-      // ✅ أضيفي هالـ case الجديد:
-      case 'lesson-detail':
+      case lessonDetailRoute:
         final args = settings.arguments as Map<String, dynamic>;
         final int lessonId = args['lessonId'] as int;
         final String lessonTitle = args['lessonTitle'] as String? ?? 'Lesson';
 
         return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (ctx) => LessonDetailCubit(
-              lessonRepository: ctx.read<LessonRepository>(),
-              testRepository: ctx.read<TestRepository>(),
-            )..loadLessonDetails(lessonId),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => LessonDetailCubit(
+                  lessonRepository: ctx.read<LessonRepository>(),
+                  testRepository: ctx.read<TestRepository>(),
+                )..loadLessonDetails(lessonId),
+              ),
+              BlocProvider(
+                create: (ctx) =>
+                    LessonDeleteCubit(ctx.read<LessonRepository>()),
+              ),
+            ],
             child: LessonDetailScreen(
               lessonId: lessonId,
               lessonTitle: lessonTitle,
@@ -353,6 +363,27 @@ class AppRouter {
               title: args['title'] as String,
               initialTest: args['initialTest'] as TestModel?, // ✅ جديد
             ),
+          ),
+        );
+
+      case testDetailViewRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final int testId = args['testId'] as int;
+        return MaterialPageRoute(
+          builder: (_) => TestDetailViewScreen(testId: testId),
+        );
+
+      case courseTestsRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final course = args['course'] as CourseModel;
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => TestDeleteCubit(ctx.read<TestRepository>()),
+              ),
+            ],
+            child: CourseTestsScreen(course: course),
           ),
         );
 

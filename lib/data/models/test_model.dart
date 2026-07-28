@@ -6,11 +6,11 @@ class TestModel {
   final String titleAr;
   final int passingScore;
   final String status;
-  final String testableType; // 'Course' or 'Lesson'
+  final String testableType; // course / lesson
   final int testableId;
   final String? createdAt;
   final String? updatedAt;
-  final List<Question> questions; // الأسئلة المرتبطة بالاختبار
+  final List<Question> questions;
 
   TestModel({
     required this.id,
@@ -25,30 +25,36 @@ class TestModel {
     this.questions = const [],
   });
 
-  // التحقق من صلاحية التعديل بناءً على حالة الاختبار (مع تجاهل حالة الأحرف Case-insensitive)
+  String get normalizedStatus => status.toLowerCase().trim();
+  String get normalizedTestableType => testableType.toLowerCase().trim();
+  bool get isCourseTest => normalizedTestableType == 'course';
+  bool get isLessonTest => normalizedTestableType == 'lesson';
+
   bool get canEdit {
-    final lowerStatus = status.toLowerCase();
-    return lowerStatus != 'in_review' &&
-        lowerStatus != 'archived' &&
-        lowerStatus != 'closed';
+    final s = normalizedStatus;
+    return s != 'in_review' && s != 'archived' && s != 'closed';
   }
 
-  // التحقق من صلاحية الحذف بناءً على حالة الاختبار (مع تجاهل حالة الأحرف Case-insensitive)
   bool get canDelete {
-    final lowerStatus = status.toLowerCase();
-    return lowerStatus != 'published' &&
-        lowerStatus != 'archived' &&
-        lowerStatus != 'closed' &&
-        lowerStatus != 'in_review';
+    final s = normalizedStatus;
+    return s != 'published' &&
+        s != 'archived' &&
+        s != 'closed' &&
+        s != 'in_review';
   }
 
   factory TestModel.fromJson(Map<String, dynamic> json) {
-    List<Question> parsedQuestions = [];
-    if (json['questions'] is List) {
-      parsedQuestions = (json['questions'] as List)
-          .whereType<Map>()
-          .map((e) => Question.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
+    final parsedQuestions = <Question>[];
+
+    final questionsRaw = json['questions'];
+    if (questionsRaw is List) {
+      for (final item in questionsRaw) {
+        if (item is Map) {
+          parsedQuestions.add(
+            Question.fromJson(Map<String, dynamic>.from(item)),
+          );
+        }
+      }
     }
 
     return TestModel(
@@ -60,8 +66,9 @@ class TestModel {
       passingScore: json['passing_score'] is int
           ? json['passing_score']
           : int.tryParse(json['passing_score'].toString()) ?? 0,
-      status: json['status']?.toString() ?? 'draft',
-      testableType: json['testable_type']?.toString() ?? 'Lesson',
+      status: json['status']?.toString().toLowerCase().trim() ?? 'draft',
+      testableType: json['testable_type']?.toString().toLowerCase().trim() ??
+          'lesson',
       testableId: json['testable_id'] is int
           ? json['testable_id']
           : int.tryParse(json['testable_id'].toString()) ?? 0,

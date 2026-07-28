@@ -154,14 +154,165 @@ class _CourseDetailView extends StatelessWidget {
               ),
             ),
           ),
+
+          // ── Course Tests Icon Button ──
+          // GestureDetector(
+          //   onTap: () => _openCourseTests(context),
+          //   child: Container(
+          //     width: 44.w,
+          //     height: 44.w,
+          //     decoration: BoxDecoration(
+          //       gradient: LinearGradient(
+          //         begin: Alignment.topLeft,
+          //         end: Alignment.bottomRight,
+          //         colors: [
+          //           AppColors.orange.withOpacity(0.35),
+          //           AppColors.orange.withOpacity(0.15),
+          //         ],
+          //       ),
+          //       borderRadius: BorderRadius.circular(12.r),
+          //       border: Border.all(color: AppColors.orange.withOpacity(0.5)),
+          //       boxShadow: [
+          //         BoxShadow(
+          //           color: AppColors.orange.withOpacity(0.2),
+          //           blurRadius: 8,
+          //           offset: const Offset(0, 2),
+          //         ),
+          //       ],
+          //     ),
+          //     child: Stack(
+          //       alignment: Alignment.center,
+          //       children: [
+          //         Icon(
+          //           Icons.quiz_rounded,
+          //           color: AppColors.orange,
+          //           size: 24.sp,
+          //         ),
+          //         Positioned(
+          //           right: 6,
+          //           top: 6,
+          //           child: Container(
+          //             width: 12.w,
+          //             height: 12.w,
+          //             decoration: BoxDecoration(
+          //               color: AppColors.yellow,
+          //               borderRadius: BorderRadius.circular(6.r),
+          //               border: Border.all(color: AppColors.dark, width: 1.5),
+          //             ),
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
+          SizedBox(width: 8.w),
         ],
       ),
     );
   }
 
+  void _openCourseTests(BuildContext context) {
+    Navigator.pushNamed(
+      context,
+      courseTestsRoute,
+      arguments: {'course': course},
+    ).then((result) {
+      if (context.mounted) {
+        context.read<TeacherCourseDetailCubit>().refresh();
+      }
+    });
+  }
+
   // ─────────────────────────────────────────────
   // Lessons list
   // ─────────────────────────────────────────────
+
+  Widget _buildCourseTestsButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openCourseTests(context),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.orange.withOpacity(.22),
+              AppColors.yellow.withOpacity(.10),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18.r),
+          border: Border.all(color: AppColors.orange.withOpacity(.45)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.orange.withOpacity(.18),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52.w,
+              height: 52.w,
+              decoration: BoxDecoration(
+                color: AppColors.orange.withOpacity(.18),
+                borderRadius: BorderRadius.circular(14.r),
+              ),
+              child: Icon(
+                Icons.quiz_rounded,
+                color: AppColors.orange,
+                size: 28.sp,
+              ),
+            ),
+
+            SizedBox(width: 14.w),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Course Tests",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    "Create, edit and manage all course tests",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Container(
+              width: 38.w,
+              height: 38.w,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.08),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.white70,
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLessonsList(
     BuildContext context,
     TeacherCourseDetailLoaded state,
@@ -175,26 +326,23 @@ class _CourseDetailView extends StatelessWidget {
         itemCount: state.lessons.isEmpty ? 2 : state.lessons.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _buildCourseTestCard(context, state)
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .moveY(begin: 20, end: 0, duration: 400.ms);
+            return _buildCourseTestsButton(
+              context,
+            ).animate().fadeIn(duration: 350.ms).moveY(begin: 15, end: 0);
           }
 
           if (state.lessons.isEmpty) {
             return _buildEmptyInline();
           }
 
-          final lessonIndex = index - 1;
+          final lesson = state.lessons[index - 1];
+
           return _buildLessonCard(
-                context,
-                state.lessons[lessonIndex],
-                lessonIndex,
-                state,
-              )
-              .animate()
-              .fadeIn(duration: 400.ms, delay: (60 * lessonIndex).ms)
-              .moveY(begin: 20, end: 0, duration: 400.ms);
+            context,
+            lesson,
+            index - 1,
+            state,
+          ).animate().fadeIn(delay: (50 * index).ms).moveY(begin: 20, end: 0);
         },
       ),
     );
@@ -203,261 +351,9 @@ class _CourseDetailView extends StatelessWidget {
   // ─────────────────────────────────────────────
   // Course test card
   // ─────────────────────────────────────────────
-  Widget _buildCourseTestCard(
-    BuildContext context,
-    TeacherCourseDetailLoaded state,
-  ) {
-    final courseTest = state.courseTest;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.orange.withOpacity(0.18),
-            AppColors.yellow.withOpacity(0.08),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.orange.withOpacity(0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44.w,
-                height: 44.w,
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: AppColors.orange.withOpacity(0.5)),
-                ),
-                child: Icon(
-                  Icons.quiz_rounded,
-                  color: AppColors.orange,
-                  size: 22.sp,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Course Final Test',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      courseTest == null
-                          ? 'Create a test for the entire course'
-                          : (courseTest.titleEn.isNotEmpty
-                                ? courseTest.titleEn
-                                : courseTest.titleAr),
-                      style: GoogleFonts.poppins(
-                        color: Colors.white60,
-                        fontSize: 11.sp,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (courseTest != null)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(courseTest.status).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Text(
-                    courseTest.status.toUpperCase(),
-                    style: GoogleFonts.poppins(
-                      color: _getStatusColor(courseTest.status),
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(height: 14.h),
-
-          // Add / Edit
-          SizedBox(
-            width: double.infinity,
-            height: 44.h,
-            child: ElevatedButton.icon(
-              onPressed: () => _openCourseTestForm(context, courseTest),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.orange,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-              icon: Icon(
-                courseTest == null ? Icons.add_rounded : Icons.edit_rounded,
-                size: 18.sp,
-              ),
-              label: Text(
-                courseTest == null ? 'Add Course Test' : 'Edit Course Test',
-                style: GoogleFonts.poppins(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-
-          // Delete (if allowed)
-          if (courseTest != null && _canDeleteTest(courseTest)) ...[
-            SizedBox(height: 8.h),
-            SizedBox(
-              width: double.infinity,
-              height: 40.h,
-              child: OutlinedButton.icon(
-                onPressed: () => _confirmDeleteCourseTest(context, courseTest),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                icon: Icon(Icons.delete_outline, size: 16.sp),
-                label: Text(
-                  'Delete Course Test',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openCourseTestForm(
-    BuildContext context,
-    TestModel? existing,
-  ) async {
-    final result = await Navigator.pushNamed(
-      context,
-      testFormRoute,
-      arguments: {
-        'testableType': 'course',
-        'testableId': course.id,
-        'title': course.name,
-        if (existing != null) 'initialTest': existing,
-      },
-    );
-    if (result == true && context.mounted) {
-      context.read<TeacherCourseDetailCubit>().refresh();
-    }
-  }
-
-  bool _canDeleteTest(TestModel test) {
-    const blocked = ['published', 'archived', 'closed', 'in_review'];
-    return !blocked.contains(test.status.toLowerCase());
-  }
-
-  Future<void> _confirmDeleteCourseTest(
-    BuildContext context,
-    TestModel test,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.dark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.r),
-          side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
-        ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 24,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              'Delete Course Test?',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'This action cannot be undone. The course test will be permanently removed.',
-          style: GoogleFonts.poppins(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 13.sp,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(color: Colors.white70),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Delete',
-              style: GoogleFonts.poppins(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final repo = context.read<TestRepository>();
-    final result = await repo.deleteTest(test.id);
-
-    if (!context.mounted) return;
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Test deleted'),
-          backgroundColor: Colors.greenAccent,
-        ),
-      );
-      context.read<TeacherCourseDetailCubit>().refresh();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Failed to delete test'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
-  }
+  // ─────────────────────────────────────────────
+  // Course Tests Section (multi-test)
+  // ─────────────────────────────────────────────
 
   // ─────────────────────────────────────────────
   // Lesson card
@@ -476,13 +372,20 @@ class _CourseDetailView extends StatelessWidget {
       onTap: () async {
         final result = await Navigator.pushNamed(
           context,
-          lessonFormRoute,
-          arguments: {'lesson': lesson, 'courseStatus': course.status},
+          lessonDetailRoute, // ← هنا التعديل
+          arguments: {
+            'lessonId': lesson.id,
+            'lessonTitle': lesson.titleEn.isNotEmpty
+                ? lesson.titleEn
+                : lesson.titleAr,
+          },
         );
-        if (result == true && context.mounted) {
+        // لما ترجع من التفاصيل (بعد تعديل أو حذف) نحدّث القائمة
+        if (context.mounted) {
           context.read<TeacherCourseDetailCubit>().refresh();
         }
       },
+
       child: Container(
         margin: EdgeInsets.only(bottom: 12.h),
         padding: EdgeInsets.all(14.w),
