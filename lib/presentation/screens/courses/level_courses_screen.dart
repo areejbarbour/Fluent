@@ -1223,7 +1223,6 @@ class AnimatedCourseCard extends StatelessWidget {
               ),
             ),
 
-            // progress الفعلي
             if (!course.isLocked)
               SizedBox.expand(
                 child: CircularProgressIndicator(

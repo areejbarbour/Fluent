@@ -2965,4 +2965,3 @@ class _LevelInfoCard extends StatelessWidget {
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
   }
 }
-

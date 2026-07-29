@@ -70,6 +70,15 @@ String apiGetStudentLessons(int courseId) => '/api/lessons/$courseId';
 // ✅ Lesson Detail API
 String apiLessonDetail(int lessonId) => '/api/lessons/$lessonId/detail';
 
+// ✅ Create Lesson Comment API
+String apiCreateComment(int lessonId) => '/api/comments/$lessonId';
+
+// ✅ Update Lesson Comment API
+String apiUpdateComment(int commentId) => '/api/comments/$commentId/update';
+
+// ✅ Delete Lesson Comment API
+String apiDeleteComment(int commentId) => '/api/comments/$commentId/delete';
+
 // ✅ Question API Endpoints
 const String apiQuestions = '/api/questions';
 const String apiDeprecatedQuestions = '/api/questions/deprecated';

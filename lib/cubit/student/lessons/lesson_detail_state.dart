@@ -1,3 +1,4 @@
+
 import '../../../data/models/lesson_detail_model.dart';
 
 abstract class LessonDetailState {}
