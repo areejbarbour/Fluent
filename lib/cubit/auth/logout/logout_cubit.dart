@@ -28,6 +28,7 @@ class LogoutCubit extends Cubit<LogoutState> {
         await prefs.remove('is_logged_in');
         await prefs.remove('login_method');
         await prefs.remove('user_role'); // ✅ مسح الدور
+        await prefs.remove('user_id'); // ✅ مسح user_id (تعليقات / isOwn)
         print("🧹 [LogoutCubit] SharedPreferences cleared");
 
         // ✅ إعادة setup Dio بدون token

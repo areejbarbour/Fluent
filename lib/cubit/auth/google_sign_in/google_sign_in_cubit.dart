@@ -46,7 +46,7 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
 
       if (response['success'] == true) {
         final token = response['token'];
-        final user = response['user'] as Map<String, dynamic>?;
+        final userMap = response['user'] as Map<String, dynamic>?;
         final roles = response['roles'] as List<dynamic>? ?? [];
 
         final prefs = await SharedPreferences.getInstance();
@@ -54,7 +54,7 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('login_method', 'google');
 
-        // ✅ حفظ role
+        // ✅ حفظ role (نفس منطقك السابق)
         if (roles.isNotEmpty) {
           final role = roles.first;
           String roleName = '';
@@ -69,11 +69,29 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
           print("🎭 [GoogleLoginCubit] Role saved: $roleName");
         }
 
+        // ✅ حفظ user_id لمطابقة isOwn في التعليقات
+        await _saveUserId(prefs, userMap);
+        if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
+          try {
+            final me = await authRepository.getCurrentUser();
+            if (me['success'] == true) {
+              final u = me['user'];
+              if (u is Map<String, dynamic>) {
+                await _saveUserId(prefs, u);
+              } else if (u is Map) {
+                await _saveUserId(prefs, Map<String, dynamic>.from(u));
+              }
+            }
+          } catch (e) {
+            print("⚠️ [GoogleLoginCubit] getCurrentUser fallback failed: $e");
+          }
+        }
+
         // 🔑 أعد تجهيز Dio بالتوكن الجديد!
         await setupDio();
         print("✅ Token stored in SharedPreferences: $token");
 
-        emit(GoogleLoginSuccess(token: token, roles: roles, user: user));
+        emit(GoogleLoginSuccess(token: token, roles: roles, user: userMap));
         print("🎉 GoogleLoginSuccess emitted");
       } else {
         final errorMsg = response['message'] ?? 'Google login failed';
@@ -83,6 +101,20 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
     } catch (e) {
       print("❌ Unexpected error occurred during Google login: $e");
       emit(const GoogleLoginFailure('An unexpected error occurred'));
+    }
+  }
+
+  Future<void> _saveUserId(
+    SharedPreferences prefs,
+    Map<String, dynamic>? user,
+  ) async {
+    if (user == null) return;
+    final raw = user['id'];
+    if (raw == null) return;
+    final id = raw is int ? raw : int.tryParse(raw.toString());
+    if (id != null && id > 0) {
+      await prefs.setInt('user_id', id);
+      print("👤 [GoogleLoginCubit] user_id saved: $id");
     }
   }
 

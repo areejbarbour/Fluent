@@ -39,6 +39,24 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
           await prefs.setString('login_method', 'email');
           await prefs.setString('user_role', 'student');
 
+          // ✅ حفظ user_id بعد التسجيل (للتعليقات / isOwn)
+          await _saveUserId(prefs, user);
+          if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
+            try {
+              final me = await authRepository.getCurrentUser();
+              if (me['success'] == true) {
+                final u = me['user'];
+                if (u is Map<String, dynamic>) {
+                  await _saveUserId(prefs, u);
+                } else if (u is Map) {
+                  await _saveUserId(prefs, Map<String, dynamic>.from(u));
+                }
+              }
+            } catch (e) {
+              print("⚠️ [VerifyOtpCubit] getCurrentUser fallback failed: $e");
+            }
+          }
+
           print("🎭 [VerifyOtpCubit] New user role forced to: student");
           print("🔑 [VerifyOtpCubit] Token saved: $token");
 
@@ -56,6 +74,20 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
     } catch (e) {
       print("❌ [VerifyOtpCubit] Exception: $e");
       emit(VerifyOtpFailure(e.toString()));
+    }
+  }
+
+  Future<void> _saveUserId(
+    SharedPreferences prefs,
+    Map<String, dynamic>? user,
+  ) async {
+    if (user == null) return;
+    final raw = user['id'];
+    if (raw == null) return;
+    final id = raw is int ? raw : int.tryParse(raw.toString());
+    if (id != null && id > 0) {
+      await prefs.setInt('user_id', id);
+      print("👤 [VerifyOtpCubit] user_id saved: $id");
     }
   }
 

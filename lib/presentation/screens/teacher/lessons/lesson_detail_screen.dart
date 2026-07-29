@@ -7,6 +7,7 @@ import 'package:fluent/cubit/teacher/lessons/lesson_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/lessons/lesson_detail_state.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   bool _videoError = false;
   bool _isPlaying = false;
   String? _currentVideoUrl;
+  final TextEditingController _commentCtrl = TextEditingController();
+  bool _isSendingComment = false;
+  int? _busyCommentId;
 
   @override
   void initState() {
@@ -46,6 +50,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   @override
   void dispose() {
     _disposeVideo();
+    _commentCtrl.dispose();
     super.dispose();
   }
 
@@ -328,10 +333,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                   _buildActionButtons(context, state.lesson),
                                   SizedBox(height: 20.h),
                                   _buildTestsSection(context, state.tests),
-                                  if (state.comments.isNotEmpty) ...[
-                                    SizedBox(height: 20.h),
-                                    _buildCommentsSection(state.comments),
-                                  ],
+                                  SizedBox(height: 20.h),
+                                  _buildCommentsSection(context, state),
                                   SizedBox(height: 32.h),
                                 ],
                               ),
@@ -881,8 +884,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // ─── Comments ───
-  Widget _buildCommentsSection(List<dynamic> comments) {
+  // ─── Comments (نفس منطق الطالب + واجهة المعلّم) ───
+  Widget _buildCommentsSection(BuildContext context, LessonDetailLoaded state) {
+    final comments = state.comments;
     return QuestionUI.glass(
       padding: EdgeInsets.all(14.w),
       borderColor: Colors.white.withOpacity(0.15),
@@ -908,55 +912,383 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             ],
           ),
           SizedBox(height: 12.h),
-          ...comments.map((c) {
-            final map = c is Map ? c : <String, dynamic>{};
-            final user = map['user'] is Map ? map['user'] as Map : {};
-            final name =
-                '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
-            final text = map['comment']?.toString() ?? '';
-            final date = map['created_at']?.toString() ?? '';
-
-            return Container(
-              margin: EdgeInsets.only(bottom: 8.h),
-              padding: EdgeInsets.all(10.w),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(10.r),
+          if (comments.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              child: Text(
+                'No comments yet',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontSize: 12.sp,
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name.isEmpty ? 'Anonymous' : name,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+            )
+          else
+            ...comments.map((c) => _buildCommentTile(context, state, c)),
+          if (state.hasMoreComments) ...[
+            SizedBox(height: 8.h),
+            Center(
+              child: state.isLoadingMoreComments
+                  ? SizedBox(
+                      width: 22.w,
+                      height: 22.w,
+                      child: const CircularProgressIndicator(
+                        color: AppColors.yellow,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : TextButton(
+                      onPressed: () =>
+                          context.read<LessonDetailCubit>().loadMoreComments(),
+                      child: Text(
+                        'Load more comments',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.sky,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                        ),
+                      ),
                     ),
+            ),
+          ],
+          // Composer — فقط إذا الدرس published (منطق الباك)
+          if (state.canCreateComment) ...[
+            SizedBox(height: 14.h),
+            _buildCommentComposer(context, state),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentTile(
+    BuildContext context,
+    LessonDetailLoaded state,
+    LessonCommentModel c,
+  ) {
+    final name = c.isOwn
+        ? (c.user != null && c.user!.fullName.isNotEmpty
+              ? c.user!.fullName
+              : 'You')
+        : (c.user != null && c.user!.fullName.isNotEmpty
+              ? c.user!.fullName
+              : 'Anonymous');
+    final isBusy = _busyCommentId == c.id || state.isBusyComment;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: c.isOwn
+            ? AppColors.yellow.withOpacity(0.08)
+            : Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: c.isOwn
+              ? AppColors.yellow.withOpacity(0.35)
+              : Colors.white.withOpacity(0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
                   ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    text,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 12.sp,
-                    ),
+                ),
+              ),
+              if (c.isOwn)
+                PopupMenuButton<String>(
+                  enabled: !isBusy,
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: Colors.white54,
+                    size: 18.sp,
                   ),
-                  if (date.isNotEmpty) ...[
-                    SizedBox(height: 4.h),
-                    Text(
-                      date,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white38,
-                        fontSize: 10.sp,
+                  color: AppColors.dark,
+                  onSelected: (v) {
+                    if (v == 'edit' && state.canUpdateComments) {
+                      _openEditCommentDialog(context, c);
+                    } else if (v == 'delete') {
+                      _confirmDeleteComment(context, c);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (state.canUpdateComments)
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Text(
+                          'Edit',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                      ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        'Delete',
+                        style: GoogleFonts.poppins(color: Colors.redAccent),
                       ),
                     ),
                   ],
-                ],
+                ),
+            ],
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            c.comment,
+            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12.sp),
+          ),
+          if (c.createdAt != null && c.createdAt!.isNotEmpty) ...[
+            SizedBox(height: 4.h),
+            Text(
+              c.createdAt!,
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 10.sp,
               ),
-            );
-          }),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCommentComposer(BuildContext context, LessonDetailLoaded state) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _commentCtrl,
+            maxLines: 3,
+            minLines: 1,
+            maxLength: LessonDetailCubit.maxCommentLength,
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 12.sp),
+            decoration: InputDecoration(
+              hintText: 'Write a comment...',
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 12.sp,
+              ),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.06),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: AppColors.sky.withOpacity(0.5)),
+              ),
+              counterStyle: GoogleFonts.poppins(
+                color: Colors.white30,
+                fontSize: 9.sp,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        GestureDetector(
+          onTap: (_isSendingComment || state.isBusyComment)
+              ? null
+              : () => _submitComment(context),
+          child: Container(
+            width: 44.w,
+            height: 44.w,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.yellow, AppColors.orange],
+              ),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: (_isSendingComment || state.isBusyComment)
+                ? Padding(
+                    padding: EdgeInsets.all(12.w),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.dark,
+                    ),
+                  )
+                : Icon(Icons.send_rounded, color: AppColors.dark, size: 20.sp),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submitComment(BuildContext context) async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty) return;
+    if (text.length > LessonDetailCubit.maxCommentLength) {
+      _showCommentSnack(
+        context,
+        'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
+        Colors.redAccent,
+      );
+      return;
+    }
+    setState(() => _isSendingComment = true);
+    final err = await context.read<LessonDetailCubit>().submitComment(
+      widget.lessonId,
+      text,
+    );
+    if (!mounted) return;
+    setState(() => _isSendingComment = false);
+    if (err == null) {
+      _commentCtrl.clear();
+    } else {
+      _showCommentSnack(context, err, Colors.redAccent);
+    }
+  }
+
+  void _openEditCommentDialog(
+    BuildContext context,
+    LessonCommentModel comment,
+  ) {
+    final ctrl = TextEditingController(text: comment.comment);
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.dark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            'Edit Comment',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: TextField(
+            controller: ctrl,
+            maxLines: 4,
+            maxLength: LessonDetailCubit.maxCommentLength,
+            autofocus: true,
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              counterStyle: GoogleFonts.poppins(color: Colors.white38),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newText = ctrl.text.trim();
+                if (newText.isEmpty ||
+                    newText == comment.comment ||
+                    newText.length > LessonDetailCubit.maxCommentLength) {
+                  Navigator.pop(dialogContext);
+                  return;
+                }
+                Navigator.pop(dialogContext);
+                setState(() => _busyCommentId = comment.id);
+                final err = await context.read<LessonDetailCubit>().editComment(
+                  comment.id,
+                  newText,
+                );
+                if (!mounted) return;
+                setState(() => _busyCommentId = null);
+                if (err != null) {
+                  _showCommentSnack(context, err, Colors.redAccent);
+                }
+              },
+              child: Text(
+                'Save',
+                style: GoogleFonts.poppins(
+                  color: AppColors.yellow,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteComment(BuildContext context, LessonCommentModel comment) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.dark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            'Delete comment?',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'This action cannot be undone.',
+            style: GoogleFonts.poppins(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                setState(() => _busyCommentId = comment.id);
+                final err = await context
+                    .read<LessonDetailCubit>()
+                    .removeComment(comment.id);
+                if (!mounted) return;
+                setState(() => _busyCommentId = null);
+                if (err != null) {
+                  _showCommentSnack(context, err, Colors.redAccent);
+                }
+              },
+              child: Text(
+                'Delete',
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCommentSnack(BuildContext context, String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

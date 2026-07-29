@@ -41,7 +41,7 @@ class LoginCubit extends Cubit<LoginState> {
 
         print("🎭 [LoginCubit] Extracted roles: $roles");
 
-        // ✅ حفظ التوكن + الدور
+        // ✅ حفظ التوكن + الدور + user_id
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
@@ -67,6 +67,35 @@ class LoginCubit extends Cubit<LoginState> {
             print("🎭 [LoginCubit] No role found, defaulting to 'student'");
           }
 
+          // ✅ حفظ user_id من استجابة الـ login (مطابقة منطق التعليقات)
+          Map<String, dynamic>? userMap;
+          if (data['user'] is Map) {
+            userMap = Map<String, dynamic>.from(data['user'] as Map);
+          } else if (data['data'] is Map &&
+              (data['data'] as Map)['user'] is Map) {
+            userMap = Map<String, dynamic>.from(
+              (data['data'] as Map)['user'] as Map,
+            );
+          }
+          await _saveUserId(prefs, userMap);
+
+          // إن لم يُرجع الـ login كائن user، نجلبه من /api/user
+          if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
+            try {
+              final me = await authRepository.getCurrentUser();
+              if (me['success'] == true) {
+                final u = me['user'];
+                if (u is Map<String, dynamic>) {
+                  await _saveUserId(prefs, u);
+                } else if (u is Map) {
+                  await _saveUserId(prefs, Map<String, dynamic>.from(u));
+                }
+              }
+            } catch (e) {
+              print("⚠️ [LoginCubit] getCurrentUser fallback failed: $e");
+            }
+          }
+
           print("🔑 [LoginCubit] Token saved");
           await setupDio();
           print("⚙️ [LoginCubit] Dio re-initialized");
@@ -82,6 +111,20 @@ class LoginCubit extends Cubit<LoginState> {
     } catch (e) {
       print("❌ [LoginCubit] Exception: $e");
       emit(LoginFailure(e.toString()));
+    }
+  }
+
+  Future<void> _saveUserId(
+    SharedPreferences prefs,
+    Map<String, dynamic>? user,
+  ) async {
+    if (user == null) return;
+    final raw = user['id'];
+    if (raw == null) return;
+    final id = raw is int ? raw : int.tryParse(raw.toString());
+    if (id != null && id > 0) {
+      await prefs.setInt('user_id', id);
+      print("👤 [LoginCubit] user_id saved: $id");
     }
   }
 

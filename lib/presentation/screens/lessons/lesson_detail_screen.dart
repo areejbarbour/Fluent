@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -20,11 +19,7 @@ class LessonDetailScreen extends StatefulWidget {
   final int? lessonId;
   final String lessonTitle;
 
-  const LessonDetailScreen({
-    super.key,
-    this.lessonId,
-    this.lessonTitle = '',
-  });
+  const LessonDetailScreen({super.key, this.lessonId, this.lessonTitle = ''});
 
   @override
   State<LessonDetailScreen> createState() => _LessonDetailScreenState();
@@ -46,10 +41,19 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   Future<void> _handleAddComment(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    if (trimmed.length > LessonDetailCubit.maxCommentLength) {
+      _showErrorSnack(
+        'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
+      );
+      return;
+    }
     setState(() => _isSendingComment = true);
-    final error = await context
-        .read<LessonDetailCubit>()
-        .submitComment(widget.lessonId ?? 0, text);
+    final error = await context.read<LessonDetailCubit>().submitComment(
+      widget.lessonId ?? 0,
+      trimmed,
+    );
     if (!mounted) return;
     setState(() => _isSendingComment = false);
 
@@ -62,8 +66,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: Colors.white, size: 18),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             SizedBox(width: 8.w),
             Expanded(child: Text(message)),
           ],
@@ -78,7 +85,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  void _showCommentActions(LessonCommentModel comment) {
+  void _showCommentActions(LessonCommentModel comment, {bool canEdit = true}) {
     HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
@@ -99,8 +106,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     AppColors.primary.withOpacity(.9),
                   ],
                 ),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(26.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(26.r)),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(.14)),
                 ),
@@ -117,16 +123,19 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                   ),
                   SizedBox(height: 18.h),
-                  _actionTile(
-                    icon: Icons.edit_rounded,
-                    label: "Edit comment",
-                    iconColors: const [AppColors.sky, Color(0xFFB388FF)],
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _openEditDialog(comment);
-                    },
-                  ),
-                  SizedBox(height: 10.h),
+                  // ✅ تعديل فقط إن لم يكن الدرس archived/closed (منطق الباك)
+                  if (canEdit) ...[
+                    _actionTile(
+                      icon: Icons.edit_rounded,
+                      label: "Edit comment",
+                      iconColors: const [AppColors.sky, Color(0xFFB388FF)],
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        _openEditDialog(comment);
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+                  ],
                   _actionTile(
                     icon: Icons.delete_outline_rounded,
                     label: "Delete comment",
@@ -229,8 +238,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                               colors: [AppColors.sky, Color(0xFFB388FF)],
                             ),
                           ),
-                          child: Icon(Icons.edit_rounded,
-                              color: Colors.white, size: 16.sp),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 16.sp,
+                          ),
                         ),
                         SizedBox(width: 10.w),
                         Text(
@@ -245,23 +257,34 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                     SizedBox(height: 16.h),
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 4.h,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(.06),
                         borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: Colors.white.withOpacity(.14)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(.14),
+                        ),
                       ),
                       child: TextField(
                         controller: controller,
                         autofocus: true,
                         minLines: 1,
                         maxLines: 5,
+                        maxLength: LessonDetailCubit.maxCommentLength,
                         style: GoogleFonts.poppins(
-                            color: Colors.white, fontSize: 12.5.sp),
+                          color: Colors.white,
+                          fontSize: 12.5.sp,
+                        ),
                         cursorColor: AppColors.yellow,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
+                          counterStyle: GoogleFonts.poppins(
+                            color: Colors.white38,
+                            fontSize: 10.sp,
+                          ),
                         ),
                       ),
                     ),
@@ -278,7 +301,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                 color: Colors.white.withOpacity(.08),
                                 borderRadius: BorderRadius.circular(16.r),
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(.14)),
+                                  color: Colors.white.withOpacity(.14),
+                                ),
                               ),
                               child: Text(
                                 "Cancel",
@@ -296,6 +320,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                           child: GestureDetector(
                             onTap: () {
                               final newText = controller.text.trim();
+                              if (newText.length >
+                                  LessonDetailCubit.maxCommentLength) {
+                                return;
+                              }
                               Navigator.pop(dialogContext);
                               if (newText.isNotEmpty &&
                                   newText != comment.comment) {
@@ -307,10 +335,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                               padding: EdgeInsets.symmetric(vertical: 11.h),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [
-                                    AppColors.orange,
-                                    AppColors.yellow
-                                  ],
+                                  colors: [AppColors.orange, AppColors.yellow],
                                 ),
                                 borderRadius: BorderRadius.circular(16.r),
                                 boxShadow: [
@@ -379,10 +404,14 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                         shape: BoxShape.circle,
                         color: const Color(0xFFFF6B6B).withOpacity(.15),
                         border: Border.all(
-                            color: const Color(0xFFFF6B6B).withOpacity(.4)),
+                          color: const Color(0xFFFF6B6B).withOpacity(.4),
+                        ),
                       ),
-                      child: Icon(Icons.delete_outline_rounded,
-                          color: const Color(0xFFFF6B6B), size: 22.sp),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        color: const Color(0xFFFF6B6B),
+                        size: 22.sp,
+                      ),
                     ),
                     SizedBox(height: 14.h),
                     Text(
@@ -415,7 +444,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                 color: Colors.white.withOpacity(.08),
                                 borderRadius: BorderRadius.circular(16.r),
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(.14)),
+                                  color: Colors.white.withOpacity(.14),
+                                ),
                               ),
                               child: Text(
                                 "Cancel",
@@ -442,14 +472,15 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                 gradient: const LinearGradient(
                                   colors: [
                                     Color(0xFFFF6B6B),
-                                    Color(0xFFE53935)
+                                    Color(0xFFE53935),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(16.r),
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        const Color(0xFFFF6B6B).withOpacity(.4),
+                                    color: const Color(
+                                      0xFFFF6B6B,
+                                    ).withOpacity(.4),
                                     blurRadius: 12,
                                   ),
                                 ],
@@ -479,9 +510,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   Future<void> _handleEditComment(int commentId, String newText) async {
     setState(() => _busyCommentId = commentId);
-    final error = await context
-        .read<LessonDetailCubit>()
-        .editComment(commentId, newText);
+    final error = await context.read<LessonDetailCubit>().editComment(
+      commentId,
+      newText,
+    );
     if (!mounted) return;
     setState(() => _busyCommentId = null);
     if (error != null) _showErrorSnack(error);
@@ -489,8 +521,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   Future<void> _handleDeleteComment(int commentId) async {
     setState(() => _busyCommentId = commentId);
-    final error =
-        await context.read<LessonDetailCubit>().removeComment(commentId);
+    final error = await context.read<LessonDetailCubit>().removeComment(
+      commentId,
+    );
     if (!mounted) return;
     setState(() => _busyCommentId = null);
     if (error != null) _showErrorSnack(error);
@@ -509,8 +542,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 12.h,
+                  ),
                   child: _buildTopBar(),
                 ),
                 Expanded(
@@ -526,7 +561,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                       }
 
                       if (state is LessonDetailSuccess) {
-                        return _buildContent(state.data);
+                        return _buildContent(
+                          state.data,
+                          isLoadingMore: state.isLoadingMore,
+                        );
                       }
 
                       return const SizedBox.shrink();
@@ -537,6 +575,23 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   builder: (context, state) {
                     if (state is! LessonDetailSuccess) {
                       return const SizedBox.shrink();
+                    }
+                    // مطابق للباك: لا إنشاء تعليق إلا إذا الدرس published
+                    if (!state.data.canCreateComment) {
+                      return SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 12.h),
+                          child: Text(
+                            'Comments are disabled for this lesson.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white54,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                        ),
+                      );
                     }
                     return _CommentComposer(
                       isSending: _isSendingComment,
@@ -594,8 +649,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.wifi_off_rounded,
-                      color: Colors.white.withOpacity(.7), size: 30.sp),
+                  Icon(
+                    Icons.wifi_off_rounded,
+                    color: Colors.white.withOpacity(.7),
+                    size: 30.sp,
+                  ),
                   SizedBox(height: 10.h),
                   Text(
                     message,
@@ -612,7 +670,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                         .fetchLessonDetail(widget.lessonId ?? 0),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 18.w, vertical: 9.h),
+                        horizontal: 18.w,
+                        vertical: 9.h,
+                      ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [AppColors.orange, AppColors.yellow],
@@ -638,9 +698,12 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _buildContent(LessonDetailModel data) {
+  Widget _buildContent(LessonDetailModel data, {bool isLoadingMore = false}) {
     final lesson = data.lesson;
     final comments = data.comments;
+    final totalLabel = data.commentsTotal > comments.length
+        ? data.commentsTotal
+        : comments.length;
 
     return ListView(
       physics: const BouncingScrollPhysics(),
@@ -654,24 +717,56 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         SizedBox(height: 16.h),
         if (lesson != null) _buildLessonInfoCard(lesson),
         SizedBox(height: 24.h),
-        _buildCommentsHeader(comments.length),
+        _buildCommentsHeader(totalLabel),
         SizedBox(height: 14.h),
-        if (comments.isEmpty)
+        if (comments.isEmpty && !isLoadingMore)
           _emptyCommentsCard()
         else
           ...comments.asMap().entries.map(
-                (entry) => Padding(
-                  padding: EdgeInsets.only(bottom: 12.h),
-                  child: _CommentCard(
-                    comment: entry.value,
-                    index: entry.key,
-                    isBusy: _busyCommentId == entry.value.id,
-                    onMoreTap: entry.value.isOwn
-                        ? () => _showCommentActions(entry.value)
-                        : null,
-                  ),
-                ),
+            (entry) => Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: _CommentCard(
+                comment: entry.value,
+                index: entry.key,
+                isBusy: _busyCommentId == entry.value.id,
+                // isOwn من مقارنة user_id المحفوظ مع comment.user.id
+                // التعديل يُخفى إذا الدرس archived/closed (منطق الباك)
+                onMoreTap: entry.value.isOwn
+                    ? () => _showCommentActions(
+                        entry.value,
+                        canEdit: data.canUpdateComments,
+                      )
+                    : null,
               ),
+            ),
+          ),
+        if (isLoadingMore || data.hasMoreComments)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+            child: Center(
+              child: isLoadingMore
+                  ? SizedBox(
+                      width: 22.w,
+                      height: 22.w,
+                      child: const CircularProgressIndicator(
+                        color: AppColors.yellow,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : TextButton(
+                      onPressed: () =>
+                          context.read<LessonDetailCubit>().loadMoreComments(),
+                      child: Text(
+                        'Load more comments',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.sky,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
         SizedBox(height: 16.h),
       ],
     );
@@ -693,8 +788,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             border: Border.all(color: Colors.white.withOpacity(.12)),
           ),
           alignment: Alignment.center,
-          child: Icon(Icons.videocam_off_rounded,
-              color: Colors.white.withOpacity(.4), size: 34.sp),
+          child: Icon(
+            Icons.videocam_off_rounded,
+            color: Colors.white.withOpacity(.4),
+            size: 34.sp,
+          ),
         ),
       ),
     );
@@ -743,8 +841,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                   ],
                 ),
-                child: Icon(Icons.play_circle_fill_rounded,
-                    color: Colors.white, size: 24.sp),
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white,
+                  size: 24.sp,
+                ),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -777,8 +878,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               ),
               SizedBox(width: 10.w),
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.orange, AppColors.yellow],
@@ -865,8 +965,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.sort_rounded,
-                  color: Colors.white.withOpacity(.6), size: 13.sp),
+              Icon(
+                Icons.sort_rounded,
+                color: Colors.white.withOpacity(.6),
+                size: 13.sp,
+              ),
               SizedBox(width: 4.w),
               Text(
                 "Newest",
@@ -907,8 +1010,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   color: Colors.white.withOpacity(.06),
                   border: Border.all(color: Colors.white.withOpacity(.12)),
                 ),
-                child: Icon(Icons.chat_bubble_outline_rounded,
-                    color: Colors.white.withOpacity(.4), size: 22.sp),
+                child: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: Colors.white.withOpacity(.4),
+                  size: 22.sp,
+                ),
               ),
               SizedBox(height: 10.h),
               Text(
@@ -1089,16 +1195,18 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
   @override
   void initState() {
     super.initState();
-    _borderController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 6))
-          ..repeat();
+    _borderController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
     _initializePlayer();
   }
 
   Future<void> _initializePlayer() async {
     try {
-      final controller =
-          VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+      );
       await controller.initialize();
       controller.addListener(_onControllerUpdate);
       if (!mounted) return;
@@ -1180,32 +1288,32 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _borderController,
-      builder: (context, _) {
-        return CustomPaint(
-          foregroundPainter: _AnimatedBorderPainter(
-            animationValue: _borderController.value,
-            radius: 24.r,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24.r),
-            child: Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.sky.withOpacity(.18),
-                    blurRadius: 28,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+          animation: _borderController,
+          builder: (context, _) {
+            return CustomPaint(
+              foregroundPainter: _AnimatedBorderPainter(
+                animationValue: _borderController.value,
+                radius: 24.r,
               ),
-              child: AspectRatio(
-                aspectRatio: _isInitialized
-                    ? _controller!.value.aspectRatio
-                    : 16 / 9,
-                child: _hasError
-                    ? _buildErrorPlaceholder()
-                    : !_isInitialized
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24.r),
+                child: Container(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.sky.withOpacity(.18),
+                        blurRadius: 28,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: _isInitialized
+                        ? _controller!.value.aspectRatio
+                        : 16 / 9,
+                    child: _hasError
+                        ? _buildErrorPlaceholder()
+                        : !_isInitialized
                         ? _buildLoadingPlaceholder()
                         : GestureDetector(
                             onTap: _onTapVideo,
@@ -1224,12 +1332,15 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                               ],
                             ),
                           ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
-      },
-    ).animate().fadeIn(duration: 400.ms).scale(
+            );
+          },
+        )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .scale(
           begin: const Offset(.97, .97),
           end: const Offset(1, 1),
           curve: Curves.easeOutCubic,
@@ -1264,8 +1375,11 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline_rounded,
-              color: Colors.white.withOpacity(.6), size: 30.sp),
+          Icon(
+            Icons.error_outline_rounded,
+            color: Colors.white.withOpacity(.6),
+            size: 30.sp,
+          ),
           SizedBox(height: 8.h),
           Text(
             "Couldn't load the video",
@@ -1390,8 +1504,9 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                       thumbShape: RoundSliderThumbShape(
                         enabledThumbRadius: 6.r,
                       ),
-                      overlayShape:
-                          RoundSliderOverlayShape(overlayRadius: 12.r),
+                      overlayShape: RoundSliderOverlayShape(
+                        overlayRadius: 12.r,
+                      ),
                       activeTrackColor: AppColors.yellow,
                       inactiveTrackColor: Colors.white.withOpacity(.25),
                       thumbColor: AppColors.yellow,
@@ -1401,8 +1516,7 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                       value: progress.clamp(0.0, 1.0),
                       onChanged: (v) {
                         final newPosition = Duration(
-                          milliseconds:
-                              (duration.inMilliseconds * v).round(),
+                          milliseconds: (duration.inMilliseconds * v).round(),
                         );
                         controller.seekTo(newPosition);
                       },
@@ -1476,222 +1590,239 @@ class _CommentCard extends StatelessWidget {
     final name = isOwn
         ? (user != null && user.fullName.isNotEmpty ? user.fullName : "You")
         : (user != null && user.fullName.isNotEmpty
-            ? user.fullName
-            : "Fluent User");
+              ? user.fullName
+              : "Fluent User");
     final initial = name.isNotEmpty ? name[0].toUpperCase() : "?";
     final gradient = isOwn
         ? const [AppColors.orange, AppColors.yellow]
         : _gradientForUser(user?.id ?? comment.id);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isOwn
-                  ? [
-                      AppColors.yellow.withOpacity(.14),
-                      AppColors.orange.withOpacity(.05),
-                    ]
-                  : [
-                      Colors.white.withOpacity(.09),
-                      Colors.white.withOpacity(.03),
-                    ],
-            ),
-            border: Border.all(
-              color: isOwn
-                  ? AppColors.yellow.withOpacity(.35)
-                  : Colors.white.withOpacity(.13),
-            ),
-            boxShadow: isOwn
-                ? [
-                    BoxShadow(
-                      color: AppColors.yellow.withOpacity(.15),
-                      blurRadius: 14,
-                    ),
-                  ]
-                : null,
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // شريط لوني جانبي مطابق للون الأفاتار
-                Container(
-                  width: 4.w,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: gradient,
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    borderRadius:
-                        BorderRadius.horizontal(left: Radius.circular(20.r)),
-                  ),
+          borderRadius: BorderRadius.circular(20.r),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20.r),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isOwn
+                      ? [
+                          AppColors.yellow.withOpacity(.14),
+                          AppColors.orange.withOpacity(.05),
+                        ]
+                      : [
+                          Colors.white.withOpacity(.09),
+                          Colors.white.withOpacity(.03),
+                        ],
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                border: Border.all(
+                  color: isOwn
+                      ? AppColors.yellow.withOpacity(.35)
+                      : Colors.white.withOpacity(.13),
+                ),
+                boxShadow: isOwn
+                    ? [
+                        BoxShadow(
+                          color: AppColors.yellow.withOpacity(.15),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // شريط لوني جانبي مطابق للون الأفاتار
+                    Container(
+                      width: 4.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradient,
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(20.r),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 36.w,
-                              height: 36.w,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(colors: gradient),
-                                border: Border.all(
-                                    color: Colors.white.withOpacity(.5),
-                                    width: 1.2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: gradient.first.withOpacity(.45),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                initial,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13.5.sp,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 10.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12.5.sp,
-                                          ),
-                                        ),
-                                      ),
-                                      if (isOwn) ...[
-                                        SizedBox(width: 6.w),
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 6.w, vertical: 1.5.h),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [
-                                                AppColors.orange,
-                                                AppColors.yellow
-                                              ],
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(20.r),
-                                          ),
-                                          child: Text(
-                                            "You",
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 8.5.sp,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  SizedBox(height: 1.h),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.access_time_rounded,
-                                          size: 9.sp,
-                                          color: Colors.white.withOpacity(.4)),
-                                      SizedBox(width: 3.w),
-                                      Text(
-                                        _timeAgo(comment.createdAt),
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white.withOpacity(.45),
-                                          fontSize: 9.5.sp,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (onMoreTap != null)
-                              GestureDetector(
-                                onTap: isBusy ? null : onMoreTap,
-                                child: Container(
-                                  width: 28.w,
-                                  height: 28.w,
-                                  alignment: Alignment.center,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 36.w,
+                                  height: 36.w,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Colors.white.withOpacity(.06),
+                                    gradient: LinearGradient(colors: gradient),
                                     border: Border.all(
-                                        color: Colors.white.withOpacity(.10)),
+                                      color: Colors.white.withOpacity(.5),
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: gradient.first.withOpacity(.45),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
                                   ),
-                                  child: isBusy
-                                      ? SizedBox(
-                                          width: 12.w,
-                                          height: 12.w,
-                                          child: const CircularProgressIndicator(
-                                            strokeWidth: 1.6,
-                                            color: AppColors.yellow,
-                                          ),
-                                        )
-                                      : Icon(Icons.more_vert_rounded,
-                                          color: Colors.white.withOpacity(.55),
-                                          size: 16.sp),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    initial,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13.5.sp,
+                                    ),
+                                  ),
                                 ),
-                              )
-                            else
-                              Icon(Icons.format_quote_rounded,
-                                  color: Colors.white.withOpacity(.10),
-                                  size: 22.sp),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12.5.sp,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isOwn) ...[
+                                            SizedBox(width: 6.w),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 6.w,
+                                                vertical: 1.5.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    AppColors.orange,
+                                                    AppColors.yellow,
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20.r),
+                                              ),
+                                              child: Text(
+                                                "You",
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 8.5.sp,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      SizedBox(height: 1.h),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.access_time_rounded,
+                                            size: 9.sp,
+                                            color: Colors.white.withOpacity(.4),
+                                          ),
+                                          SizedBox(width: 3.w),
+                                          Text(
+                                            _timeAgo(comment.createdAt),
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white.withOpacity(
+                                                .45,
+                                              ),
+                                              fontSize: 9.5.sp,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (onMoreTap != null)
+                                  GestureDetector(
+                                    onTap: isBusy ? null : onMoreTap,
+                                    child: Container(
+                                      width: 28.w,
+                                      height: 28.w,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white.withOpacity(.06),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(.10),
+                                        ),
+                                      ),
+                                      child: isBusy
+                                          ? SizedBox(
+                                              width: 12.w,
+                                              height: 12.w,
+                                              child:
+                                                  const CircularProgressIndicator(
+                                                    strokeWidth: 1.6,
+                                                    color: AppColors.yellow,
+                                                  ),
+                                            )
+                                          : Icon(
+                                              Icons.more_vert_rounded,
+                                              color: Colors.white.withOpacity(
+                                                .55,
+                                              ),
+                                              size: 16.sp,
+                                            ),
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    Icons.format_quote_rounded,
+                                    color: Colors.white.withOpacity(.10),
+                                    size: 22.sp,
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 10.h),
+                            Container(
+                              height: 1,
+                              color: Colors.white.withOpacity(.06),
+                            ),
+                            SizedBox(height: 10.h),
+                            Text(
+                              comment.comment,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white.withOpacity(.85),
+                                fontSize: 12.sp,
+                                height: 1.55,
+                              ),
+                            ),
                           ],
                         ),
-                        SizedBox(height: 10.h),
-                        Container(
-                          height: 1,
-                          color: Colors.white.withOpacity(.06),
-                        ),
-                        SizedBox(height: 10.h),
-                        Text(
-                          comment.comment,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(.85),
-                            fontSize: 12.sp,
-                            height: 1.55,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    )
+        )
         .animate()
         .fadeIn(delay: (100 + index * 60).ms, duration: 350.ms)
         .moveX(begin: 10, end: 0, curve: Curves.easeOutCubic);
@@ -1702,10 +1833,7 @@ class _CommentComposer extends StatefulWidget {
   final ValueChanged<String> onSubmit;
   final bool isSending;
 
-  const _CommentComposer({
-    required this.onSubmit,
-    this.isSending = false,
-  });
+  const _CommentComposer({required this.onSubmit, this.isSending = false});
 
   @override
   State<_CommentComposer> createState() => _CommentComposerState();
@@ -1721,9 +1849,10 @@ class _CommentComposerState extends State<_CommentComposer>
   @override
   void initState() {
     super.initState();
-    _borderController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 6))
-          ..repeat();
+    _borderController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
     _controller.addListener(() {
       final has = _controller.text.trim().isNotEmpty;
       if (has != _hasText) setState(() => _hasText = has);
@@ -1764,8 +1893,7 @@ class _CommentComposerState extends State<_CommentComposer>
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
                 child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(26.r),
                     gradient: LinearGradient(
@@ -1795,8 +1923,11 @@ class _CommentComposerState extends State<_CommentComposer>
                             colors: [AppColors.sky, Color(0xFFB388FF)],
                           ),
                         ),
-                        child: Icon(Icons.person_rounded,
-                            color: Colors.white, size: 18.sp),
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 18.sp,
+                        ),
                       ),
                       SizedBox(width: 8.w),
                       Expanded(
@@ -1805,13 +1936,17 @@ class _CommentComposerState extends State<_CommentComposer>
                           focusNode: _focusNode,
                           minLines: 1,
                           maxLines: 4,
+                          maxLength: LessonDetailCubit.maxCommentLength,
                           textCapitalization: TextCapitalization.sentences,
                           style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 12.5.sp),
+                            color: Colors.white,
+                            fontSize: 12.5.sp,
+                          ),
                           cursorColor: AppColors.yellow,
                           decoration: InputDecoration(
                             isCollapsed: true,
                             border: InputBorder.none,
+                            counterText: '',
                             hintText: "Write a comment...",
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.white.withOpacity(.4),
@@ -1831,10 +1966,12 @@ class _CommentComposerState extends State<_CommentComposer>
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: _hasText
-                                ? const LinearGradient(colors: [
-                                    AppColors.orange,
-                                    AppColors.yellow
-                                  ])
+                                ? const LinearGradient(
+                                    colors: [
+                                      AppColors.orange,
+                                      AppColors.yellow,
+                                    ],
+                                  )
                                 : LinearGradient(
                                     colors: [
                                       Colors.white.withOpacity(.14),
@@ -1844,8 +1981,7 @@ class _CommentComposerState extends State<_CommentComposer>
                             boxShadow: _hasText
                                 ? [
                                     BoxShadow(
-                                      color:
-                                          AppColors.yellow.withOpacity(.5),
+                                      color: AppColors.yellow.withOpacity(.5),
                                       blurRadius: 12,
                                     ),
                                   ]
@@ -1884,10 +2020,7 @@ class _AnimatedBorderPainter extends CustomPainter {
   final double animationValue;
   final double radius;
 
-  _AnimatedBorderPainter({
-    required this.animationValue,
-    required this.radius,
-  });
+  _AnimatedBorderPainter({required this.animationValue, required this.radius});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1961,32 +2094,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),

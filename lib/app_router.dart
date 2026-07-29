@@ -58,10 +58,11 @@ import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/cubit/student/courses/course_cubit.dart';
 import 'package:fluent/data/repository/course_repository.dart';
-import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart' as student_lesson;
+import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart'
+    as student_lesson;
 import 'package:fluent/data/repository/lesson_detail_repository.dart';
-import 'package:fluent/presentation/screens/lessons/lesson_detail_screen.dart' as student_lesson_screen;
-
+import 'package:fluent/presentation/screens/lessons/lesson_detail_screen.dart'
+    as student_lesson_screen;
 
 class AppRouter {
   final AuthRepository authRepository;
@@ -207,7 +208,7 @@ class AppRouter {
           ),
         );
 
-        // ✅ Student: Lesson video + comments detail
+      // ✅ Student: Lesson video + comments detail
       case lessonStudentDetailRoute:
         final args = settings.arguments as Map<String, dynamic>;
         final lessonId = args['lessonId'] as int?;
@@ -330,6 +331,7 @@ class AppRouter {
                 create: (ctx) => LessonDetailCubit(
                   lessonRepository: ctx.read<LessonRepository>(),
                   testRepository: ctx.read<TestRepository>(),
+                  lessonDetailRepository: ctx.read<LessonDetailRepository>(),
                 )..loadLessonDetails(lessonId),
               ),
               BlocProvider(
@@ -418,4 +420,3 @@ class AppRouter {
     }
   }
 }
- 
