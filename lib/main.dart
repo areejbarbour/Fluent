@@ -31,7 +31,8 @@ import 'package:fluent/data/services/student_lesson_service.dart';
 import 'package:fluent/data/repository/student_lesson_repository.dart';
 import 'package:fluent/data/repository/lesson_detail_repository.dart';
 import 'package:fluent/data/services/lesson_detail_service.dart';
-
+import 'package:fluent/data/services/word_service.dart';
+import 'package:fluent/data/repository/word_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,10 +68,11 @@ void main() async {
   final studentLessonService = StudentLessonService(dioInstance);
   final studentLessonRepository = StudentLessonRepository(studentLessonService);
 
-  
-final lessonDetailService = LessonDetailService(dioInstance);
-final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
+  final lessonDetailService = LessonDetailService(dioInstance);
+  final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
+  final wordService = WordService(dioInstance);
+  final wordRepository = WordRepository(wordService);
 
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
@@ -91,6 +93,7 @@ final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
       testRepository: testRepository,
       studentLessonRepository: studentLessonRepository, // 👈 جديد
       lessonDetailRepository: lessonDetailRepository, // ✅ جديد
+      wordRepository: wordRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -105,6 +108,7 @@ class MyApp extends StatefulWidget {
   final TestRepository testRepository;
   final StudentLessonRepository studentLessonRepository;
   final LessonDetailRepository lessonDetailRepository; // ✅ جديد
+  final WordRepository wordRepository;
   final String initialRoute;
   late final AppRouter appRouter;
 
@@ -118,6 +122,7 @@ class MyApp extends StatefulWidget {
     required this.testRepository,
     required this.studentLessonRepository,
     required this.lessonDetailRepository, // ✅ جديد
+    required this.wordRepository,
     required this.initialRoute,
   }) {
     appRouter = AppRouter(authRepository);
@@ -159,10 +164,13 @@ class _MyAppState extends State<MyApp> {
               value: widget.testRepository,
             ),
             RepositoryProvider<StudentLessonRepository>.value(
-             value: widget.studentLessonRepository,
-              ),
+              value: widget.studentLessonRepository,
+            ),
             RepositoryProvider<LessonDetailRepository>.value(
               value: widget.lessonDetailRepository,
+            ),
+            RepositoryProvider<WordRepository>.value(
+              value: widget.wordRepository,
             ),
           ],
           child: MultiBlocProvider(

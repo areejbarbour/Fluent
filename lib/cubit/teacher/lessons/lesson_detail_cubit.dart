@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/data/models/word_model.dart';
 import 'package:fluent/data/repository/lesson_detail_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
@@ -71,10 +72,12 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
           requestedPage: 1,
         );
         final tests = await _loadLessonTests(lessonId);
+        final lessonMap = lessonResult['lesson'];
         emit(
           LessonDetailLoaded(
-            lesson: lessonResult['lesson'],
+            lesson: lessonMap,
             tests: tests,
+            words: _extractWords(lessonMap),
             comments: parsed.comments,
             commentsCurrentPage: parsed.currentPage,
             commentsLastPage: parsed.lastPage,
@@ -101,6 +104,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
         LessonDetailLoaded(
           lesson: lessonMap,
           tests: tests,
+          words: _extractWords(lessonMap),
           comments: allComments.comments,
           commentsCurrentPage: allComments.commentsCurrentPage,
           commentsLastPage: allComments.commentsLastPage,
@@ -117,6 +121,43 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     if (testsResult['success'] != true) return [];
     final allTests = testsResult['data'] as List<TestModel>;
     return testRepository.testsForLesson(allTests, lessonId);
+  }
+
+  List<WordModel> _extractWords(dynamic lessonMap) {
+    if (lessonMap is Map) {
+      return WordModel.listFrom(lessonMap['words']);
+    }
+    return const [];
+  }
+
+  /// تحديث محلي للقائمة بعد إنشاء/تعديل/حذف كلمة (بدون إعادة تحميل كاملة)
+  void setWords(List<WordModel> words) {
+    final current = state;
+    if (current is! LessonDetailLoaded) return;
+    emit(current.copyWith(words: words));
+  }
+
+  void upsertWord(WordModel word) {
+    final current = state;
+    if (current is! LessonDetailLoaded) return;
+    final list = List<WordModel>.from(current.words);
+    final idx = list.indexWhere((w) => w.id == word.id);
+    if (idx >= 0) {
+      list[idx] = word;
+    } else {
+      list.add(word);
+    }
+    emit(current.copyWith(words: list));
+  }
+
+  void removeWordLocal(int wordId) {
+    final current = state;
+    if (current is! LessonDetailLoaded) return;
+    emit(
+      current.copyWith(
+        words: current.words.where((w) => w.id != wordId).toList(),
+      ),
+    );
   }
 
   Future<LessonDetailModel> _loadAllCommentPages(

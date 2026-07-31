@@ -11,6 +11,13 @@ import 'package:fluent/cubit/teacher/tests/delete/test_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/tests/delete/test_delete_state.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/cubit/teacher/words/create/word_create_cubit.dart';
+import 'package:fluent/cubit/teacher/words/create/word_create_state.dart';
+import 'package:fluent/cubit/teacher/words/update/word_update_cubit.dart';
+import 'package:fluent/cubit/teacher/words/update/word_update_state.dart';
+import 'package:fluent/cubit/teacher/words/delete/word_delete_cubit.dart';
+import 'package:fluent/cubit/teacher/words/delete/word_delete_state.dart';
+import 'package:fluent/data/models/word_model.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
@@ -55,6 +62,8 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
   List<TestModel> _lessonTests = [];
   bool _isLoadingTest = false;
 
+  List<WordModel> _lessonWords = [];
+
   String? _currentVideoUrl;
   int _commentsCount = 0;
   bool _isLoadingDetails = false;
@@ -85,6 +94,13 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     if (!isEditMode) return false;
     const deletable = {'draft', 'pending', 'changes_requested'};
     return deletable.contains(_lessonStatus);
+  }
+
+  /// Backend TeacherWordService: draft | pending | changes_requested only
+  bool get canManageWords {
+    if (!isEditMode) return false;
+    const allowed = {'draft', 'pending', 'changes_requested'};
+    return allowed.contains(_lessonStatus);
   }
 
   @override
@@ -135,9 +151,15 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           if (xp != null) _xpCtrl.text = xp.toString();
         }
 
+        List<WordModel> words = const [];
+        if (lessonJson is Map) {
+          words = WordModel.listFrom(lessonJson['words']);
+        }
+
         setState(() {
           _currentVideoUrl = video;
           _commentsCount = comments is List ? comments.length : 0;
+          _lessonWords = words;
           _isLoadingDetails = false;
         });
       } else {
@@ -532,6 +554,91 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
             }
           },
         ),
+        BlocListener<WordCreateCubit, WordCreateState>(
+          listener: (context, state) {
+            if (state is WordCreateSuccess) {
+              setState(() {
+                final list = List<WordModel>.from(_lessonWords);
+                if (!list.any((w) => w.id == state.word.id)) {
+                  list.add(state.word);
+                }
+                _lessonWords = list;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.greenAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is WordCreateFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<WordUpdateCubit, WordUpdateState>(
+          listener: (context, state) {
+            if (state is WordUpdateSuccess) {
+              setState(() {
+                final list = List<WordModel>.from(_lessonWords);
+                final i = list.indexWhere((w) => w.id == state.word.id);
+                if (i >= 0) {
+                  list[i] = state.word;
+                } else {
+                  list.add(state.word);
+                }
+                _lessonWords = list;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.greenAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is WordUpdateFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<WordDeleteCubit, WordDeleteState>(
+          listener: (context, state) {
+            if (state is WordDeleteSuccess) {
+              setState(() {
+                _lessonWords = _lessonWords
+                    .where((w) => w.id != state.wordId)
+                    .toList();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.greenAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is WordDeleteFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
       ],
       child: _FormView(
         formKey: _formKey,
@@ -547,8 +654,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         isRestrictedEdit: isRestrictedEdit,
         isPublishedEdit: isPublishedEdit,
         canDelete: canDelete,
+        canManageWords: canManageWords,
         lesson: widget.lesson,
         lessonTests: _lessonTests,
+        lessonWords: _lessonWords,
         isLoadingTest: _isLoadingTest,
         onPickVideo: _pickVideo,
         onSubmit: () => _submit(context),
@@ -556,6 +665,93 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         onEditTest: _openEditTest,
         onCreateTest: _openCreateTest,
         onDeleteTest: _confirmDeleteTest,
+        onAddWord: () => _openWordForm(context),
+        onEditWord: (w) => _openWordForm(context, word: w),
+        onDeleteWord: (w) => _confirmDeleteWord(context, w),
+      ),
+    );
+  }
+
+  void _openWordForm(BuildContext context, {WordModel? word}) {
+    if (!canManageWords || widget.lesson == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Words can only be managed when the lesson is draft, pending, or changes requested.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _WordFormSheet(
+        lessonId: widget.lesson!.id,
+        word: word,
+        onSubmit: (en, ar) {
+          if (word != null) {
+            context.read<WordUpdateCubit>().updateWord(
+              wordId: word.id,
+              wordEn: en,
+              wordAr: ar,
+            );
+          } else {
+            context.read<WordCreateCubit>().createWord(
+              lessonId: widget.lesson!.id,
+              wordEn: en,
+              wordAr: ar,
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _confirmDeleteWord(BuildContext context, WordModel word) {
+    if (!canManageWords) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text(
+          'Delete Word',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'Delete "${word.wordEn}" / "${word.wordAr}"?',
+          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<WordDeleteCubit>().deleteWord(word.id);
+            },
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -576,13 +772,18 @@ class _FormView extends StatelessWidget {
   final bool isRestrictedEdit;
   final bool isPublishedEdit;
   final bool canDelete;
+  final bool canManageWords;
   final LessonModel? lesson;
   final List<TestModel> lessonTests;
+  final List<WordModel> lessonWords;
   final bool isLoadingTest;
   final VoidCallback onPickVideo, onSubmit, onDelete;
   final void Function(TestModel test)? onEditTest;
   final VoidCallback? onCreateTest;
   final void Function(TestModel test)? onDeleteTest;
+  final VoidCallback? onAddWord;
+  final void Function(WordModel word)? onEditWord;
+  final void Function(WordModel word)? onDeleteWord;
 
   const _FormView({
     required this.formKey,
@@ -598,8 +799,10 @@ class _FormView extends StatelessWidget {
     required this.isRestrictedEdit,
     required this.isPublishedEdit,
     required this.canDelete,
+    required this.canManageWords,
     required this.lesson,
     required this.lessonTests,
+    this.lessonWords = const [],
     required this.isLoadingTest,
     required this.onPickVideo,
     required this.onSubmit,
@@ -607,6 +810,9 @@ class _FormView extends StatelessWidget {
     this.onEditTest,
     this.onCreateTest,
     this.onDeleteTest,
+    this.onAddWord,
+    this.onEditWord,
+    this.onDeleteWord,
   });
 
   @override
@@ -710,13 +916,17 @@ class _FormView extends StatelessWidget {
                               ),
                             ),
                           ],
+
+                          if (isEditMode) ...[
+                            SizedBox(height: 20.h),
+                            _buildWordsSection(context),
+                            SizedBox(height: 20.h),
+                            _buildTestSection(context),
+                          ],
+
                           if (fieldsEnabled) ...[
                             SizedBox(height: 24.h),
                             _buildSubmitButton(context),
-                          ],
-                          if (isEditMode) ...[
-                            SizedBox(height: 20.h),
-                            _buildTestSection(context),
                           ],
                           if (isEditMode && canDelete) ...[
                             SizedBox(height: 16.h),
@@ -753,6 +963,171 @@ class _FormView extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWordsSection(BuildContext context) {
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(14.w),
+      borderColor: AppColors.orange.withOpacity(0.4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.translate_rounded,
+                color: AppColors.orange,
+                size: 20.sp,
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  'Words (${lessonWords.length})',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.orange,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (canManageWords && onAddWord != null)
+                GestureDetector(
+                  onTap: onAddWord,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 6.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: AppColors.orange.withOpacity(0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, color: AppColors.orange, size: 14.sp),
+                        SizedBox(width: 4.w),
+                        Text(
+                          'Add',
+                          style: GoogleFonts.poppins(
+                            color: AppColors.orange,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (!canManageWords) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Words can only be managed when the lesson is draft, pending, or changes requested.',
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 10.sp,
+              ),
+            ),
+          ],
+          SizedBox(height: 12.h),
+          if (lessonWords.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.h),
+              child: Text(
+                'No words yet',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontSize: 12.sp,
+                ),
+              ),
+            )
+          else
+            ...lessonWords.map((w) {
+              return Container(
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32.w,
+                      height: 32.w,
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Icon(
+                        Icons.abc,
+                        color: AppColors.orange,
+                        size: 16.sp,
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            w.wordEn,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            w.wordAr,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 12.sp,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canManageWords) ...[
+                      GestureDetector(
+                        onTap: onEditWord == null ? null : () => onEditWord!(w),
+                        child: Padding(
+                          padding: EdgeInsets.all(6.w),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.sky,
+                            size: 18.sp,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onDeleteWord == null
+                            ? null
+                            : () => onDeleteWord!(w),
+                        child: Padding(
+                          padding: EdgeInsets.all(6.w),
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: Colors.redAccent,
+                            size: 18.sp,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -1262,6 +1637,184 @@ class _FormView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _WordFormSheet extends StatefulWidget {
+  final int lessonId;
+  final WordModel? word;
+  final void Function(String wordEn, String wordAr) onSubmit;
+
+  const _WordFormSheet({
+    required this.lessonId,
+    this.word,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_WordFormSheet> createState() => _WordFormSheetState();
+}
+
+class _WordFormSheetState extends State<_WordFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _enCtrl;
+  late final TextEditingController _arCtrl;
+
+  static final _enRegex = RegExp(r'^[a-zA-Z0-9\s\-_]+$');
+  static final _arRegex = RegExp(r'^[\u0600-\u06FF\s0-9\-_]+$', unicode: true);
+
+  bool get _isEdit => widget.word != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _enCtrl = TextEditingController(text: widget.word?.wordEn ?? '');
+    _arCtrl = TextEditingController(text: widget.word?.wordAr ?? '');
+  }
+
+  @override
+  void dispose() {
+    _enCtrl.dispose();
+    _arCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final en = _enCtrl.text.trim();
+    final ar = _arCtrl.text.trim();
+    Navigator.of(context).pop();
+    widget.onSubmit(en, ar);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40.w,
+                      height: 4.h,
+                      decoration: BoxDecoration(
+                        color: Colors.white30,
+                        borderRadius: BorderRadius.circular(2.r),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Text(
+                    _isEdit ? 'Edit Word' : 'Add Word',
+                    style: GoogleFonts.cinzelDecorative(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  QuestionUI.glass(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    child: TextFormField(
+                      controller: _enCtrl,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Word (English)',
+                        labelStyle: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (!_enRegex.hasMatch(v.trim())) {
+                          return 'Only English letters, numbers, spaces, - and _';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  QuestionUI.glass(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    child: TextFormField(
+                      controller: _arCtrl,
+                      textDirection: TextDirection.rtl,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Word (Arabic)',
+                        labelStyle: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (!_arRegex.hasMatch(v.trim())) {
+                          return 'Only Arabic letters, numbers, spaces, - and _';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 20.h),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48.h,
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                      child: Text(
+                        _isEdit ? 'Update Word' : 'Create Word',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.dark,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

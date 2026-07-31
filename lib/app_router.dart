@@ -7,6 +7,10 @@ import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_cubit
 import 'package:fluent/cubit/teacher/courses/form/lesson_form_cubit.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
 import 'package:fluent/cubit/teacher/lessons/lesson_detail_cubit.dart';
+import 'package:fluent/cubit/teacher/words/create/word_create_cubit.dart';
+import 'package:fluent/cubit/teacher/words/update/word_update_cubit.dart';
+import 'package:fluent/cubit/teacher/words/delete/word_delete_cubit.dart';
+import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_cubit.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
@@ -309,6 +313,15 @@ class AppRouter {
               // ✅ جديد: توفير TestDeleteCubit
               BlocProvider(
                 create: (ctx) => TestDeleteCubit(ctx.read<TestRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) => WordCreateCubit(ctx.read<WordRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) => WordUpdateCubit(ctx.read<WordRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) => WordDeleteCubit(ctx.read<WordRepository>()),
               ),
             ],
             child: LessonFormScreen(

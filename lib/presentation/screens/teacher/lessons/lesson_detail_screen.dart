@@ -7,6 +7,7 @@ import 'package:fluent/cubit/teacher/lessons/lesson_detail_cubit.dart';
 import 'package:fluent/cubit/teacher/lessons/lesson_detail_state.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/data/models/word_model.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
@@ -40,6 +41,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   final TextEditingController _commentCtrl = TextEditingController();
   bool _isSendingComment = false;
   int? _busyCommentId;
+
+  // ─── Expand / Collapse ───
+  bool _wordsExpanded = false;
+  bool _testsExpanded = false;
 
   @override
   void initState() {
@@ -329,12 +334,15 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                   _buildLessonInfo(state.lesson),
                                   SizedBox(height: 16.h),
                                   _buildVideoSection(),
-                                  SizedBox(height: 16.h),
-                                  _buildActionButtons(context, state.lesson),
+
+                                  SizedBox(height: 20.h),
+                                  _buildWordsSection(context, state),
                                   SizedBox(height: 20.h),
                                   _buildTestsSection(context, state.tests),
                                   SizedBox(height: 20.h),
                                   _buildCommentsSection(context, state),
+                                  SizedBox(height: 16.h),
+                                  _buildActionButtons(context, state.lesson),
                                   SizedBox(height: 32.h),
                                 ],
                               ),
@@ -767,7 +775,143 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // ─── Tests (عرض فقط — كبسة = detail-view) ───
+  // ─── Words (Vocabulary) — display only; manage in Lesson Form ───
+  Widget _buildWordsSection(BuildContext context, LessonDetailLoaded state) {
+    final words = state.words;
+
+    return QuestionUI.glass(
+      padding: EdgeInsets.all(14.w),
+      borderColor: AppColors.orange.withOpacity(0.35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with expand arrow
+          GestureDetector(
+            onTap: () => setState(() => _wordsExpanded = !_wordsExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.translate_rounded,
+                  color: AppColors.orange,
+                  size: 18.sp,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Words (${words.length})',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.orange,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _wordsExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.orange,
+                    size: 24.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 12.h),
+                if (words.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    child: Center(
+                      child: Text(
+                        'No words for this lesson yet',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...words.map(
+                    (w) => Container(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34.w,
+                            height: 34.w,
+                            decoration: BoxDecoration(
+                              color: AppColors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Icon(
+                              Icons.abc,
+                              color: AppColors.orange,
+                              size: 18.sp,
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  w.wordEn,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  w.wordAr,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white70,
+                                    fontSize: 12.sp,
+                                  ),
+                                  textDirection: TextDirection.rtl,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            crossFadeState: _wordsExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTestsSection(BuildContext context, List<TestModel> tests) {
     return QuestionUI.glass(
       padding: EdgeInsets.all(14.w),
@@ -775,36 +919,66 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.quiz_outlined, color: AppColors.sky, size: 18.sp),
-              SizedBox(width: 8.w),
-              Text(
-                'Tests (${tests.length})',
-                style: GoogleFonts.poppins(
-                  color: AppColors.sky,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          if (tests.isEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.h),
-              child: Center(
-                child: Text(
-                  'No tests for this lesson',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white54,
-                    fontSize: 12.sp,
+          // Header with expand arrow
+          GestureDetector(
+            onTap: () => setState(() => _testsExpanded = !_testsExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(Icons.quiz_outlined, color: AppColors.sky, size: 18.sp),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Tests (${tests.length})',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.sky,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-            )
-          else
-            ...tests.map((t) => _buildTestCard(context, t)),
+                AnimatedRotation(
+                  turns: _testsExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.sky,
+                    size: 24.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 12.h),
+                if (tests.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    child: Center(
+                      child: Text(
+                        'No tests for this lesson',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...tests.map((t) => _buildTestCard(context, t)),
+              ],
+            ),
+            crossFadeState: _testsExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
+          ),
         ],
       ),
     );
@@ -1339,3 +1513,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 }
+
+/// Bottom sheet form for create/edit word.
+/// Controllers live in State so they are disposed safely with the widget.

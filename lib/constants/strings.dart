@@ -118,6 +118,11 @@ const String apiTests = '/api/tests';
 const String apiForgotPassword = '/api/forgotPassword';
 const String apiResetPassword = '/api/resetPassword';
 
+// ✅ Teacher Word API Endpoints
+String apiCreateWord(int lessonId) => '/api/words/$lessonId/create';
+String apiUpdateWord(int wordId) => '/api/words/$wordId/update';
+String apiDeleteWord(int wordId) => '/api/words/$wordId/delete';
+
 // ✅ OTP Types
 class OtpType {
   static const String register = 'register';
