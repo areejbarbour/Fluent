@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:fluent/data/models/word_model.dart';
 import 'package:fluent/data/services/word_service.dart';
@@ -5,6 +7,9 @@ import 'package:fluent/data/services/word_service.dart';
 class WordRepository {
   final WordService wordService;
   WordRepository(this.wordService);
+
+  /// Backend StoreWordRequest: audio max 5120 KB = 5 MB
+  static const int maxAudioBytes = 5 * 1024 * 1024;
 
   Map<String, dynamic> _unwrapResource(Map<String, dynamic> raw) {
     final inner = raw['data'];
@@ -46,17 +51,39 @@ class WordRepository {
     };
   }
 
+  Future<MultipartFile> _toMultipart(File file, String filename) async {
+    return MultipartFile.fromFile(file.path, filename: filename);
+  }
+
   /// POST /api/words/{lesson}/create
+  /// Backend: word_en, word_ar, audio (required file, max 5MB)
   Future<Map<String, dynamic>> createWord(
     int lessonId, {
     required String wordEn,
     required String wordAr,
+    required File audioFile,
+    String? audioFileName,
   }) async {
     try {
-      final response = await wordService.createWord(lessonId, {
+      final length = await audioFile.length();
+      if (length > maxAudioBytes) {
+        return {
+          'success': false,
+          'message': 'Audio must be 5MB or smaller.',
+          'errors': {
+            'audio': ['Audio must be 5MB or smaller.'],
+          },
+        };
+      }
+
+      final name = audioFileName ?? audioFile.path.split(RegExp(r'[/\\]')).last;
+      final form = FormData.fromMap({
         'word_en': wordEn,
         'word_ar': wordAr,
+        'audio': await _toMultipart(audioFile, name),
       });
+
+      final response = await wordService.createWord(lessonId, form);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
@@ -74,20 +101,42 @@ class WordRepository {
       };
     } on DioException catch (e) {
       return _errorPayload(e);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 
   /// POST /api/words/{word}/update
+  /// Backend: word_en/word_ar sometimes; audio optional.
+  /// Service always updates word_en + word_ar — always send both.
   Future<Map<String, dynamic>> updateWord(
     int wordId, {
     required String wordEn,
     required String wordAr,
+    File? audioFile,
+    String? audioFileName,
   }) async {
     try {
-      final response = await wordService.updateWord(wordId, {
-        'word_en': wordEn,
-        'word_ar': wordAr,
-      });
+      final map = <String, dynamic>{'word_en': wordEn, 'word_ar': wordAr};
+
+      if (audioFile != null) {
+        final length = await audioFile.length();
+        if (length > maxAudioBytes) {
+          return {
+            'success': false,
+            'message': 'Audio must be 5MB or smaller.',
+            'errors': {
+              'audio': ['Audio must be 5MB or smaller.'],
+            },
+          };
+        }
+        final name =
+            audioFileName ?? audioFile.path.split(RegExp(r'[/\\]')).last;
+        map['audio'] = await _toMultipart(audioFile, name);
+      }
+
+      final form = FormData.fromMap(map);
+      final response = await wordService.updateWord(wordId, form);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
@@ -105,6 +154,8 @@ class WordRepository {
       };
     } on DioException catch (e) {
       return _errorPayload(e);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 
@@ -118,6 +169,8 @@ class WordRepository {
         if (data is Map) {
           if (data['message'] is String) {
             message = data['message'] as String;
+          } else if (data['word'] is String) {
+            message = data['word'] as String;
           }
         } else if (data is List && data.isNotEmpty) {
           message = data.first.toString();

@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:fluent/presentation/widgets/audio_preview_tile.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
@@ -151,8 +153,9 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           if (xp != null) _xpCtrl.text = xp.toString();
         }
 
-        List<WordModel> words = const [];
-        if (lessonJson is Map) {
+        // Backend puts words at response root, not inside lesson.
+        List<WordModel> words = WordModel.listFrom(result['words']);
+        if (words.isEmpty && lessonJson is Map) {
           words = WordModel.listFrom(lessonJson['words']);
         }
 
@@ -679,11 +682,13 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
           content: Text(
             'Words can only be managed when the lesson is draft, pending, or changes requested.',
           ),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -691,21 +696,41 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
       builder: (_) => _WordFormSheet(
         lessonId: widget.lesson!.id,
         word: word,
-        onSubmit: (en, ar) {
-          if (word != null) {
-            context.read<WordUpdateCubit>().updateWord(
-              wordId: word.id,
-              wordEn: en,
-              wordAr: ar,
-            );
-          } else {
-            context.read<WordCreateCubit>().createWord(
-              lessonId: widget.lesson!.id,
-              wordEn: en,
-              wordAr: ar,
-            );
-          }
-        },
+        onSubmit:
+            ({
+              required String en,
+              required String ar,
+              File? audioFile,
+              String? audioFileName,
+            }) {
+              if (word != null) {
+                context.read<WordUpdateCubit>().updateWord(
+                  wordId: word.id,
+                  wordEn: en,
+                  wordAr: ar,
+                  audioFile: audioFile,
+                  audioFileName: audioFileName,
+                );
+              } else {
+                if (audioFile == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Audio file is required to create a word.'),
+                      backgroundColor: Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                context.read<WordCreateCubit>().createWord(
+                  lessonId: widget.lesson!.id,
+                  wordEn: en,
+                  wordAr: ar,
+                  audioFile: audioFile,
+                  audioFileName: audioFileName,
+                );
+              }
+            },
       ),
     );
   }
@@ -1098,6 +1123,10 @@ class _FormView extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (w.hasAudio) ...[
+                      AudioPreviewTile(url: w.audio!, compact: true),
+                      SizedBox(width: 6.w),
+                    ],
                     if (canManageWords) ...[
                       GestureDetector(
                         onTap: onEditWord == null ? null : () => onEditWord!(w),
@@ -1644,7 +1673,15 @@ class _FormView extends StatelessWidget {
 class _WordFormSheet extends StatefulWidget {
   final int lessonId;
   final WordModel? word;
-  final void Function(String wordEn, String wordAr) onSubmit;
+
+  /// [audioFile] is required on create; optional on update.
+  final void Function({
+    required String en,
+    required String ar,
+    File? audioFile,
+    String? audioFileName,
+  })
+  onSubmit;
 
   const _WordFormSheet({
     required this.lessonId,
@@ -1661,9 +1698,14 @@ class _WordFormSheetState extends State<_WordFormSheet> {
   late final TextEditingController _enCtrl;
   late final TextEditingController _arCtrl;
 
+  /// Matches backend StoreWordRequest / UpdateWordRequest regex.
   static final _enRegex = RegExp(r'^[a-zA-Z0-9\s\-_]+$');
   static final _arRegex = RegExp(r'^[\u0600-\u06FF\s0-9\-_]+$', unicode: true);
 
+  /// Backend max:5120 (KB) => 5 MB
+  static const int _maxAudioBytes = 5 * 1024 * 1024;
+
+  PlatformFile? _pickedAudio;
   bool get _isEdit => widget.word != null;
 
   @override
@@ -1680,23 +1722,76 @@ class _WordFormSheetState extends State<_WordFormSheet> {
     super.dispose();
   }
 
+  Future<void> _pickAudio() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['mp3', 'wav', 'ogg', 'm4a'],
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    final size = file.size;
+    if (size > _maxAudioBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Audio must be 5MB or smaller.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (file.path == null || file.path!.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not read the selected audio file.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    setState(() => _pickedAudio = file);
+  }
+
   void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final en = _enCtrl.text.trim();
-    final ar = _arCtrl.text.trim();
-    Navigator.of(context).pop();
-    widget.onSubmit(en, ar);
+    if (!_formKey.currentState!.validate()) return;
+
+    if (!_isEdit && _pickedAudio == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Audio file is required.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    File? audioFile;
+    String? audioName;
+    if (_pickedAudio != null && _pickedAudio!.path != null) {
+      audioFile = File(_pickedAudio!.path!);
+      audioName = _pickedAudio!.name;
+    }
+
+    widget.onSubmit(
+      en: _enCtrl.text.trim(),
+      ar: _arCtrl.text.trim(),
+      audioFile: audioFile,
+      audioFileName: audioName,
+    );
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
+      padding: EdgeInsets.only(bottom: bottom),
       child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
@@ -1705,112 +1800,198 @@ class _WordFormSheetState extends State<_WordFormSheet> {
           ),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40.w,
-                      height: 4.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white30,
-                        borderRadius: BorderRadius.circular(2.r),
-                      ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    _isEdit ? 'Edit Word' : 'Add Word',
-                    style: GoogleFonts.cinzelDecorative(
+                ),
+                SizedBox(height: 16.h),
+                Text(
+                  _isEdit ? 'Edit Word' : 'Add Word',
+                  style: GoogleFonts.cinzelDecorative(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  _isEdit
+                      ? 'Update the word texts. Audio is optional.'
+                      : 'English + Arabic + audio are required.',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 11.sp,
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                QuestionUI.glass(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
+                  child: TextFormField(
+                    controller: _enCtrl,
+                    style: GoogleFonts.poppins(
                       color: Colors.white,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13.sp,
                     ),
+                    decoration: InputDecoration(
+                      labelText: 'Word (English)',
+                      labelStyle: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 12.sp,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      if (!_enRegex.hasMatch(v.trim())) {
+                        return 'Only English letters, numbers, spaces, - and _';
+                      }
+                      return null;
+                    },
                   ),
-                  SizedBox(height: 16.h),
+                ),
+                SizedBox(height: 12.h),
+                QuestionUI.glass(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
+                  child: TextFormField(
+                    controller: _arCtrl,
+                    textDirection: TextDirection.rtl,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Word (Arabic)',
+                      labelStyle: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 12.sp,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      if (!_arRegex.hasMatch(v.trim())) {
+                        return 'Only Arabic letters, numbers, spaces, - and _';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                // Existing audio preview (edit mode)
+                if (_isEdit &&
+                    widget.word != null &&
+                    widget.word!.hasAudio &&
+                    _pickedAudio == null) ...[
                   QuestionUI.glass(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w),
-                    child: TextFormField(
-                      controller: _enCtrl,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Word (English)',
-                        labelStyle: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 12.sp,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        if (!_enRegex.hasMatch(v.trim())) {
-                          return 'Only English letters, numbers, spaces, - and _';
-                        }
-                        return null;
-                      },
+                    padding: EdgeInsets.all(12.w),
+                    child: AudioPreviewTile(
+                      url: widget.word!.audio!,
+                      label: 'Current audio',
                     ),
                   ),
-                  SizedBox(height: 12.h),
-                  QuestionUI.glass(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w),
-                    child: TextFormField(
-                      controller: _arCtrl,
-                      textDirection: TextDirection.rtl,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Word (Arabic)',
-                        labelStyle: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 12.sp,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        if (!_arRegex.hasMatch(v.trim())) {
-                          return 'Only Arabic letters, numbers, spaces, - and _';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48.h,
-                    child: ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.orange,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                      ),
-                      child: Text(
-                        _isEdit ? 'Update Word' : 'Create Word',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.dark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.sp,
-                        ),
-                      ),
-                    ),
-                  ),
+                  SizedBox(height: 10.h),
                 ],
-              ),
+                // Picker
+                GestureDetector(
+                  onTap: _pickAudio,
+                  child: QuestionUI.glass(
+                    padding: EdgeInsets.all(14.w),
+                    borderColor: AppColors.orange.withOpacity(0.45),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.audiotrack_rounded,
+                          color: AppColors.orange,
+                          size: 22.sp,
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _pickedAudio != null
+                                    ? _pickedAudio!.name
+                                    : (_isEdit
+                                          ? 'Replace audio (optional)'
+                                          : 'Select audio (required)'),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                _pickedAudio != null
+                                    ? '${((_pickedAudio!.size) / 1024).toStringAsFixed(0)} KB · mp3/wav/ogg/m4a · max 5MB'
+                                    : 'mp3, wav, ogg, m4a · max 5MB',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white54,
+                                  fontSize: 10.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_pickedAudio != null)
+                          GestureDetector(
+                            onTap: () => setState(() => _pickedAudio = null),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.redAccent,
+                              size: 18.sp,
+                            ),
+                          )
+                        else
+                          Icon(
+                            Icons.upload_file_rounded,
+                            color: AppColors.orange,
+                            size: 20.sp,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20.h),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48.h,
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.orange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                    ),
+                    child: Text(
+                      _isEdit ? 'Update Word' : 'Create Word',
+                      style: GoogleFonts.poppins(
+                        color: AppColors.dark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -8,6 +8,7 @@ import 'package:fluent/cubit/teacher/lessons/lesson_detail_state.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/models/word_model.dart';
+import 'package:fluent/presentation/widgets/audio_preview_tile.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
@@ -895,6 +896,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                               ],
                             ),
                           ),
+                          if (w.hasAudio) ...[
+                            SizedBox(width: 8.w),
+                            AudioPreviewTile(url: w.audio!, compact: true),
+                          ],
                         ],
                       ),
                     ),
@@ -1513,6 +1518,3 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 }
-
-/// Bottom sheet form for create/edit word.
-/// Controllers live in State so they are disposed safely with the widget.

@@ -4,14 +4,19 @@ class WordModel {
   final String wordEn;
   final String wordAr;
 
+  /// URL from WordResource: getFirstMediaUrl('audios')
+  final String? audio;
+
   WordModel({
     required this.id,
     required this.lessonId,
     required this.wordEn,
     required this.wordAr,
+    this.audio,
   });
 
   factory WordModel.fromJson(Map<String, dynamic> json) {
+    final rawAudio = json['audio']?.toString();
     return WordModel(
       id: json['id'] is int
           ? json['id'] as int
@@ -21,29 +26,36 @@ class WordModel {
           : int.tryParse(json['lesson_id']?.toString() ?? '0') ?? 0,
       wordEn: json['word_en']?.toString() ?? '',
       wordAr: json['word_ar']?.toString() ?? '',
+      audio: (rawAudio != null && rawAudio.trim().isNotEmpty) ? rawAudio : null,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'lesson_id': lessonId,
-        'word_en': wordEn,
-        'word_ar': wordAr,
-      };
+    'id': id,
+    'lesson_id': lessonId,
+    'word_en': wordEn,
+    'word_ar': wordAr,
+    if (audio != null) 'audio': audio,
+  };
 
   WordModel copyWith({
     int? id,
     int? lessonId,
     String? wordEn,
     String? wordAr,
+    String? audio,
+    bool clearAudio = false,
   }) {
     return WordModel(
       id: id ?? this.id,
       lessonId: lessonId ?? this.lessonId,
       wordEn: wordEn ?? this.wordEn,
       wordAr: wordAr ?? this.wordAr,
+      audio: clearAudio ? null : (audio ?? this.audio),
     );
   }
+
+  bool get hasAudio => audio != null && audio!.trim().isNotEmpty;
 
   /// Parse a list from lesson detail `words` field (WordResource collection).
   static List<WordModel> listFrom(dynamic raw) {

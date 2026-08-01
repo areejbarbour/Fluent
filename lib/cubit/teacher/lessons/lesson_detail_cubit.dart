@@ -73,11 +73,15 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
         );
         final tests = await _loadLessonTests(lessonId);
         final lessonMap = lessonResult['lesson'];
+        // words are at response root (sibling of lesson), not inside lesson.
+        final words = _extractWordsFromResponse(
+          lessonResult['words'] ?? lessonResult['raw'] ?? lessonMap,
+        );
         emit(
           LessonDetailLoaded(
             lesson: lessonMap,
             tests: tests,
-            words: _extractWords(lessonMap),
+            words: words,
             comments: parsed.comments,
             commentsCurrentPage: parsed.currentPage,
             commentsLastPage: parsed.lastPage,
@@ -100,11 +104,16 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       // 3) الاختبارات
       final tests = await _loadLessonTests(lessonId);
 
+      // words at response root: { lesson, words, comments }
+      final words = _extractWordsFromResponse(
+        detailResult['raw'] ?? detailResult['words'] ?? lessonMap,
+      );
+
       emit(
         LessonDetailLoaded(
           lesson: lessonMap,
           tests: tests,
-          words: _extractWords(lessonMap),
+          words: words,
           comments: allComments.comments,
           commentsCurrentPage: allComments.commentsCurrentPage,
           commentsLastPage: allComments.commentsLastPage,
@@ -123,11 +132,28 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     return testRepository.testsForLesson(allTests, lessonId);
   }
 
-  List<WordModel> _extractWords(dynamic lessonMap) {
-    if (lessonMap is Map) {
-      return WordModel.listFrom(lessonMap['words']);
+  /// Backend returns words as a top-level array next to `lesson`:
+  /// { "lesson": {...}, "words": [...], "comments": [...] }
+  /// Accepts: the full response map, a words list, or (legacy) a lesson map.
+  List<WordModel> _extractWordsFromResponse(dynamic source) {
+    if (source == null) return const [];
+    if (source is List) {
+      return WordModel.listFrom(source);
+    }
+    if (source is Map) {
+      final map = Map<String, dynamic>.from(source);
+      if (map['words'] != null) {
+        return WordModel.listFrom(map['words']);
+      }
+      // legacy / mistaken nesting
+      return WordModel.listFrom(map);
     }
     return const [];
+  }
+
+  @Deprecated('Use _extractWordsFromResponse')
+  List<WordModel> _extractWords(dynamic lessonMap) {
+    return _extractWordsFromResponse(lessonMap);
   }
 
   /// تحديث محلي للقائمة بعد إنشاء/تعديل/حذف كلمة (بدون إعادة تحميل كاملة)

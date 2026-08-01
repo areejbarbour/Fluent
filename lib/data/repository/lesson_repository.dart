@@ -206,10 +206,15 @@ class LessonRepository {
       final response = await lessonService.getLessonDetails(lessonId);
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
+        // Backend shape:
+        // { "lesson": {...}, "words": [WordResource...], "comments": [...] }
+        // words are at ROOT, not nested inside lesson.
         return {
           'success': true,
           'lesson': data['lesson'], // DetailLessonResource
+          'words': data['words'] ?? [],
           'comments': data['comments'] ?? [],
+          'raw': data,
         };
       }
       return {'success': false, 'message': 'Failed to load lesson details'};

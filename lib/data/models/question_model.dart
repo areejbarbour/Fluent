@@ -19,13 +19,33 @@ class QuestionAnswer {
     this.rightText,
   });
 
+  /// Backend often returns MySQL bool as 0/1 (int), not true/false.
+  static bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final v = value.trim().toLowerCase();
+      if (v == 'true' || v == '1') return true;
+      if (v == 'false' || v == '0') return false;
+    }
+    return null;
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
   factory QuestionAnswer.fromJson(Map<String, dynamic> json) {
     return QuestionAnswer(
-      id: json['id'] is int ? json['id'] : null,
+      id: _parseInt(json['id']),
       textAnswer: json['text_answer']?.toString(),
-      isCorrect: json['is_correct'] is bool ? json['is_correct'] : null,
-      order: json['order'] is int ? json['order'] : null,
-      blankOrder: json['blank_order'] is int ? json['blank_order'] : null,
+      isCorrect: _parseBool(json['is_correct']),
+      order: _parseInt(json['order']),
+      blankOrder: _parseInt(json['blank_order']),
       leftText: json['left_text']?.toString(),
       rightText: json['right_text']?.toString(),
     );

@@ -6,14 +6,15 @@ class WordService {
   WordService(this.dio);
 
   /// POST /api/words/{lesson}/create
-  Future<Response> createWord(int lessonId, Map<String, dynamic> body) async {
+  /// Body must be multipart when uploading audio (required by backend).
+  Future<Response> createWord(int lessonId, FormData formData) async {
     return await dio.post(
       apiCreateWord(lessonId),
-      data: body,
+      data: formData,
       options: Options(
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
+          // Do NOT set Content-Type — Dio sets multipart boundary automatically.
         },
         validateStatus: (status) => status != null && status < 500,
       ),
@@ -21,15 +22,13 @@ class WordService {
   }
 
   /// POST /api/words/{word}/update
-  Future<Response> updateWord(int wordId, Map<String, dynamic> body) async {
+  /// multipart; audio is optional.
+  Future<Response> updateWord(int wordId, FormData formData) async {
     return await dio.post(
       apiUpdateWord(wordId),
-      data: body,
+      data: formData,
       options: Options(
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
       ),
     );

@@ -11,15 +11,19 @@ class WordDeleteCubit extends Cubit<WordDeleteState> {
     try {
       final result = await wordRepository.deleteWord(wordId);
       if (result['success'] == true) {
-        emit(WordDeleteSuccess(
-          wordId,
-          message: result['message'] ?? 'Word deleted successfully',
-        ));
+        emit(
+          WordDeleteSuccess(
+            wordId,
+            message: result['message'] ?? 'Word deleted successfully',
+          ),
+        );
       } else {
-        emit(WordDeleteFailure(
-          result['message'] ?? 'Failed to delete word',
-          errors: result['errors'] as Map<String, dynamic>?,
-        ));
+        emit(
+          WordDeleteFailure(
+            result['message'] ?? 'Failed to delete word',
+            errors: result['errors'] as Map<String, dynamic>?,
+          ),
+        );
       }
     } catch (e) {
       emit(WordDeleteFailure(e.toString()));

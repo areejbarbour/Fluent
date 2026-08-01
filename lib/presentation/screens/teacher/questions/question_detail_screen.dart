@@ -381,22 +381,55 @@ class _QuestionDetailView extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.list_alt, color: AppColors.yellow, size: 16),
+              Icon(
+                Icons.list_alt_rounded,
+                color: AppColors.yellow,
+                size: 16.sp,
+              ),
               SizedBox(width: 6.w),
-              Text(
-                "Answers (${q.answers.length})",
-                style: GoogleFonts.poppins(
-                  color: AppColors.yellow,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Answers (${q.answers.length})',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.yellow,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                decoration: BoxDecoration(
+                  color: QuestionUI.typeColor(q.type.value).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6.r),
+                  border: Border.all(
+                    color: QuestionUI.typeColor(q.type.value).withOpacity(0.35),
+                  ),
+                ),
+                child: Text(
+                  q.type.displayName,
+                  style: GoogleFonts.poppins(
+                    color: QuestionUI.typeColor(q.type.value),
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           SizedBox(height: 10.h),
-          ...q.answers.asMap().entries.map(
-            (e) => _answerTile(q.type, e.key, e.value),
-          ),
+          if (q.answers.isEmpty)
+            Text(
+              'No answers',
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 12.sp,
+              ),
+            )
+          else
+            ...q.answers.asMap().entries.map(
+              (e) => _answerTile(q.type, e.key, e.value),
+            ),
         ],
       ),
     );
@@ -404,38 +437,193 @@ class _QuestionDetailView extends StatelessWidget {
 
   Widget _answerTile(QuestionType type, int idx, QuestionAnswer a) {
     final isCorrect = a.isCorrect == true;
-    final color = isCorrect
+    final accent = isCorrect
         ? Colors.greenAccent
-        : Colors.white.withOpacity(0.5);
+        : QuestionUI.typeColor(type.value).withOpacity(0.7);
+
     return Container(
-      margin: EdgeInsets.only(bottom: 6.h),
-      padding: EdgeInsets.all(10.w),
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: isCorrect
-            ? Colors.greenAccent.withOpacity(0.08)
-            : Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: color.withOpacity(0.3)),
+            ? Colors.greenAccent.withOpacity(0.1)
+            : Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: isCorrect
+              ? Colors.greenAccent.withOpacity(0.45)
+              : Colors.white.withOpacity(0.1),
+        ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            isCorrect ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: color,
-            size: 16.sp,
+          // Index / status icon
+          Container(
+            width: 28.w,
+            height: 28.w,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: accent.withOpacity(0.4)),
+            ),
+            child: isCorrect
+                ? Icon(Icons.check_rounded, color: accent, size: 14.sp)
+                : Text(
+                    '${idx + 1}',
+                    style: GoogleFonts.poppins(
+                      color: accent,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Text(
-              a.textAnswer ?? '—',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
+          SizedBox(width: 10.w),
+          Expanded(child: _answerBody(type, a)),
+          if (type == QuestionType.mcq || type == QuestionType.arrange)
+            Padding(
+              padding: EdgeInsets.only(left: 6.w),
+              child: Icon(
+                isCorrect
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked,
+                color: isCorrect ? Colors.greenAccent : Colors.white24,
+                size: 16.sp,
               ),
             ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _answerBody(QuestionType type, QuestionAnswer a) {
+    switch (type) {
+      case QuestionType.pair:
+        final left = (a.leftText ?? '').trim();
+        final right = (a.rightText ?? '').trim();
+        return Row(
+          children: [
+            Expanded(
+              child: _pairChip(
+                label: left.isEmpty ? '—' : left,
+                color: AppColors.sky,
+                alignEnd: false,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6.w),
+              child: Icon(
+                Icons.swap_horiz_rounded,
+                color: Colors.purpleAccent.withOpacity(0.8),
+                size: 16.sp,
+              ),
+            ),
+            Expanded(
+              child: _pairChip(
+                label: right.isEmpty ? '—' : right,
+                color: Colors.purpleAccent,
+                alignEnd: true,
+              ),
+            ),
+          ],
+        );
+
+      case QuestionType.fill:
+        final text = (a.textAnswer ?? '').trim();
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                text.isEmpty ? '—' : text,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (a.blankOrder != null && a.blankOrder! > 0)
+              _miniTag('Blank ${a.blankOrder}', AppColors.orange),
+          ],
+        );
+
+      case QuestionType.arrange:
+        final text = (a.textAnswer ?? '').trim();
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                text.isEmpty ? '—' : text,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (a.isCorrect == true && a.order != null && a.order! > 0)
+              _miniTag('Order ${a.order}', AppColors.sky)
+            else if (a.isCorrect != true)
+              _miniTag('Distractor', Colors.white38),
+          ],
+        );
+
+      case QuestionType.mcq:
+        final text = (a.textAnswer ?? '').trim();
+        return Text(
+          text.isEmpty ? '—' : text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        );
+    }
+  }
+
+  Widget _pairChip({
+    required String label,
+    required Color color,
+    required bool alignEnd,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _miniTag(String label, Color color) {
+    return Container(
+      margin: EdgeInsets.only(left: 6.w),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          color: color,
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
