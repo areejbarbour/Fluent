@@ -74,6 +74,10 @@ import 'package:fluent/cubit/student/levels/level_exception_details_cubit.dart';
 import 'package:fluent/presentation/screens/statics/level_exception_details_screen.dart';
 import 'package:fluent/cubit/student/levels/level_exception_delete_cubit.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/words_bank/words_bank_cubit.dart';
+import 'package:fluent/data/repository/words_bank_repository.dart';
+import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
+import 'package:fluent/data/repository/lesson_word_repository.dart';
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -171,7 +175,13 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
       case wordBankRoute:
-        return MaterialPageRoute(builder: (_) => const WordBankScreen());
+  return MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (ctx) => WordsBankCubit(ctx.read<WordsBankRepository>())
+        ..fetchAll(),
+      child: const WordBankScreen(),
+    ),
+  );
 
       case podcastsRoute:
         return MaterialPageRoute(builder: (_) => const PodcastsScreen());
@@ -218,22 +228,46 @@ class AppRouter {
           ),
         );
 
-      // ✅ Student: Lesson video + comments detail
-      case lessonStudentDetailRoute:
-        final args = settings.arguments as Map<String, dynamic>;
-        final lessonId = args['lessonId'] as int?;
+      // // ✅ Student: Lesson video + comments detail
+      // case lessonStudentDetailRoute:
+      //   final args = settings.arguments as Map<String, dynamic>;
+      //   final lessonId = args['lessonId'] as int?;
 
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (ctx) => student_lesson.LessonDetailCubit(
-              ctx.read<LessonDetailRepository>(),
-            )..fetchLessonDetail(lessonId ?? 0),
-            child: student_lesson_screen.LessonDetailScreen(
-              lessonId: lessonId,
-              lessonTitle: args['lessonTitle'] as String? ?? '',
-            ),
-          ),
-        );
+      //   return MaterialPageRoute(
+      //     builder: (_) => BlocProvider(
+      //       create: (ctx) => student_lesson.LessonDetailCubit(
+      //         ctx.read<LessonDetailRepository>(),
+      //       )..fetchLessonDetail(lessonId ?? 0),
+      //       child: student_lesson_screen.LessonDetailScreen(
+      //         lessonId: lessonId,
+      //         lessonTitle: args['lessonTitle'] as String? ?? '',
+      //       ),
+      //     ),
+      //   );
+
+      case lessonStudentDetailRoute:
+  final args = settings.arguments as Map<String, dynamic>;
+  final lessonId = args['lessonId'] as int?;
+
+  return MaterialPageRoute(
+    builder: (_) => MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (ctx) => student_lesson.LessonDetailCubit(
+            ctx.read<LessonDetailRepository>(),
+          )..fetchLessonDetail(lessonId ?? 0),
+        ),
+        BlocProvider(
+          create: (ctx) =>
+              LessonWordsCubit(ctx.read<LessonWordRepository>()),
+        ),
+      ],
+      child: student_lesson_screen.LessonDetailScreen(
+        lessonId: lessonId,
+        lessonTitle: args['lessonTitle'] as String? ?? '',
+      ),
+    ),
+  );
 
   case levelExceptionsRoute:
   return MaterialPageRoute(
@@ -285,7 +319,7 @@ class AppRouter {
 
       // ✅ Teacher: Lesson status board (teacher's home screen)
       // ✅ Teacher: Status Board
-      case teacherStatusBoardRoute: // يمكنك تغيير اسم الـ route الثابت في strings.dart إلى teacherStatusBoardRoute
+      case teacherStatusBoardRoute: 
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (ctx) => TeacherStatusBoardCubit(

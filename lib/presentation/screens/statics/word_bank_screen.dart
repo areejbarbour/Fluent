@@ -7,6 +7,13 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/student/words_bank/words_bank_cubit.dart';
+import 'package:fluent/cubit/student/words_bank/words_bank_state.dart';
+import 'package:fluent/data/models/words_bank_model.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/data/repository/lesson_word_repository.dart';
 
 enum WordStatus { learning, mastered }
 enum WordDifficulty { easy, medium, hard }
@@ -22,6 +29,7 @@ class WordItem {
   final int correctAnswers;
   final int totalAttempts;
   final DateTime addedAt;
+  final String? audioUrl;
 
   const WordItem({
     required this.id,
@@ -34,6 +42,7 @@ class WordItem {
     this.correctAnswers = 0,
     this.totalAttempts = 0,
     required this.addedAt,
+    this.audioUrl,
   });
 
   double get accuracy =>
@@ -56,9 +65,11 @@ class WordItem {
       correctAnswers: correctAnswers ?? this.correctAnswers,
       totalAttempts: totalAttempts ?? this.totalAttempts,
       addedAt: addedAt,
+      audioUrl: audioUrl,
     );
   }
 }
+
 class WordBankScreen extends StatefulWidget {
   const WordBankScreen({super.key});
 
@@ -73,14 +84,13 @@ class _WordBankScreenState extends State<WordBankScreen>
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
   final ScrollController _scrollController = ScrollController();
 
-  late List<WordItem> _words;
+  List<WordItem> _words = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _searchController = TextEditingController();
-    _words = _generateSampleWords();
     _scrollController.addListener(() {
       _scrollOffset.value = _scrollController.offset;
     });
@@ -97,153 +107,187 @@ class _WordBankScreenState extends State<WordBankScreen>
     _scrollOffset.dispose();
     super.dispose();
   }
+  
+  List<WordItem> _mapToWordItems(
+    List<WordsBankItem> learning, List<WordsBankItem> known) {
+  WordItem toItem(WordsBankItem w, WordStatus status) {
+    DateTime added;
+    try {
+      added =
+          w.addedAt != null ? DateTime.parse(w.addedAt!) : DateTime.now();
+    } catch (_) {
+      added = DateTime.now();
+    }
 
-  List<WordItem> _generateSampleWords() {
-    final now = DateTime.now();
-    return [
-      WordItem(
-        id: '1',
-        word: 'Serendipity',
-        translation: 'مصادفة سعيدة',
-        pronunciation: '/ˌsɛrənˈdɪpɪti/',
-        exampleSentence: 'Finding that book was pure serendipity.',
-        status: WordStatus.learning,
-        difficulty: WordDifficulty.hard,
-        totalAttempts: 4,
-        correctAnswers: 1,
-        addedAt: now.subtract(const Duration(days: 2)),
-      ),
-      WordItem(
-        id: '2',
-        word: 'Ephemeral',
-        translation: 'زائل، قصير الأمد',
-        pronunciation: '/ɪˈfɛmərəl/',
-        status: WordStatus.learning,
-        difficulty: WordDifficulty.hard,
-        addedAt: now.subtract(const Duration(days: 1)),
-      ),
-      WordItem(
-        id: '3',
-        word: 'Hello',
-        translation: 'مرحبا',
-        status: WordStatus.mastered,
-        difficulty: WordDifficulty.easy,
-        totalAttempts: 5,
-        correctAnswers: 5,
-        addedAt: now.subtract(const Duration(days: 30)),
-      ),
-      WordItem(
-        id: '4',
-        word: 'Beautiful',
-        translation: 'جميل',
-        status: WordStatus.mastered,
-        difficulty: WordDifficulty.easy,
-        totalAttempts: 8,
-        correctAnswers: 8,
-        addedAt: now.subtract(const Duration(days: 45)),
-      ),
-      WordItem(
-        id: '5',
-        word: 'Courage',
-        translation: 'شجاعة',
-        exampleSentence: 'She showed great courage.',
-        status: WordStatus.learning,
-        difficulty: WordDifficulty.medium,
-        totalAttempts: 3,
-        correctAnswers: 2,
-        addedAt: now.subtract(const Duration(days: 3)),
-      ),
-      WordItem(
-        id: '6',
-        word: 'Adventure',
-        translation: 'مغامرة',
-        exampleSentence: 'Life is a great adventure.',
-        status: WordStatus.mastered,
-        difficulty: WordDifficulty.medium,
-        totalAttempts: 6,
-        correctAnswers: 6,
-        addedAt: now.subtract(const Duration(days: 20)),
-      ),
-      WordItem(
-        id: '7',
-        word: 'Knowledge',
-        translation: 'معرفة',
-        status: WordStatus.mastered,
-        difficulty: WordDifficulty.medium,
-        totalAttempts: 4,
-        correctAnswers: 4,
-        addedAt: now.subtract(const Duration(days: 15)),
-      ),
-      WordItem(
-        id: '8',
-        word: 'Perseverance',
-        translation: 'مثابرة',
-        exampleSentence: 'Perseverance leads to success.',
-        status: WordStatus.learning,
-        difficulty: WordDifficulty.hard,
-        totalAttempts: 5,
-        correctAnswers: 2,
-        addedAt: now.subtract(const Duration(days: 4)),
-      ),
-      WordItem(
-        id: '9',
-        word: 'Wisdom',
-        translation: 'حكمة',
-        status: WordStatus.mastered,
-        difficulty: WordDifficulty.medium,
-        totalAttempts: 7,
-        correctAnswers: 7,
-        addedAt: now.subtract(const Duration(days: 25)),
-      ),
-      WordItem(
-        id: '10',
-        word: 'Tranquility',
-        translation: 'هدوء، سكينة',
-        pronunciation: '/træŋˈkwɪlɪti/',
-        status: WordStatus.learning,
-        difficulty: WordDifficulty.hard,
-        totalAttempts: 2,
-        correctAnswers: 0,
-        addedAt: now.subtract(const Duration(hours: 12)),
-      ),
-    ];
+    String? audioUrl;
+    if (w.word.hasAudio) {
+      final raw = w.word.audio!;
+      audioUrl = raw.startsWith('http') ? raw : '$baseUrl/$raw';
+    }
+
+    return WordItem(
+      id: w.word.id.toString(),
+      word: w.word.wordEn,
+      translation: w.word.wordAr,
+      status: status,
+      addedAt: added,
+      audioUrl: audioUrl,
+    );
   }
 
-  void _toggleWordStatus(WordItem word) {
-    HapticFeedback.mediumImpact();
+  return [
+    ...learning.map((w) => toItem(w, WordStatus.learning)),
+    ...known.map((w) => toItem(w, WordStatus.mastered)),
+  ];
+}
+
+Future<void> _toggleWordStatus(WordItem word) async {
+  HapticFeedback.mediumImpact();
+
+  final wordId = int.tryParse(word.id);
+  if (wordId == null) return;
+
+  final repo = context.read<LessonWordRepository>();
+  final isLearning = word.status == WordStatus.learning;
+
+  _showAppSnack(
+    isLearning
+        ? 'Transferring to mastered...'
+        : 'Transferring to learning...',
+  );
+
+  final Map<String, dynamic> result;
+  if (isLearning) {
+    result = await repo.moveToKnow(wordId);
+  } else {
+    result = await repo.moveToLearning(wordId);
+  }
+
+  if (!mounted) return;
+
+  if (result['success'] == true) {
     setState(() {
       final idx = _words.indexWhere((w) => w.id == word.id);
       if (idx == -1) return;
       _words[idx] = _words[idx].copyWith(
-        status: _words[idx].status == WordStatus.learning
-            ? WordStatus.mastered
-            : WordStatus.learning,
+        status: isLearning ? WordStatus.mastered : WordStatus.learning,
       );
     });
-  }
 
-  void _deleteWord(WordItem word) {
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _words.removeWhere((w) => w.id == word.id);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.delete_outline, color: Colors.white, size: 18),
-            SizedBox(width: 8.w),
-            Expanded(child: Text("'${word.word}' removed")),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-      ),
+    _showAppSnack(
+      result['message'] ??
+          (isLearning ? 'Moved to mastered ✨' : 'Moved to learning 📚'),
+      isSuccess: true,
+    );
+  } else {
+    _showAppSnack(
+      result['message'] ?? 'Transfer failed',
+      isError: true,
     );
   }
+}
+
+
+void _showAppSnack(String message, {bool isError = false, bool isSuccess = false}) {
+  HapticFeedback.lightImpact();
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      content: ClipRRect(
+        borderRadius: BorderRadius.circular(16.r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              gradient: LinearGradient(
+                colors: isError
+                    ? [
+                        const Color(0xFFFF6B6B).withOpacity(.25),
+                        AppColors.dark.withOpacity(.9),
+                      ]
+                    : isSuccess
+                        ? [
+                            const Color(0xFF4ADE80).withOpacity(.22),
+                            AppColors.dark.withOpacity(.9),
+                          ]
+                        : [
+                            AppColors.sky.withOpacity(.2),
+                            AppColors.dark.withOpacity(.9),
+                          ],
+              ),
+              border: Border.all(
+                color: isError
+                    ? const Color(0xFFFF6B6B).withOpacity(.45)
+                    : isSuccess
+                        ? const Color(0xFF4ADE80).withOpacity(.45)
+                        : AppColors.sky.withOpacity(.35),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.w,
+                  height: 32.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: isError
+                          ? const [Color(0xFFFF6B6B), Color(0xFFE53935)]
+                          : isSuccess
+                              ? const [Color(0xFF4ADE80), Color(0xFF22C55E)]
+                              : const [AppColors.sky, Color(0xFFB388FF)],
+                    ),
+                  ),
+                  child: Icon(
+                    isError
+                        ? Icons.error_outline_rounded
+                        : isSuccess
+                            ? Icons.check_rounded
+                            : Icons.info_outline_rounded,
+                    color: Colors.white,
+                    size: 16.sp,
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+void _deleteWord(WordItem word) {
+  HapticFeedback.mediumImpact();
+  setState(() {
+    _words.removeWhere((w) => w.id == word.id);
+  });
+  _showAppSnack("'${word.word}' removed", isError: true);
+}
 
   void _openPractice() {
     final learningWords =
@@ -368,60 +412,141 @@ class _WordBankScreenState extends State<WordBankScreen>
 
     return Scaffold(
       backgroundColor: AppColors.dark,
-      body: Stack(
-        children: [
-          _buildBackground(),
-          _TwinklingStars(count: 40),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                SizedBox(height: 18.h),
-                _buildSearchBar(),
-                SizedBox(height: 12.h),
-                _buildTabBar(),
-                SizedBox(height: 12.h),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      _buildWordsList(
-                        words: _words
-                            .where((w) =>
-                                w.status == WordStatus.learning &&
-                                (searchQuery.isEmpty ||
-                                    w.word.toLowerCase().contains(searchQuery) ||
-                                    w.translation.contains(searchQuery)))
-                            .toList(),
-                        targetStatus: WordStatus.mastered,
-                        actionLabel: "Mark as Mastered",
-                        actionIcon: Icons.check_circle_rounded,
-                        actionColor: const Color(0xFF4ADE80),
+      body: BlocConsumer<WordsBankCubit, WordsBankState>(
+        listener: (context, state) {
+          if (state is WordsBankSuccess) {
+            setState(() {
+              _words =
+                  _mapToWordItems(state.learningWords, state.knownWords);
+            });
+          }
+        },
+        builder: (context, state) {
+          return Stack(
+            children: [
+              _buildBackground(),
+              _TwinklingStars(count: 40),
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildTopBar(),
+                    SizedBox(height: 18.h),
+                    _buildSearchBar(),
+                    SizedBox(height: 12.h),
+                    _buildTabBar(),
+                    SizedBox(height: 12.h),
+                    if (state is WordsBankLoading && _words.isEmpty)
+                      Expanded(child: _buildLoadingState())
+                    else if (state is WordsBankFailure && _words.isEmpty)
+                      Expanded(child: _buildErrorState(state.message))
+                    else
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            _buildWordsList(
+                              words: _words
+                                  .where((w) =>
+                                      w.status == WordStatus.learning &&
+                                      (searchQuery.isEmpty ||
+                                          w.word
+                                              .toLowerCase()
+                                              .contains(searchQuery) ||
+                                          w.translation
+                                              .contains(searchQuery)))
+                                  .toList(),
+                              targetStatus: WordStatus.mastered,
+                              actionLabel: "Mark as Mastered",
+                              actionIcon: Icons.check_circle_rounded,
+                              actionColor: const Color(0xFF4ADE80),
+                            ),
+                            _buildWordsList(
+                              words: _words
+                                  .where((w) =>
+                                      w.status == WordStatus.mastered &&
+                                      (searchQuery.isEmpty ||
+                                          w.word
+                                              .toLowerCase()
+                                              .contains(searchQuery) ||
+                                          w.translation
+                                              .contains(searchQuery)))
+                                  .toList(),
+                              targetStatus: WordStatus.learning,
+                              actionLabel: "Practice Again",
+                              actionIcon: Icons.replay_rounded,
+                              actionColor: AppColors.yellow,
+                            ),
+                          ],
+                        ),
                       ),
-                      _buildWordsList(
-                        words: _words
-                            .where((w) =>
-                                w.status == WordStatus.mastered &&
-                                (searchQuery.isEmpty ||
-                                    w.word.toLowerCase().contains(searchQuery) ||
-                                    w.translation.contains(searchQuery)))
-                            .toList(),
-                        targetStatus: WordStatus.learning,
-                        actionLabel: "Practice Again",
-                        actionIcon: Icons.replay_rounded,
-                        actionColor: AppColors.yellow,
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: _buildFABs(),
     );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: CircularProgressIndicator(color: AppColors.yellow),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded,
+                color: Colors.redAccent, size: 48.sp),
+            SizedBox(height: 14.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
+            ),
+            SizedBox(height: 16.h),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                context.read<WordsBankCubit>().fetchAll();
+              },
+              child: Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.orange, AppColors.yellow],
+                  ),
+                  borderRadius: BorderRadius.circular(12.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(.4),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  "إعادة المحاولة",
+                  style: GoogleFonts.poppins(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.sp,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildBackground() {
@@ -1269,396 +1394,310 @@ class _WordCard extends StatefulWidget {
 }
 
 class _WordCardState extends State<_WordCard> {
-  double _dragOffset = 0;
-  bool _isExpanded = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
 
-  void _onPanUpdate(DragUpdateDetails d) {
-    setState(() {
-      _dragOffset += d.delta.dx;
-      _dragOffset = _dragOffset.clamp(-120.0, 120.0);
-    });
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
-  void _onPanEnd(DragEndDetails d) {
-    if (_dragOffset > 80 || _dragOffset < -80) {
-      widget.onMove();
-    }
-    setState(() => _dragOffset = 0);
-  }
+  bool get _hasAudio =>
+      widget.word.audioUrl != null && widget.word.audioUrl!.trim().isNotEmpty;
 
-  Color _difficultyColor(WordDifficulty d) {
-    switch (d) {
-      case WordDifficulty.easy:
-        return const Color(0xFF4ADE80);
-      case WordDifficulty.medium:
-        return AppColors.yellow;
-      case WordDifficulty.hard:
-        return Colors.redAccent;
-    }
-  }
-
-  String _difficultyLabel(WordDifficulty d) {
-    switch (d) {
-      case WordDifficulty.easy:
-        return "Easy";
-      case WordDifficulty.medium:
-        return "Medium";
-      case WordDifficulty.hard:
-        return "Hard";
+  Future<void> _playAudio() async {
+    if (!_hasAudio) return;
+    try {
+      HapticFeedback.selectionClick();
+      setState(() => _isPlaying = true);
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(widget.word.audioUrl!));
+      _audioPlayer.onPlayerComplete.listen((_) {
+        if (mounted) setState(() => _isPlaying = false);
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isPlaying = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final swipeColor = _dragOffset > 0
-        ? const Color(0xFF4ADE80)
-        : (widget.word.status == WordStatus.learning
-            ? const Color(0xFF4ADE80)
-            : AppColors.yellow);
+    final isLearning = widget.word.status == WordStatus.learning;
+    final accent = isLearning ? AppColors.sky : const Color(0xFF4ADE80);
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Container(
-            alignment: _dragOffset > 0
-                ? Alignment.centerLeft
-                : Alignment.centerRight,
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            decoration: BoxDecoration(
-              color: swipeColor.withOpacity(.20),
-              borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: swipeColor.withOpacity(.4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_dragOffset > 0) ...[
-                  Icon(widget.actionIcon, color: swipeColor, size: 22.sp),
-                  SizedBox(width: 8.w),
-                  Text(
-                    widget.actionLabel,
-                    style: GoogleFonts.poppins(
-                      color: swipeColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                ],
-                if (_dragOffset <= 0) ...[
-                  Text(
-                    widget.actionLabel,
-                    style: GoogleFonts.poppins(
-                      color: swipeColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Icon(widget.actionIcon, color: swipeColor, size: 22.sp),
-                ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.12),
+                Colors.white.withOpacity(.04),
               ],
             ),
-          ),
-        ),
-        GestureDetector(
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() => _isExpanded = !_isExpanded);
-          },
-          child: Transform.translate(
-            offset: Offset(_dragOffset, 0),
-            child: AnimatedContainer(
-              duration: 200.ms,
-              padding: EdgeInsets.all(14.w),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20.r),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(.10),
-                    Colors.white.withOpacity(.04),
-                  ],
-                ),
-                border: Border.all(color: Colors.white.withOpacity(.12)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(.15),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            border: Border.all(color: Colors.white.withOpacity(.14)),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withOpacity(.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 6.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                          color: _difficultyColor(widget.word.difficulty)
-                              .withOpacity(.15),
-                          borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(
-                            color: _difficultyColor(widget.word.difficulty)
-                                .withOpacity(.4),
-                          ),
-                        ),
-                        child: Text(
-                          _difficultyLabel(widget.word.difficulty),
-                          style: GoogleFonts.poppins(
-                            color: _difficultyColor(widget.word.difficulty),
-                            fontSize: 8.5.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: .3,
-                          ),
-                        ),
-                      ),
-                      if (widget.word.totalAttempts > 0) ...[
-                        SizedBox(width: 6.w),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 6.w, vertical: 2.h),
-                          decoration: BoxDecoration(
-                            color: AppColors.sky.withOpacity(.15),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.percent_rounded,
-                                  color: AppColors.sky, size: 9.sp),
-                              SizedBox(width: 2.w),
-                              Text(
-                                "${(widget.word.accuracy * 100).toStringAsFixed(0)}%",
-                                style: GoogleFonts.poppins(
-                                  color: AppColors.sky,
-                                  fontSize: 8.5.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          widget.onDelete();
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(4.r),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(.12),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.redAccent,
-                            size: 14.sp,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10.h),
-                  Text(
-                    widget.word.word,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 17.sp,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: .2,
+            ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // شريط جانبي
+                Container(
+                  width: 4.5.w,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: isLearning
+                          ? [AppColors.sky, const Color(0xFFB388FF)]
+                          : [const Color(0xFF4ADE80), AppColors.yellow],
+                    ),
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(22.r),
                     ),
                   ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    widget.word.translation,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: AppColors.yellow,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (widget.word.pronunciation != null) ...[
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        Icon(Icons.volume_up_rounded,
-                            color: Colors.white.withOpacity(.5), size: 11.sp),
-                        SizedBox(width: 3.w),
-                        Text(
-                          widget.word.pronunciation!,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(.5),
-                            fontSize: 10.sp,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  AnimatedSize(
-                    duration: 250.ms,
-                    curve: Curves.easeOut,
-                    child: _isExpanded
-                        ? Padding(
-                            padding: EdgeInsets.only(top: 10.h),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (widget.word.exampleSentence != null) ...[
-                                  Container(
-                                    padding: EdgeInsets.all(10.w),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.sky.withOpacity(.10),
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      border: Border.all(
-                                        color: AppColors.sky.withOpacity(.25),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.format_quote_rounded,
-                                            color: AppColors.sky, size: 14.sp),
-                                        SizedBox(width: 6.w),
-                                        Expanded(
-                                          child: Text(
-                                            widget.word.exampleSentence!,
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white
-                                                  .withOpacity(.85),
-                                              fontSize: 10.5.sp,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                SizedBox(height: 10.h),
-                                Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: widget.onMove,
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 12.w, vertical: 7.h),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              widget.actionColor
-                                                  .withOpacity(.4),
-                                              widget.actionColor
-                                                  .withOpacity(.15),
-                                            ],
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(12.r),
-                                          border: Border.all(
-                                            color: widget.actionColor
-                                                .withOpacity(.5),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(widget.actionIcon,
-                                                color: widget.actionColor,
-                                                size: 12.sp),
-                                            SizedBox(width: 4.w),
-                                            Text(
-                                              widget.actionLabel,
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontSize: 10.sp,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 10.w, vertical: 7.h),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(.06),
-                                        borderRadius: BorderRadius.circular(12.r),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.access_time_rounded,
-                                            color: Colors.white.withOpacity(.5),
-                                            size: 11.sp,
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            _timeAgo(widget.word.addedAt),
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white
-                                                  .withOpacity(.5),
-                                              fontSize: 9.5.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                  if (!_isExpanded) ...[
-                    SizedBox(height: 8.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
+                            Container(
+                              width: 42.w,
+                              height: 42.w,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14.r),
+                                gradient: LinearGradient(
+                                  colors: isLearning
+                                      ? [
+                                          AppColors.sky.withOpacity(.35),
+                                          AppColors.sky.withOpacity(.12),
+                                        ]
+                                      : [
+                                          const Color(0xFF4ADE80)
+                                              .withOpacity(.35),
+                                          const Color(0xFF4ADE80)
+                                              .withOpacity(.12),
+                                        ],
+                                ),
+                                border:
+                                    Border.all(color: accent.withOpacity(.4)),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  widget.word.word.isNotEmpty
+                                      ? widget.word.word[0].toUpperCase()
+                                      : '?',
+                                  style: GoogleFonts.poppins(
+                                    color: accent,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 11.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.word.word,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15.sp,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    widget.word.translation,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white.withOpacity(.65),
+                                      fontSize: 12.5.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ===== زر الصوت =====
+                            GestureDetector(
+                              onTap: _hasAudio ? _playAudio : null,
+                              child: Container(
+                                width: 34.w,
+                                height: 34.w,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: _hasAudio
+                                      ? LinearGradient(
+                                          colors: [
+                                            AppColors.yellow.withOpacity(.9),
+                                            AppColors.orange.withOpacity(.85),
+                                          ],
+                                        )
+                                      : null,
+                                  color: _hasAudio
+                                      ? null
+                                      : Colors.white.withOpacity(.06),
+                                  border: Border.all(
+                                    color: _hasAudio
+                                        ? AppColors.yellow.withOpacity(.5)
+                                        : Colors.white.withOpacity(.1),
+                                  ),
+                                  boxShadow: _hasAudio
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.yellow
+                                                .withOpacity(.35),
+                                            blurRadius: 10,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Icon(
+                                  _isPlaying
+                                      ? Icons.volume_up_rounded
+                                      : Icons.volume_up_rounded,
+                                  color: _hasAudio
+                                      ? Colors.black
+                                      : Colors.white.withOpacity(.28),
+                                  size: 16.sp,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 6.w),
+
+                            // زر الحذف
+                            GestureDetector(
+                              onTap: widget.onDelete,
+                              child: Container(
+                                width: 32.w,
+                                height: 32.w,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(.06),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(.1),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white.withOpacity(.45),
+                                  size: 15.sp,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(height: 12.h),
+                        Container(
+                            height: 1, color: Colors.white.withOpacity(.07)),
+                        SizedBox(height: 10.h),
+
+                        // بادج + زر النقل
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 9.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20.r),
+                                color: accent.withOpacity(.12),
+                                border:
+                                    Border.all(color: accent.withOpacity(.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isLearning
+                                        ? Icons.school_rounded
+                                        : Icons.verified_rounded,
+                                    size: 11.sp,
+                                    color: accent,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    isLearning ? 'Learning' : 'Mastered',
+                                    style: GoogleFonts.poppins(
+                                      color: accent,
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
                             GestureDetector(
                               onTap: widget.onMove,
                               child: Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w, vertical: 5.h),
+                                    horizontal: 12.w, vertical: 7.h),
                                 decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14.r),
                                   gradient: LinearGradient(
-                                    colors: [
-                                      widget.actionColor.withOpacity(.4),
-                                      widget.actionColor.withOpacity(.15),
-                                    ],
+                                    colors: isLearning
+                                        ? const [
+                                            Color(0xFF4ADE80),
+                                            Color(0xFF22C55E),
+                                          ]
+                                        : const [
+                                            AppColors.orange,
+                                            AppColors.yellow,
+                                          ],
                                   ),
-                                  borderRadius: BorderRadius.circular(10.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isLearning
+                                              ? const Color(0xFF4ADE80)
+                                              : AppColors.yellow)
+                                          .withOpacity(.4),
+                                      blurRadius: 12,
+                                    ),
+                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(widget.actionIcon,
-                                        color: widget.actionColor,
-                                        size: 11.sp),
-                                    SizedBox(width: 3.w),
+                                    Icon(
+                                      widget.actionIcon,
+                                      color: isLearning
+                                          ? Colors.white
+                                          : Colors.black,
+                                      size: 14.sp,
+                                    ),
+                                    SizedBox(width: 5.w),
                                     Text(
                                       widget.actionLabel,
                                       style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 9.5.sp,
-                                        fontWeight: FontWeight.w700,
+                                        color: isLearning
+                                            ? Colors.white
+                                            : Colors.black,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11.sp,
                                       ),
                                     ),
                                   ],
@@ -1667,46 +1706,22 @@ class _WordCardState extends State<_WordCard> {
                             ),
                           ],
                         ),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              color: Colors.white.withOpacity(.4),
-                              size: 10.sp,
-                            ),
-                            SizedBox(width: 3.w),
-                            Text(
-                              _timeAgo(widget.word.addedAt),
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(.4),
-                                fontSize: 9.sp,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     )
-        .animate(delay: (50 * widget.index).ms)
-        .fadeIn(duration: 400.ms)
-        .moveY(begin: 12, end: 0);
-  }
-
-  String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
-    if (diff.inHours < 24) return "${diff.inHours}h ago";
-    if (diff.inDays < 30) return "${diff.inDays}d ago";
-    return "${(diff.inDays / 30).floor()}mo ago";
+        .animate()
+        .fadeIn(delay: (40 * widget.index).ms, duration: 350.ms)
+        .moveY(begin: 12, end: 0, curve: Curves.easeOutCubic);
   }
 }
+
 class FlashcardPracticeScreen extends StatefulWidget {
   final List<WordItem> words;
   final void Function(WordItem) onUpdateWord;
@@ -2263,6 +2278,7 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     );
   }
 }
+
 class _Flashcard extends StatelessWidget {
   final WordItem word;
   final bool showAnswer;
@@ -2570,6 +2586,7 @@ class _Flashcard extends StatelessWidget {
     );
   }
 }
+
 class _PracticeResultsDialog extends StatefulWidget {
   final int correct;
   final int total;
@@ -2864,6 +2881,7 @@ class _CircularPercentPainter extends CustomPainter {
       oldDelegate.percent != percent ||
       oldDelegate.animationValue != animationValue;
 }
+
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});

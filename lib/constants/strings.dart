@@ -1,4 +1,4 @@
-  const String baseUrl = 'http://192.168.1.3:8000';
+  const String baseUrl = 'http://192.168.1.5:8000';
 //const String baseUrl = 'http://192.168.10.224:8000';
  //const String baseUrl = 'http://172.20.10.2:8000';
 
@@ -82,6 +82,17 @@ String apiCreateLevelException(int levelId) => '/api/levelexceptions/$levelId/cr
 
 // delete Exception
 String apiDeleteLevelException(int id) => '/api/levelexceptions/$id/delete';
+
+// ✅ Student Word Bank API
+const String apiWordsBankLearning = '/api/words_bank/learning';
+const String apiWordsBankKnow = '/api/words_bank/know';
+
+// ✅ Lesson Words API
+String apiLessonWords(int lessonId) => '/api/words/$lessonId/lesson';
+
+// ✅ Update word status (student)
+String apiWordToLearning(int wordId) => '/api/words/$wordId/learning';
+String apiWordToKnow(int wordId) => '/api/words/$wordId/know';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';

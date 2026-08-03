@@ -36,6 +36,10 @@ import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/data/services/level_exception_service.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
+import 'package:fluent/data/services/words_bank_service.dart';
+import 'package:fluent/data/repository/words_bank_repository.dart';
+import 'package:fluent/data/services/lesson_word_service.dart';
+import 'package:fluent/data/repository/lesson_word_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +84,12 @@ void main() async {
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
 
+  final wordsBankService = WordsBankService(dioInstance);
+  final wordsBankRepository = WordsBankRepository(wordsBankService);
+
+  final lessonWordService = LessonWordService(dioInstance);
+final lessonWordRepository = LessonWordRepository(lessonWordService);
+
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
@@ -101,6 +111,8 @@ void main() async {
       lessonDetailRepository: lessonDetailRepository, // ✅ جديد
       wordRepository: wordRepository,
       levelExceptionRepository: levelExceptionRepository,
+      wordsBankRepository: wordsBankRepository,
+      lessonWordRepository: lessonWordRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -118,6 +130,8 @@ class MyApp extends StatefulWidget {
   final WordRepository wordRepository;
   final String initialRoute;
   final LevelExceptionRepository levelExceptionRepository;
+  final WordsBankRepository wordsBankRepository;
+  final LessonWordRepository lessonWordRepository;
   late final AppRouter appRouter;
   
   MyApp({
@@ -132,7 +146,9 @@ class MyApp extends StatefulWidget {
     required this.lessonDetailRepository, // ✅ جديد
     required this.wordRepository,
     required this.initialRoute,
-    required this.levelExceptionRepository
+    required this.levelExceptionRepository,
+    required this.wordsBankRepository,
+    required this.lessonWordRepository,
     
   }) {
     appRouter = AppRouter(authRepository);
@@ -185,6 +201,12 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<LevelExceptionRepository>.value(
             value: widget.levelExceptionRepository,
              ),
+             RepositoryProvider<WordsBankRepository>.value(
+            value: widget.wordsBankRepository,
+             ),
+             RepositoryProvider<LessonWordRepository>.value(
+  value: widget.lessonWordRepository,
+),
           ],
           child: MultiBlocProvider(
             providers: [

@@ -324,7 +324,6 @@ class QuestionRepository {
         sort: sort,
       );
 
-      // نستخدم نفس دالة التحليل الموجودة مسبقاً لضمان التوافق
       final paginated = _parsePaginated(response);
 
       if (paginated != null) {
