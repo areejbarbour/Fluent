@@ -67,7 +67,7 @@ class _AudioPreviewTileState extends State<AudioPreviewTile> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to play audio: $e'),
-          ), // 👈 بدل 'تعذّر تشغيل الصوت: $e'
+          ), // 👈 بدل 'Failed to play audio: $e'
         );
       }
     } finally {

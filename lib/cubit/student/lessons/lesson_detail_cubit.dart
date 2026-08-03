@@ -49,7 +49,11 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       emit(LessonDetailSuccess(data));
     } else {
       print("❌ [LessonDetailCubit] Failed: ${result['message']}");
-      emit(LessonDetailFailure(result['message'] ?? 'فشل تحميل تفاصيل الدرس'));
+      emit(
+        LessonDetailFailure(
+          result['message'] ?? 'Failed to load lesson details',
+        ),
+      );
     }
   }
 
@@ -180,7 +184,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       return null;
     } else {
       print("❌ [LessonDetailCubit] Comment failed: ${result['message']}");
-      return result['message'] ?? 'فشل في إضافة التعليق';
+      return result['message'] ?? 'Failed to add comment';
     }
   }
 
@@ -233,7 +237,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       return null;
     } else {
       print("❌ [LessonDetailCubit] Update failed: ${result['message']}");
-      return result['message'] ?? 'فشل في تعديل التعليق';
+      return result['message'] ?? 'Failed to update comment';
     }
   }
 
@@ -270,7 +274,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       return null;
     } else {
       print("❌ [LessonDetailCubit] Delete failed: ${result['message']}");
-      return result['message'] ?? 'فشل في حذف التعليق';
+      return result['message'] ?? 'Failed to delete comment';
     }
   }
 }

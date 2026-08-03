@@ -349,7 +349,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     if (s is LessonDetailLoaded) {
       emit(s.copyWith(isBusyComment: false));
     }
-    return result['message'] ?? 'فشل في إضافة التعليق';
+    return result['message'] ?? 'Failed to add comment';
   }
 
   Future<String?> editComment(int commentId, String newText) async {
@@ -394,7 +394,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     }
 
     emit(current.copyWith(isBusyComment: false));
-    return result['message'] ?? 'فشل في تعديل التعليق';
+    return result['message'] ?? 'Failed to update comment';
   }
 
   Future<String?> removeComment(int commentId) async {
@@ -427,7 +427,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     }
 
     emit(current.copyWith(isBusyComment: false));
-    return result['message'] ?? 'فشل في حذف التعليق';
+    return result['message'] ?? 'Failed to delete comment';
   }
 
   // ✅ حذف اختبار

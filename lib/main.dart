@@ -40,6 +40,10 @@ import 'package:fluent/data/services/words_bank_service.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'package:fluent/data/services/lesson_word_service.dart';
 import 'package:fluent/data/repository/lesson_word_repository.dart';
+import 'package:fluent/data/services/rate_service.dart';
+import 'package:fluent/data/repository/rate_repository.dart';
+import 'package:fluent/data/services/word_quiz_service.dart';
+import 'package:fluent/data/repository/word_quiz_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,7 +83,9 @@ void main() async {
   final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
   final levelExceptionService = LevelExceptionService(dioInstance);
-  final levelExceptionRepository = LevelExceptionRepository(levelExceptionService);
+  final levelExceptionRepository = LevelExceptionRepository(
+    levelExceptionService,
+  );
 
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
@@ -88,7 +94,13 @@ void main() async {
   final wordsBankRepository = WordsBankRepository(wordsBankService);
 
   final lessonWordService = LessonWordService(dioInstance);
-final lessonWordRepository = LessonWordRepository(lessonWordService);
+  final lessonWordRepository = LessonWordRepository(lessonWordService);
+
+  final rateService = RateService(dioInstance);
+  final rateRepository = RateRepository(rateService);
+
+  final wordQuizService = WordQuizService(dioInstance);
+  final wordQuizRepository = WordQuizRepository(wordQuizService);
 
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
@@ -113,6 +125,8 @@ final lessonWordRepository = LessonWordRepository(lessonWordService);
       levelExceptionRepository: levelExceptionRepository,
       wordsBankRepository: wordsBankRepository,
       lessonWordRepository: lessonWordRepository,
+      rateRepository: rateRepository,
+      wordQuizRepository: wordQuizRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -132,8 +146,10 @@ class MyApp extends StatefulWidget {
   final LevelExceptionRepository levelExceptionRepository;
   final WordsBankRepository wordsBankRepository;
   final LessonWordRepository lessonWordRepository;
+  final RateRepository rateRepository;
+  final WordQuizRepository wordQuizRepository;
   late final AppRouter appRouter;
-  
+
   MyApp({
     super.key,
     required this.authRepository,
@@ -149,7 +165,8 @@ class MyApp extends StatefulWidget {
     required this.levelExceptionRepository,
     required this.wordsBankRepository,
     required this.lessonWordRepository,
-    
+    required this.rateRepository,
+    required this.wordQuizRepository,
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -199,14 +216,20 @@ class _MyAppState extends State<MyApp> {
               value: widget.wordRepository,
             ),
             RepositoryProvider<LevelExceptionRepository>.value(
-            value: widget.levelExceptionRepository,
-             ),
-             RepositoryProvider<WordsBankRepository>.value(
-            value: widget.wordsBankRepository,
-             ),
-             RepositoryProvider<LessonWordRepository>.value(
-  value: widget.lessonWordRepository,
-),
+              value: widget.levelExceptionRepository,
+            ),
+            RepositoryProvider<WordsBankRepository>.value(
+              value: widget.wordsBankRepository,
+            ),
+            RepositoryProvider<LessonWordRepository>.value(
+              value: widget.lessonWordRepository,
+            ),
+            RepositoryProvider<RateRepository>.value(
+              value: widget.rateRepository,
+            ),
+            RepositoryProvider<WordQuizRepository>.value(
+              value: widget.wordQuizRepository,
+            ),
           ],
           child: MultiBlocProvider(
             providers: [

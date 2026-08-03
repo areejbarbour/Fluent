@@ -19,6 +19,7 @@ import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_state.dart';
 import 'package:fluent/data/models/lesson_word_model.dart';
+
 class LessonDetailScreen extends StatefulWidget {
   final int? lessonId;
   final String lessonTitle;
@@ -34,240 +35,252 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   int? _busyCommentId;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-@override
-void dispose() {
-  _audioPlayer.dispose();
-  super.dispose();
-}
-
-Future<void> _playWordAudio(String? audioUrl) async {
-  if (audioUrl == null || audioUrl.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('لا يوجد صوت لهذه الكلمة'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
-  try {
-    String url = audioUrl;
-    if (!url.startsWith('http')) {
-      url = '$baseUrl$audioUrl';
-    }
-    await _audioPlayer.stop();
-    await _audioPlayer.play(UrlSource(url));
-  } catch (e) {
-    debugPrint('Audio error: $e');
-  }
- }
 
- void _showLessonWordsDialog() {
-  final lessonId = widget.lessonId ?? 0;
-
-  // ناخد الـ Cubit من الـ context الحالي قبل ما نفتح الـ Dialog
-  final cubit = context.read<LessonWordsCubit>();
-  cubit.fetchLessonWords(lessonId);
-
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withOpacity(.65),
-    builder: (dialogContext) {
-      // ✅ نمرّر نفس الـ Cubit للـ Dialog
-      return BlocProvider.value(
-        value: cubit,
-        child: Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding:
-              EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24.r),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                constraints: BoxConstraints(maxHeight: 0.7.sh),
-                padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24.r),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.dark.withOpacity(.96),
-                      AppColors.primary.withOpacity(.88),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withOpacity(.16)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8.r),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [AppColors.orange, AppColors.yellow],
-                            ),
-                          ),
-                          child: Icon(Icons.menu_book_rounded,
-                              color: Colors.black, size: 18.sp),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Text(
-                            'كلمات الدرس',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15.sp,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(dialogContext),
-                          child: Container(
-                            padding: EdgeInsets.all(6.r),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(.08),
-                            ),
-                            child: Icon(Icons.close_rounded,
-                                color: Colors.white70, size: 18.sp),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 14.h),
-                    Divider(color: Colors.white.withOpacity(.1), height: 1),
-                    SizedBox(height: 10.h),
-
-                    // Content
-                   Flexible(
-  child: BlocConsumer<LessonWordsCubit, LessonWordsState>(
-    listener: (context, state) {
-      if (state is LessonWordsActionSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(state.message),
-            backgroundColor: AppColors.sky,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      } else if (state is LessonWordsFailure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    },
-    builder: (context, state) {
-      if (state is LessonWordsLoading || state is LessonWordsInitial) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 40.h),
-          child: const Center(
-            child: CircularProgressIndicator(color: AppColors.yellow),
-          ),
-        );
-      }
-
-      // نعرض القائمة من Success أو ActionSuccess
-      List<LessonWordModel> words = [];
-      int? busyId;
-
-      if (state is LessonWordsSuccess) {
-        words = state.words;
-        busyId = state.busyWordId;
-      } else if (state is LessonWordsActionSuccess) {
-        words = state.words;
-      } else if (state is LessonWordsFailure) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 30.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                state.message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 12.sp,
-                ),
-              ),
-              SizedBox(height: 12.h),
-              GestureDetector(
-                onTap: () => cubit.fetchLessonWords(lessonId),
-                child: Text(
-                  'إعادة المحاولة',
-                  style: GoogleFonts.poppins(
-                    color: AppColors.yellow,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.sp,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-
-      if (words.isEmpty) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 40.h),
-          child: Text(
-            'لا توجد كلمات لهذا الدرس',
-            style: GoogleFonts.poppins(
-              color: Colors.white54,
-              fontSize: 13.sp,
-            ),
-          ),
-        );
-      }
-
-      return ListView.separated(
-        shrinkWrap: true,
-        padding: EdgeInsets.only(bottom: 8.h),
-        itemCount: words.length,
-        separatorBuilder: (_, __) => SizedBox(height: 8.h),
-        itemBuilder: (context, index) {
-          final word = words[index];
-          return _LessonWordTile(
-            word: word,
-            isBusy: busyId == word.id,
-            onPlay: () => _playWordAudio(word.audio),
-            onLearn: () {
-              HapticFeedback.selectionClick();
-              cubit.moveToLearning(word.id);
-            },
-            onKnow: () {
-              HapticFeedback.selectionClick();
-              cubit.moveToKnow(word.id);
-            },
-          );
-        },
-      );
-    },
-  ),
-),
-                  ],
-                ),
-              ),
-            ),
-          ),
+  Future<void> _playWordAudio(String? audioUrl) async {
+    if (audioUrl == null || audioUrl.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No audio for this word'),
+          backgroundColor: Colors.orange,
         ),
       );
-    },
-  );
-}
+      return;
+    }
+    try {
+      String url = audioUrl;
+      if (!url.startsWith('http')) {
+        url = '$baseUrl$audioUrl';
+      }
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(url));
+    } catch (e) {
+      debugPrint('Audio error: $e');
+    }
+  }
 
+  void _showLessonWordsDialog() {
+    final lessonId = widget.lessonId ?? 0;
+
+    // ناخد الـ Cubit من الـ context الحالي قبل ما نفتح الـ Dialog
+    final cubit = context.read<LessonWordsCubit>();
+    cubit.fetchLessonWords(lessonId);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(.65),
+      builder: (dialogContext) {
+        // ✅ نمرّر نفس الـ Cubit للـ Dialog
+        return BlocProvider.value(
+          value: cubit,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: 20.w,
+              vertical: 40.h,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24.r),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: 0.7.sh),
+                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24.r),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.dark.withOpacity(.96),
+                        AppColors.primary.withOpacity(.88),
+                      ],
+                    ),
+                    border: Border.all(color: Colors.white.withOpacity(.16)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [AppColors.orange, AppColors.yellow],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.menu_book_rounded,
+                              color: Colors.black,
+                              size: 18.sp,
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Text(
+                              'Lesson Words',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.sp,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              padding: EdgeInsets.all(6.r),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(.08),
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: Colors.white70,
+                                size: 18.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 14.h),
+                      Divider(color: Colors.white.withOpacity(.1), height: 1),
+                      SizedBox(height: 10.h),
+
+                      // Content
+                      Flexible(
+                        child: BlocConsumer<LessonWordsCubit, LessonWordsState>(
+                          listener: (context, state) {
+                            if (state is LessonWordsActionSuccess) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(state.message),
+                                  backgroundColor: AppColors.sky,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            } else if (state is LessonWordsFailure) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(state.message),
+                                  backgroundColor: Colors.redAccent,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                          builder: (context, state) {
+                            if (state is LessonWordsLoading ||
+                                state is LessonWordsInitial) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 40.h),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.yellow,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // نعرض القائمة من Success أو ActionSuccess
+                            List<LessonWordModel> words = [];
+                            int? busyId;
+
+                            if (state is LessonWordsSuccess) {
+                              words = state.words;
+                              busyId = state.busyWordId;
+                            } else if (state is LessonWordsActionSuccess) {
+                              words = state.words;
+                            } else if (state is LessonWordsFailure) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 30.h),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      state.message,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white70,
+                                        fontSize: 12.sp,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          cubit.fetchLessonWords(lessonId),
+                                      child: Text(
+                                        'Retry',
+                                        style: GoogleFonts.poppins(
+                                          color: AppColors.yellow,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            if (words.isEmpty) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 40.h),
+                                child: Text(
+                                  'No words for this lesson',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white54,
+                                    fontSize: 13.sp,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              itemCount: words.length,
+                              separatorBuilder: (_, __) =>
+                                  SizedBox(height: 8.h),
+                              itemBuilder: (context, index) {
+                                final word = words[index];
+                                return _LessonWordTile(
+                                  word: word,
+                                  isBusy: busyId == word.id,
+                                  onPlay: () => _playWordAudio(word.audio),
+                                  onLearn: () {
+                                    HapticFeedback.selectionClick();
+                                    cubit.moveToLearning(word.id);
+                                  },
+                                  onKnow: () {
+                                    HapticFeedback.selectionClick();
+                                    cubit.moveToKnow(word.id);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -959,50 +972,57 @@ Future<void> _playWordAudio(String? audioUrl) async {
         // SizedBox(height: 24.h),
         // _buildCommentsHeader(totalLabel),
         if (lesson != null) _buildLessonInfoCard(lesson),
-SizedBox(height: 12.h),
+        SizedBox(height: 12.h),
 
-// ===== زر كلمات الدرس =====
-GestureDetector(
-  onTap: () {
-    HapticFeedback.selectionClick();
-    _showLessonWordsDialog();
-  },
-  child: Container(
-    width: double.infinity,
-    padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 14.w),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(16.r),
-      gradient: LinearGradient(
-        colors: [
-          AppColors.sky.withOpacity(.18),
-          AppColors.sky.withOpacity(.06),
-        ],
-      ),
-      border: Border.all(color: AppColors.sky.withOpacity(.35)),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.translate_rounded, color: AppColors.sky, size: 18.sp),
-        SizedBox(width: 8.w),
-        Text(
-          'كلمات الدرس',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 13.sp,
+        // ===== زر Lesson Words =====
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            _showLessonWordsDialog();
+          },
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 14.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.sky.withOpacity(.18),
+                  AppColors.sky.withOpacity(.06),
+                ],
+              ),
+              border: Border.all(color: AppColors.sky.withOpacity(.35)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.translate_rounded,
+                  color: AppColors.sky,
+                  size: 18.sp,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'Lesson Words',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.sp,
+                  ),
+                ),
+                SizedBox(width: 6.w),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.white54,
+                  size: 12.sp,
+                ),
+              ],
+            ),
           ),
         ),
-        SizedBox(width: 6.w),
-        Icon(Icons.arrow_forward_ios_rounded,
-            color: Colors.white54, size: 12.sp),
-      ],
-    ),
-  ),
-),
 
-SizedBox(height: 24.h),
-_buildCommentsHeader(totalLabel),
+        SizedBox(height: 24.h),
+        _buildCommentsHeader(totalLabel),
         SizedBox(height: 14.h),
         if (comments.isEmpty && !isLoadingMore)
           _emptyCommentsCard()
@@ -1150,8 +1170,6 @@ _buildCommentsHeader(totalLabel),
                     SizedBox(height: 3.h),
                     Text(
                       lesson.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 15.5.sp,
@@ -1349,8 +1367,6 @@ _buildCommentsHeader(totalLabel),
               ),
               Text(
                 widget.lessonTitle.isNotEmpty ? widget.lessonTitle : "Lesson",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontSize: 17.sp,
@@ -1457,6 +1473,7 @@ _buildCommentsHeader(totalLabel),
     );
   }
 }
+
 class _LessonWordTile extends StatelessWidget {
   final LessonWordModel word;
   final VoidCallback onPlay;
@@ -1600,7 +1617,8 @@ class _LessonWordTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10.r),
                 color: const Color(0xFF4ADE80).withOpacity(.15),
                 border: Border.all(
-                    color: const Color(0xFF4ADE80).withOpacity(.4)),
+                  color: const Color(0xFF4ADE80).withOpacity(.4),
+                ),
               ),
               child: isBusy
                   ? SizedBox(
@@ -1879,8 +1897,6 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                   Expanded(
                     child: Text(
                       widget.title!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white.withOpacity(.92),
                         fontSize: 11.5.sp,
@@ -1998,7 +2014,6 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
     );
   }
 }
-
 
 class _CommentCard extends StatelessWidget {
   final LessonCommentModel comment;
@@ -2150,8 +2165,6 @@ class _CommentCard extends StatelessWidget {
                                           Flexible(
                                             child: Text(
                                               name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
                                               style: GoogleFonts.poppins(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.w700,

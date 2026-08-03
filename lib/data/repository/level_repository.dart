@@ -1,8 +1,7 @@
-
 import 'package:dio/dio.dart';
+import 'package:fluent/helper/api_error_helper.dart';
 import '../models/level_model.dart';
 import 'package:fluent/data/services/level_service.dart';
-
 
 class LevelRepository {
   final LevelService levelService;
@@ -19,28 +18,18 @@ class LevelRepository {
         if (data is Map<String, dynamic>) {
           return {'success': true, 'data': StudentLevelsModel.fromJson(data)};
         }
-        return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
+        return {'success': false, 'message': 'Unexpected response format'};
       } else {
         final errorData = response.data;
-        return {
-          'success': false,
-          'message': errorData is Map
-              ? errorData['message'] ?? 'فشل في جلب المستويات'
-              : 'فشل في جلب المستويات',
-        };
+        return ApiErrorHelper.failure(errorData, 'Failed to load levels');
       }
     } on DioException catch (e) {
       print("❌ GetStudentLevels DioException: ${e.response?.data}");
       final errorData = e.response?.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'حدث خطأ ما'
-            : e.message ?? 'حدث خطأ ما',
-      };
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetStudentLevels Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 }

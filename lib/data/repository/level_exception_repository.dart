@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/helper/api_error_helper.dart';
 import 'package:fluent/data/models/level_exception_model.dart';
 import 'package:fluent/data/services/level_exception_service.dart';
 
@@ -6,26 +7,33 @@ class LevelExceptionRepository {
   final LevelExceptionService levelExceptionService;
   LevelExceptionRepository(this.levelExceptionService);
 
-  Future<Map<String, dynamic>> getByStatus(String status) async {
+  Future<Map<String, dynamic>> getByStatus(
+    String status, {
+    int page = 1,
+  }) async {
     try {
       late final Response response;
 
       switch (status.toLowerCase()) {
         case 'pending':
-          response = await levelExceptionService.getPending();
+          response = await levelExceptionService.getPending(page: page);
+          break;
+        case 'in_review':
+          response = await levelExceptionService.getInReview(page: page);
           break;
         case 'rejected':
-          response = await levelExceptionService.getRejected();
+          response = await levelExceptionService.getRejected(page: page);
           break;
         case 'approved':
-          response = await levelExceptionService.getApproved();
+          response = await levelExceptionService.getApproved(page: page);
           break;
         default:
-          return {'success': false, 'message': 'حالة غير معروفة'};
+          return {'success': false, 'message': 'Unknown status'};
       }
 
-      print("✅ GetLevelExceptions ($status) Status: ${response.statusCode}");
-      print("✅ GetLevelExceptions ($status) Data: ${response.data}");
+      print(
+        "✅ GetLevelExceptions ($status p$page) Status: ${response.statusCode}",
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
@@ -34,221 +42,241 @@ class LevelExceptionRepository {
         if (data is Map && data['data'] is List) {
           list = (data['data'] as List)
               .whereType<Map>()
-              .map((e) => LevelExceptionModel.fromJson(
-                    Map<String, dynamic>.from(e),
-                  ))
+              .map(
+                (e) =>
+                    LevelExceptionModel.fromJson(Map<String, dynamic>.from(e)),
+              )
               .toList();
         } else if (data is List) {
           list = data
               .whereType<Map>()
-              .map((e) => LevelExceptionModel.fromJson(
-                    Map<String, dynamic>.from(e),
-                  ))
+              .map(
+                (e) =>
+                    LevelExceptionModel.fromJson(Map<String, dynamic>.from(e)),
+              )
               .toList();
         }
 
-        return {'success': true, 'data': list};
+        Map<String, dynamic>? meta;
+        if (data is Map && data['meta'] is Map) {
+          meta = Map<String, dynamic>.from(data['meta'] as Map);
+        }
+
+        return {
+          'success': true,
+          'data': list,
+          'meta': meta,
+          'current_page': meta?['current_page'] ?? page,
+          'last_page': meta?['last_page'] ?? 1,
+          'per_page': meta?['per_page'] ?? 10,
+          'total': meta?['total'] ?? list.length,
+        };
       } else {
         final errorData = response.data;
-        return {
-          'success': false,
-          'message': errorData is Map
-              ? errorData['message'] ?? 'فشل في جلب طلبات الاستثناء'
-              : 'فشل في جلب طلبات الاستثناء',
-        };
+        return ApiErrorHelper.failure(
+          errorData,
+          'Failed to load exception requests',
+        );
       }
     } on DioException catch (e) {
       print("❌ GetLevelExceptions DioException: ${e.response?.data}");
-      final errorData = e.response?.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'حدث خطأ ما'
-            : e.message ?? 'حدث خطأ ما',
-      };
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetLevelExceptions Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 
   Future<Map<String, dynamic>> getDetails(int id) async {
-  try {
-    final response = await levelExceptionService.getDetails(id);
+    try {
+      final response = await levelExceptionService.getDetails(id);
 
-    print("✅ GetLevelExceptionDetails Status: ${response.statusCode}");
-    print("✅ GetLevelExceptionDetails Data: ${response.data}");
+      print("✅ GetLevelExceptionDetails Status: ${response.statusCode}");
+      print("✅ GetLevelExceptionDetails Data: ${response.data}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = response.data;
-      if (data is Map && data['data'] is Map) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map && data['data'] is Map) {
+          return {
+            'success': true,
+            'data': LevelExceptionModel.fromJson(
+              Map<String, dynamic>.from(data['data']),
+            ),
+          };
+        }
+        return {'success': false, 'message': 'Unexpected response format'};
+      } else {
+        final errorData = response.data;
+        return ApiErrorHelper.failure(
+          errorData,
+          'Failed to load request details',
+        );
+      }
+    } on DioException catch (e) {
+      print("❌ GetLevelExceptionDetails DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
+    } catch (e) {
+      print("❌ GetLevelExceptionDetails Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateException({
+    required int id,
+    required String reason,
+    List<MultipartFile>? attachments,
+  }) async {
+    try {
+      final response = await levelExceptionService.updateException(
+        id: id,
+        reason: reason,
+        attachments: attachments,
+      );
+
+      print("✅ UpdateLevelException Status: ${response.statusCode}");
+      print("✅ UpdateLevelException Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map && data['data'] is Map) {
+          return {
+            'success': true,
+            'data': LevelExceptionModel.fromJson(
+              Map<String, dynamic>.from(data['data']),
+            ),
+            'message': 'Request updated successfully',
+          };
+        }
+        return {'success': true, 'message': 'Request updated successfully'};
+      } else {
+        final errorData = response.data;
+        return ApiErrorHelper.failure(errorData, 'Failed to update request');
+      }
+    } on DioException catch (e) {
+      print("❌ UpdateLevelException DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
+    } catch (e) {
+      print("❌ UpdateLevelException Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
+    }
+  }
+
+  Future<Map<String, dynamic>> createException({
+    required int levelId,
+    required String reason,
+    List<MultipartFile>? attachments,
+  }) async {
+    try {
+      final response = await levelExceptionService.createException(
+        levelId: levelId,
+        reason: reason,
+        attachments: attachments,
+      );
+
+      print("✅ CreateLevelException Status: ${response.statusCode}");
+      print("✅ CreateLevelException Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map && data['data'] is Map) {
+          return {
+            'success': true,
+            'data': LevelExceptionModel.fromJson(
+              Map<String, dynamic>.from(data['data']),
+            ),
+            'message': 'Exception request submitted successfully',
+          };
+        }
         return {
           'success': true,
-          'data': LevelExceptionModel.fromJson(
-            Map<String, dynamic>.from(data['data']),
-          ),
+          'message': 'Exception request submitted successfully',
         };
+      } else {
+        final errorData = response.data;
+        return ApiErrorHelper.failure(errorData, 'Failed to submit request');
       }
-      return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
-    } else {
-      final errorData = response.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'فشل في جلب تفاصيل الطلب'
-            : 'فشل في جلب تفاصيل الطلب',
-      };
+    } on DioException catch (e) {
+      print("❌ CreateLevelException DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
+    } catch (e) {
+      print("❌ CreateLevelException Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
-  } on DioException catch (e) {
-    print("❌ GetLevelExceptionDetails DioException: ${e.response?.data}");
-    final errorData = e.response?.data;
-    return {
-      'success': false,
-      'message': errorData is Map
-          ? errorData['message'] ?? 'حدث خطأ ما'
-          : e.message ?? 'حدث خطأ ما',
-    };
-  } catch (e) {
-    print("❌ GetLevelExceptionDetails Unexpected error: $e");
-    return {'success': false, 'message': 'حدث خطأ غير متوقع'};
   }
-}
 
-Future<Map<String, dynamic>> updateException({
-  required int id,
-  required String reason,
-  List<MultipartFile>? attachments,
-}) async {
-  try {
-    final response = await levelExceptionService.updateException(
-      id: id,
-      reason: reason,
-      attachments: attachments,
-    );
+  Future<Map<String, dynamic>> deleteException(int id) async {
+    try {
+      final response = await levelExceptionService.deleteException(id);
 
-    print("✅ UpdateLevelException Status: ${response.statusCode}");
-    print("✅ UpdateLevelException Data: ${response.data}");
+      print("✅ DeleteLevelException Status: ${response.statusCode}");
+      print("✅ DeleteLevelException Data: ${response.data}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = response.data;
-      if (data is Map && data['data'] is Map) {
-        return {
-          'success': true,
-          'data': LevelExceptionModel.fromJson(
-            Map<String, dynamic>.from(data['data']),
-          ),
-          'message': 'تم تحديث الطلب بنجاح',
-        };
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'message': 'Request deleted successfully'};
+      } else {
+        final errorData = response.data;
+        return ApiErrorHelper.failure(errorData, 'Failed to delete request');
       }
-      return {'success': true, 'message': 'تم تحديث الطلب بنجاح'};
-    } else {
-      final errorData = response.data;
+    } on DioException catch (e) {
+      print("❌ DeleteLevelException DioException: ${e.response?.data}");
+      final errorData = e.response?.data;
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
+    } catch (e) {
+      print("❌ DeleteLevelException Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
+    }
+  }
+
+  /// DELETE /api/level-exceptions/{exceptionId}/attachments/{mediaId}
+  Future<Map<String, dynamic>> deleteAttachment({
+    required int exceptionId,
+    required int mediaId,
+  }) async {
+    if (exceptionId <= 0 || mediaId <= 0) {
       return {
         'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'فشل في تحديث الطلب'
-            : 'فشل في تحديث الطلب',
+        'message': 'Invalid exception or attachment id.',
       };
     }
-  } on DioException catch (e) {
-    print("❌ UpdateLevelException DioException: ${e.response?.data}");
-    final errorData = e.response?.data;
-    return {
-      'success': false,
-      'message': errorData is Map
-          ? errorData['message'] ?? 'حدث خطأ ما'
-          : e.message ?? 'حدث خطأ ما',
-    };
-  } catch (e) {
-    print("❌ UpdateLevelException Unexpected error: $e");
-    return {'success': false, 'message': 'حدث خطأ غير متوقع'};
-  }
-}
 
-Future<Map<String, dynamic>> createException({
-  required int levelId,
-  required String reason,
-  List<MultipartFile>? attachments,
-}) async {
-  try {
-    final response = await levelExceptionService.createException(
-      levelId: levelId,
-      reason: reason,
-      attachments: attachments,
-    );
+    try {
+      final response = await levelExceptionService.deleteAttachment(
+        exceptionId: exceptionId,
+        mediaId: mediaId,
+      );
 
-    print("✅ CreateLevelException Status: ${response.statusCode}");
-    print("✅ CreateLevelException Data: ${response.data}");
+      print("✅ DeleteAttachment Status: ${response.statusCode}");
+      print("✅ DeleteAttachment Data: ${response.data}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = response.data;
-      if (data is Map && data['data'] is Map) {
-        return {
-          'success': true,
-          'data': LevelExceptionModel.fromJson(
-            Map<String, dynamic>.from(data['data']),
-          ),
-          'message': 'تم إرسال طلب الاستثناء بنجاح',
-        };
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        String message = 'Attachment deleted successfully.';
+        final data = response.data;
+        if (data is Map && data['message'] is String) {
+          message = data['message'] as String;
+        } else if (data is String && data.isNotEmpty) {
+          message = data;
+        }
+        return {'success': true, 'message': message};
       }
-      return {'success': true, 'message': 'تم إرسال طلب الاستثناء بنجاح'};
-    } else {
-      final errorData = response.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'فشل في إرسال الطلب'
-            : 'فشل في إرسال الطلب',
-      };
+
+      return ApiErrorHelper.failure(
+        response.data,
+        'Failed to delete attachment',
+        preferredKeys: const ['level', 'media', 'attachment', 'message'],
+      );
+    } on DioException catch (e) {
+      print("❌ DeleteAttachment DioException: ${e.response?.data}");
+      return ApiErrorHelper.fromDio(
+        e,
+        'Something went wrong',
+        preferredKeys: const ['level', 'media', 'attachment', 'message'],
+      );
+    } catch (e) {
+      print("❌ DeleteAttachment Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
-  } on DioException catch (e) {
-    print("❌ CreateLevelException DioException: ${e.response?.data}");
-    final errorData = e.response?.data;
-    return {
-      'success': false,
-      'message': errorData is Map
-          ? errorData['message'] ?? 'حدث خطأ ما'
-          : e.message ?? 'حدث خطأ ما',
-    };
-  } catch (e) {
-    print("❌ CreateLevelException Unexpected error: $e");
-    return {'success': false, 'message': 'حدث خطأ غير متوقع'};
   }
-}
-
-Future<Map<String, dynamic>> deleteException(int id) async {
-  try {
-    final response = await levelExceptionService.deleteException(id);
-
-    print("✅ DeleteLevelException Status: ${response.statusCode}");
-    print("✅ DeleteLevelException Data: ${response.data}");
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return {
-        'success': true,
-        'message': 'تم حذف الطلب بنجاح',
-      };
-    } else {
-      final errorData = response.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'فشل في حذف الطلب'
-            : 'فشل في حذف الطلب',
-      };
-    }
-  } on DioException catch (e) {
-    print("❌ DeleteLevelException DioException: ${e.response?.data}");
-    final errorData = e.response?.data;
-    return {
-      'success': false,
-      'message': errorData is Map
-          ? errorData['message'] ?? 'حدث خطأ ما'
-          : e.message ?? 'حدث خطأ ما',
-    };
-  } catch (e) {
-    print("❌ DeleteLevelException Unexpected error: $e");
-    return {'success': false, 'message': 'حدث خطأ غير متوقع'};
-  }
-}
 }

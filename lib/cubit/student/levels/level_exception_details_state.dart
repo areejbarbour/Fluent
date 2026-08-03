@@ -8,7 +8,26 @@ class LevelExceptionDetailsLoading extends LevelExceptionDetailsState {}
 
 class LevelExceptionDetailsSuccess extends LevelExceptionDetailsState {
   final LevelExceptionModel details;
-  LevelExceptionDetailsSuccess(this.details);
+
+  /// Media id currently being deleted (for per-row loading indicator).
+  final int? deletingMediaId;
+
+  LevelExceptionDetailsSuccess(this.details, {this.deletingMediaId});
+
+  bool get isDeleting => deletingMediaId != null;
+
+  LevelExceptionDetailsSuccess copyWith({
+    LevelExceptionModel? details,
+    int? deletingMediaId,
+    bool clearDeleting = false,
+  }) {
+    return LevelExceptionDetailsSuccess(
+      details ?? this.details,
+      deletingMediaId: clearDeleting
+          ? null
+          : (deletingMediaId ?? this.deletingMediaId),
+    );
+  }
 }
 
 class LevelExceptionDetailsFailure extends LevelExceptionDetailsState {

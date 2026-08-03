@@ -1,5 +1,3 @@
-
-
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -9,7 +7,6 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 
 enum PodcastLevel { beginner, intermediate, advanced }
 
@@ -56,10 +53,35 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.business_center_rounded,
     color: AppColors.sky,
     podcasts: [
-      PodcastItem(title: "Negotiation Basics", host: "Sarah K.", durationMinutes: 12, points: 0, level: PodcastLevel.intermediate, isOwned: true),
-      PodcastItem(title: "Writing Professional Emails", host: "James R.", durationMinutes: 9, points: 40, level: PodcastLevel.beginner),
-      PodcastItem(title: "Leading Meetings with Confidence", host: "Sarah K.", durationMinutes: 15, points: 65, level: PodcastLevel.advanced),
-      PodcastItem(title: "Job Interview Mastery", host: "Omar T.", durationMinutes: 18, points: 80, level: PodcastLevel.intermediate),
+      PodcastItem(
+        title: "Negotiation Basics",
+        host: "Sarah K.",
+        durationMinutes: 12,
+        points: 0,
+        level: PodcastLevel.intermediate,
+        isOwned: true,
+      ),
+      PodcastItem(
+        title: "Writing Professional Emails",
+        host: "James R.",
+        durationMinutes: 9,
+        points: 40,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "Leading Meetings with Confidence",
+        host: "Sarah K.",
+        durationMinutes: 15,
+        points: 65,
+        level: PodcastLevel.advanced,
+      ),
+      PodcastItem(
+        title: "Job Interview Mastery",
+        host: "Omar T.",
+        durationMinutes: 18,
+        points: 80,
+        level: PodcastLevel.intermediate,
+      ),
     ],
   ),
   PodcastCategory(
@@ -68,10 +90,35 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.flight_takeoff_rounded,
     color: AppColors.orange,
     podcasts: [
-      PodcastItem(title: "At the Airport", host: "Lina M.", durationMinutes: 8, points: 0, level: PodcastLevel.beginner, isOwned: true),
-      PodcastItem(title: "Ordering Food Abroad", host: "Lina M.", durationMinutes: 10, points: 30, level: PodcastLevel.beginner),
-      PodcastItem(title: "Cultural Etiquette Tips", host: "David P.", durationMinutes: 14, points: 55, level: PodcastLevel.intermediate),
-      PodcastItem(title: "Backpacking Stories", host: "Ziad H.", durationMinutes: 20, points: 90, level: PodcastLevel.advanced),
+      PodcastItem(
+        title: "At the Airport",
+        host: "Lina M.",
+        durationMinutes: 8,
+        points: 0,
+        level: PodcastLevel.beginner,
+        isOwned: true,
+      ),
+      PodcastItem(
+        title: "Ordering Food Abroad",
+        host: "Lina M.",
+        durationMinutes: 10,
+        points: 30,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "Cultural Etiquette Tips",
+        host: "David P.",
+        durationMinutes: 14,
+        points: 55,
+        level: PodcastLevel.intermediate,
+      ),
+      PodcastItem(
+        title: "Backpacking Stories",
+        host: "Ziad H.",
+        durationMinutes: 20,
+        points: 90,
+        level: PodcastLevel.advanced,
+      ),
     ],
   ),
   PodcastCategory(
@@ -80,10 +127,35 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.chat_bubble_rounded,
     color: AppColors.yellow,
     podcasts: [
-      PodcastItem(title: "Small Talk 101", host: "Emma W.", durationMinutes: 7, points: 0, level: PodcastLevel.beginner, isOwned: true),
-      PodcastItem(title: "At the Coffee Shop", host: "Emma W.", durationMinutes: 6, points: 20, level: PodcastLevel.beginner),
-      PodcastItem(title: "Making Plans with Friends", host: "Karim S.", durationMinutes: 9, points: 35, level: PodcastLevel.intermediate),
-      PodcastItem(title: "Handling Awkward Moments", host: "Emma W.", durationMinutes: 11, points: 45, level: PodcastLevel.intermediate),
+      PodcastItem(
+        title: "Small Talk 101",
+        host: "Emma W.",
+        durationMinutes: 7,
+        points: 0,
+        level: PodcastLevel.beginner,
+        isOwned: true,
+      ),
+      PodcastItem(
+        title: "At the Coffee Shop",
+        host: "Emma W.",
+        durationMinutes: 6,
+        points: 20,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "Making Plans with Friends",
+        host: "Karim S.",
+        durationMinutes: 9,
+        points: 35,
+        level: PodcastLevel.intermediate,
+      ),
+      PodcastItem(
+        title: "Handling Awkward Moments",
+        host: "Emma W.",
+        durationMinutes: 11,
+        points: 45,
+        level: PodcastLevel.intermediate,
+      ),
     ],
   ),
   PodcastCategory(
@@ -92,9 +164,27 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.menu_book_rounded,
     color: Color(0xffB388FF),
     podcasts: [
-      PodcastItem(title: "Present Perfect Simplified", host: "Dr. Noor", durationMinutes: 10, points: 25, level: PodcastLevel.beginner),
-      PodcastItem(title: "Conditionals Made Easy", host: "Dr. Noor", durationMinutes: 13, points: 40, level: PodcastLevel.intermediate),
-      PodcastItem(title: "Common Mistakes to Avoid", host: "Dr. Noor", durationMinutes: 9, points: 30, level: PodcastLevel.beginner),
+      PodcastItem(
+        title: "Present Perfect Simplified",
+        host: "Dr. Noor",
+        durationMinutes: 10,
+        points: 25,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "Conditionals Made Easy",
+        host: "Dr. Noor",
+        durationMinutes: 13,
+        points: 40,
+        level: PodcastLevel.intermediate,
+      ),
+      PodcastItem(
+        title: "Common Mistakes to Avoid",
+        host: "Dr. Noor",
+        durationMinutes: 9,
+        points: 30,
+        level: PodcastLevel.beginner,
+      ),
     ],
   ),
   PodcastCategory(
@@ -103,9 +193,27 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.auto_stories_rounded,
     color: Color(0xffFF6FB5),
     podcasts: [
-      PodcastItem(title: "The Lighthouse Keeper", host: "Narrated by Alex", durationMinutes: 16, points: 50, level: PodcastLevel.intermediate),
-      PodcastItem(title: "A Day in Tokyo", host: "Narrated by Mia", durationMinutes: 14, points: 45, level: PodcastLevel.beginner),
-      PodcastItem(title: "The Last Train Home", host: "Narrated by Alex", durationMinutes: 22, points: 95, level: PodcastLevel.advanced),
+      PodcastItem(
+        title: "The Lighthouse Keeper",
+        host: "Narrated by Alex",
+        durationMinutes: 16,
+        points: 50,
+        level: PodcastLevel.intermediate,
+      ),
+      PodcastItem(
+        title: "A Day in Tokyo",
+        host: "Narrated by Mia",
+        durationMinutes: 14,
+        points: 45,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "The Last Train Home",
+        host: "Narrated by Alex",
+        durationMinutes: 22,
+        points: 95,
+        level: PodcastLevel.advanced,
+      ),
     ],
   ),
   PodcastCategory(
@@ -114,9 +222,27 @@ final List<PodcastCategory> _mockCategories = [
     icon: Icons.newspaper_rounded,
     color: Color(0xFF4ADE80),
     podcasts: [
-      PodcastItem(title: "Tech Trends This Week", host: "Ryan B.", durationMinutes: 11, points: 35, level: PodcastLevel.intermediate),
-      PodcastItem(title: "Understanding Headlines", host: "Ryan B.", durationMinutes: 9, points: 30, level: PodcastLevel.beginner),
-      PodcastItem(title: "Global Economy Explained", host: "Dr. Noor", durationMinutes: 17, points: 70, level: PodcastLevel.advanced),
+      PodcastItem(
+        title: "Tech Trends This Week",
+        host: "Ryan B.",
+        durationMinutes: 11,
+        points: 35,
+        level: PodcastLevel.intermediate,
+      ),
+      PodcastItem(
+        title: "Understanding Headlines",
+        host: "Ryan B.",
+        durationMinutes: 9,
+        points: 30,
+        level: PodcastLevel.beginner,
+      ),
+      PodcastItem(
+        title: "Global Economy Explained",
+        host: "Dr. Noor",
+        durationMinutes: 17,
+        points: 70,
+        level: PodcastLevel.advanced,
+      ),
     ],
   ),
 ];
@@ -145,21 +271,36 @@ Widget podcastsBackground() {
         right: -80.w,
         child: _glowCircle(AppColors.yellow, 300.w, 160, 40)
             .animate(onPlay: (c) => c.repeat(reverse: true))
-            .move(begin: Offset.zero, end: const Offset(-15, 10), duration: 5500.ms, curve: Curves.easeInOut),
+            .move(
+              begin: Offset.zero,
+              end: const Offset(-15, 10),
+              duration: 5500.ms,
+              curve: Curves.easeInOut,
+            ),
       ),
       Positioned(
         top: 420.h,
         left: -100.w,
         child: _glowCircle(AppColors.sky, 260.w, 150, 30)
             .animate(onPlay: (c) => c.repeat(reverse: true))
-            .move(begin: Offset.zero, end: const Offset(20, 15), duration: 6500.ms, curve: Curves.easeInOut),
+            .move(
+              begin: Offset.zero,
+              end: const Offset(20, 15),
+              duration: 6500.ms,
+              curve: Curves.easeInOut,
+            ),
       ),
       Positioned(
         top: 850.h,
         right: -60.w,
         child: _glowCircle(const Color(0xffB861F5), 220.w, 140, 25)
             .animate(onPlay: (c) => c.repeat(reverse: true))
-            .move(begin: Offset.zero, end: const Offset(-10, -8), duration: 7000.ms, curve: Curves.easeInOut),
+            .move(
+              begin: Offset.zero,
+              end: const Offset(-10, -8),
+              duration: 7000.ms,
+              curve: Curves.easeInOut,
+            ),
       ),
     ],
   );
@@ -172,7 +313,13 @@ Widget _glowCircle(Color color, double size, double blur, double spread) {
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       color: color.withOpacity(0.10),
-      boxShadow: [BoxShadow(color: color.withOpacity(0.30), blurRadius: blur, spreadRadius: spread)],
+      boxShadow: [
+        BoxShadow(
+          color: color.withOpacity(0.30),
+          blurRadius: blur,
+          spreadRadius: spread,
+        ),
+      ],
     ),
   );
 }
@@ -198,21 +345,33 @@ class TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [BoxShadow(color: Colors.white.withOpacity(0.7), blurRadius: 4, spreadRadius: 0.5)]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(begin: 0, end: maxOpacity, duration: duration.ms, delay: delay.ms)
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),
@@ -238,11 +397,19 @@ Widget glassBox({
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: gradientColors ?? [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)],
+            colors:
+                gradientColors ??
+                [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)],
           ),
-          border: Border.all(color: borderColor ?? Colors.white.withOpacity(.15)),
+          border: Border.all(
+            color: borderColor ?? Colors.white.withOpacity(.15),
+          ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: Colors.black.withOpacity(.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: child,
@@ -289,10 +456,8 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
     final updatedPoints = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => PodcastListScreen(
-          category: category,
-          userPoints: _userPoints,
-        ),
+        builder: (_) =>
+            PodcastListScreen(category: category, userPoints: _userPoints),
       ),
     );
     if (updatedPoints != null && mounted) {
@@ -350,8 +515,6 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
           child: Text(
             "Podcasts",
             textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: Colors.white,
               fontSize: 17.sp,
@@ -364,7 +527,10 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  Widget _circleIconButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _circleIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -376,7 +542,10 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            colors: [Colors.white.withOpacity(.14), Colors.white.withOpacity(.06)],
+            colors: [
+              Colors.white.withOpacity(.14),
+              Colors.white.withOpacity(.06),
+            ],
           ),
           border: Border.all(color: Colors.white.withOpacity(.25)),
         ),
@@ -387,7 +556,10 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
 
   Widget _buildIntroBanner() {
     final totalOwned = _categories.fold<int>(0, (sum, c) => sum + c.ownedCount);
-    final totalPodcasts = _categories.fold<int>(0, (sum, c) => sum + c.podcasts.length);
+    final totalPodcasts = _categories.fold<int>(
+      0,
+      (sum, c) => sum + c.podcasts.length,
+    );
 
     return glassBox(
       padding: EdgeInsets.all(16.w),
@@ -406,9 +578,18 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
               gradient: const RadialGradient(
                 colors: [AppColors.yellow, AppColors.orange],
               ),
-              boxShadow: [BoxShadow(color: AppColors.yellow.withOpacity(.5), blurRadius: 14)],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.yellow.withOpacity(.5),
+                  blurRadius: 14,
+                ),
+              ],
             ),
-            child: Icon(Icons.headset_rounded, color: Colors.black, size: 22.sp),
+            child: Icon(
+              Icons.headset_rounded,
+              color: Colors.black,
+              size: 22.sp,
+            ),
           ),
           SizedBox(width: 14.w),
           Expanded(
@@ -418,8 +599,6 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
               children: [
                 Text(
                   "Listen & Learn",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -429,8 +608,6 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
                 SizedBox(height: 2.h),
                 Text(
                   "$totalOwned/$totalPodcasts episodes unlocked",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(.6),
                     fontSize: 10.5.sp,
@@ -443,9 +620,16 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.orange, AppColors.yellow]),
+              gradient: const LinearGradient(
+                colors: [AppColors.orange, AppColors.yellow],
+              ),
               borderRadius: BorderRadius.circular(16.r),
-              boxShadow: [BoxShadow(color: AppColors.yellow.withOpacity(.5), blurRadius: 10)],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.yellow.withOpacity(.5),
+                  blurRadius: 10,
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -488,79 +672,97 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
 
   Widget _categoryCard(PodcastCategory category, int index) {
     return GestureDetector(
-      onTap: () => _openCategory(category),
-      child: glassBox(
-        padding: EdgeInsets.all(14.w),
-        radius: 22.r,
-        gradientColors: [
-          category.color.withOpacity(.20),
-          Colors.white.withOpacity(.04),
-        ],
-        borderColor: category.color.withOpacity(.35),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(10.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [category.color.withOpacity(.4), category.color.withOpacity(.08)],
-                ),
-                boxShadow: [BoxShadow(color: category.color.withOpacity(.4), blurRadius: 10)],
-              ),
-              child: Icon(category.icon, color: category.color, size: 22.sp),
-            ),
-            SizedBox(height: 12.h),
-            Text(
-              category.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13.sp,
-                height: 1.2,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              category.subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: Colors.white.withOpacity(.55),
-                fontSize: 9.sp,
-                height: 1.3,
-              ),
-            ),
-            const Spacer(),
-            Row(
+          onTap: () => _openCategory(category),
+          child: glassBox(
+            padding: EdgeInsets.all(14.w),
+            radius: 22.r,
+            gradientColors: [
+              category.color.withOpacity(.20),
+              Colors.white.withOpacity(.04),
+            ],
+            borderColor: category.color.withOpacity(.35),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.podcasts_rounded, color: Colors.white38, size: 12.sp),
-                SizedBox(width: 4.w),
-                Expanded(
-                  child: Text(
-                    "${category.podcasts.length} episodes",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.5),
-                      fontSize: 9.sp,
+                Container(
+                  padding: EdgeInsets.all(10.r),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        category.color.withOpacity(.4),
+                        category.color.withOpacity(.08),
+                      ],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: category.color.withOpacity(.4),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    category.icon,
+                    color: category.color,
+                    size: 22.sp,
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, color: category.color, size: 10.sp),
+                SizedBox(height: 12.h),
+                Text(
+                  category.title,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.sp,
+                    height: 1.2,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  category.subtitle,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.55),
+                    fontSize: 9.sp,
+                    height: 1.3,
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.podcasts_rounded,
+                      color: Colors.white38,
+                      size: 12.sp,
+                    ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: Text(
+                        "${category.podcasts.length} episodes",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(.5),
+                          fontSize: 9.sp,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: category.color,
+                      size: 10.sp,
+                    ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate()
         .fadeIn(delay: (100 + index * 70).ms, duration: 450.ms)
-        .scale(begin: const Offset(.9, .9), end: const Offset(1, 1), curve: Curves.easeOutBack);
+        .scale(
+          begin: const Offset(.9, .9),
+          end: const Offset(1, 1),
+          curve: Curves.easeOutBack,
+        );
   }
 }
 
@@ -602,7 +804,9 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
         ),
       );
       return;
@@ -627,8 +831,12 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                   padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 26.h),
                   decoration: BoxDecoration(
                     color: AppColors.dark.withOpacity(.92),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-                    border: Border(top: BorderSide(color: Colors.white.withOpacity(.12))),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28.r),
+                    ),
+                    border: Border(
+                      top: BorderSide(color: Colors.white.withOpacity(.12)),
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -648,17 +856,22 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
-                            colors: [widget.category.color.withOpacity(.4), widget.category.color.withOpacity(.08)],
+                            colors: [
+                              widget.category.color.withOpacity(.4),
+                              widget.category.color.withOpacity(.08),
+                            ],
                           ),
                         ),
-                        child: Icon(Icons.podcasts_rounded, color: widget.category.color, size: 30.sp),
+                        child: Icon(
+                          Icons.podcasts_rounded,
+                          color: widget.category.color,
+                          size: 30.sp,
+                        ),
                       ),
                       SizedBox(height: 14.h),
                       Text(
                         podcast.title,
                         textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -675,11 +888,16 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                       ),
                       SizedBox(height: 20.h),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 14.h,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(.05),
                           borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: Colors.white.withOpacity(.1)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(.1),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -689,11 +907,18 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                               children: [
                                 Text(
                                   "Cost",
-                                  style: GoogleFonts.poppins(color: Colors.white.withOpacity(.5), fontSize: 10.sp),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withOpacity(.5),
+                                    fontSize: 10.sp,
+                                  ),
                                 ),
                                 Row(
                                   children: [
-                                    Icon(Icons.diamond_rounded, color: AppColors.yellow, size: 15.sp),
+                                    Icon(
+                                      Icons.diamond_rounded,
+                                      color: AppColors.yellow,
+                                      size: 15.sp,
+                                    ),
                                     SizedBox(width: 4.w),
                                     Text(
                                       "${podcast.points} pts",
@@ -712,12 +937,17 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                               children: [
                                 Text(
                                   "Your Balance",
-                                  style: GoogleFonts.poppins(color: Colors.white.withOpacity(.5), fontSize: 10.sp),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withOpacity(.5),
+                                    fontSize: 10.sp,
+                                  ),
                                 ),
                                 Text(
                                   "$_userPoints pts",
                                   style: GoogleFonts.poppins(
-                                    color: canAfford ? const Color(0xFF4ADE80) : Colors.redAccent,
+                                    color: canAfford
+                                        ? const Color(0xFF4ADE80)
+                                        : Colors.redAccent,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 15.sp,
                                   ),
@@ -734,12 +964,19 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 14.sp),
+                              Icon(
+                                Icons.info_outline_rounded,
+                                color: Colors.redAccent,
+                                size: 14.sp,
+                              ),
                               SizedBox(width: 6.w),
                               Flexible(
                                 child: Text(
                                   "Not enough points to unlock this episode",
-                                  style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 11.sp),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.redAccent,
+                                    fontSize: 11.sp,
+                                  ),
                                 ),
                               ),
                             ],
@@ -760,10 +997,14 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text("🎉 \"${podcast.title}\" unlocked!"),
+                              content: Text(
+                                "🎉 \"${podcast.title}\" unlocked!",
+                              ),
                               backgroundColor: AppColors.primary,
                               behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
                             ),
                           );
                         },
@@ -778,19 +1019,33 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                             ),
                             borderRadius: BorderRadius.circular(16.r),
                             boxShadow: canAfford
-                                ? [BoxShadow(color: AppColors.yellow.withOpacity(.5), blurRadius: 16)]
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.yellow.withOpacity(.5),
+                                      blurRadius: 16,
+                                    ),
+                                  ]
                                 : null,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.lock_open_rounded,
-                                  color: canAfford ? Colors.black : Colors.white38, size: 16.sp),
+                              Icon(
+                                Icons.lock_open_rounded,
+                                color: canAfford
+                                    ? Colors.black
+                                    : Colors.white38,
+                                size: 16.sp,
+                              ),
                               SizedBox(width: 8.w),
                               Text(
-                                canAfford ? "Unlock Episode" : "Insufficient Points",
+                                canAfford
+                                    ? "Unlock Episode"
+                                    : "Insufficient Points",
                                 style: GoogleFonts.poppins(
-                                  color: canAfford ? Colors.black : Colors.white38,
+                                  color: canAfford
+                                      ? Colors.black
+                                      : Colors.white38,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13.sp,
                                 ),
@@ -848,7 +1103,10 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                         child: Center(
                           child: Text(
                             "No episodes in this filter yet",
-                            style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12.sp),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white38,
+                              fontSize: 12.sp,
+                            ),
                           ),
                         ),
                       ),
@@ -877,19 +1135,24 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [Colors.white.withOpacity(.14), Colors.white.withOpacity(.06)],
+                colors: [
+                  Colors.white.withOpacity(.14),
+                  Colors.white.withOpacity(.06),
+                ],
               ),
               border: Border.all(color: Colors.white.withOpacity(.25)),
             ),
-            child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18.sp),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 18.sp,
+            ),
           ),
         ),
         Expanded(
           child: Text(
             widget.category.title,
             textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: Colors.white,
               fontSize: 16.sp,
@@ -900,7 +1163,9 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
         Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.orange, AppColors.yellow]),
+            gradient: const LinearGradient(
+              colors: [AppColors.orange, AppColors.yellow],
+            ),
             borderRadius: BorderRadius.circular(14.r),
           ),
           child: Row(
@@ -928,7 +1193,10 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
     return glassBox(
       padding: EdgeInsets.all(16.w),
       radius: 22.r,
-      gradientColors: [category.color.withOpacity(.18), Colors.white.withOpacity(.04)],
+      gradientColors: [
+        category.color.withOpacity(.18),
+        Colors.white.withOpacity(.04),
+      ],
       borderColor: category.color.withOpacity(.3),
       child: Row(
         children: [
@@ -936,8 +1204,18 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
             padding: EdgeInsets.all(12.r),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [category.color.withOpacity(.4), category.color.withOpacity(.08)]),
-              boxShadow: [BoxShadow(color: category.color.withOpacity(.4), blurRadius: 12)],
+              gradient: RadialGradient(
+                colors: [
+                  category.color.withOpacity(.4),
+                  category.color.withOpacity(.08),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: category.color.withOpacity(.4),
+                  blurRadius: 12,
+                ),
+              ],
             ),
             child: Icon(category.icon, color: category.color, size: 22.sp),
           ),
@@ -949,9 +1227,10 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
               children: [
                 Text(
                   category.subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(color: Colors.white.withOpacity(.7), fontSize: 11.sp),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.7),
+                    fontSize: 11.sp,
+                  ),
                 ),
                 SizedBox(height: 4.h),
                 Text(
@@ -986,15 +1265,25 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
               duration: 250.ms,
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
-                gradient: selected ? const LinearGradient(colors: [AppColors.orange, AppColors.yellow]) : null,
+                gradient: selected
+                    ? const LinearGradient(
+                        colors: [AppColors.orange, AppColors.yellow],
+                      )
+                    : null,
                 color: selected ? null : Colors.white.withOpacity(.06),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: selected ? Colors.transparent : Colors.white.withOpacity(.12)),
+                border: Border.all(
+                  color: selected
+                      ? Colors.transparent
+                      : Colors.white.withOpacity(.12),
+                ),
               ),
               child: Text(
                 f,
                 style: GoogleFonts.poppins(
-                  color: selected ? Colors.black : Colors.white.withOpacity(.65),
+                  color: selected
+                      ? Colors.black
+                      : Colors.white.withOpacity(.65),
                   fontSize: 11.sp,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
@@ -1009,128 +1298,166 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
   Widget _podcastTile(PodcastItem podcast, int index) {
     final category = widget.category;
     return GestureDetector(
-      onTap: () => _handlePodcastTap(podcast),
-      child: glassBox(
-        padding: EdgeInsets.all(12.w),
-        radius: 18.r,
-        gradientColors: podcast.isOwned
-            ? [const Color(0xFF4ADE80).withOpacity(.12), Colors.white.withOpacity(.04)]
-            : [Colors.white.withOpacity(.07), Colors.white.withOpacity(.03)],
-        borderColor: podcast.isOwned ? const Color(0xFF4ADE80).withOpacity(.3) : Colors.white.withOpacity(.1),
-        child: Row(
-          children: [
-            Container(
-              width: 58.w,
-              height: 58.w,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14.r),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [category.color.withOpacity(.5), category.color.withOpacity(.15)],
-                ),
-              ),
-              child: Icon(
-                podcast.isOwned ? Icons.play_circle_fill_rounded : category.icon,
-                color: Colors.white,
-                size: 26.sp,
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    podcast.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.5.sp,
+          onTap: () => _handlePodcastTap(podcast),
+          child: glassBox(
+            padding: EdgeInsets.all(12.w),
+            radius: 18.r,
+            gradientColors: podcast.isOwned
+                ? [
+                    const Color(0xFF4ADE80).withOpacity(.12),
+                    Colors.white.withOpacity(.04),
+                  ]
+                : [
+                    Colors.white.withOpacity(.07),
+                    Colors.white.withOpacity(.03),
+                  ],
+            borderColor: podcast.isOwned
+                ? const Color(0xFF4ADE80).withOpacity(.3)
+                : Colors.white.withOpacity(.1),
+            child: Row(
+              children: [
+                Container(
+                  width: 58.w,
+                  height: 58.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14.r),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        category.color.withOpacity(.5),
+                        category.color.withOpacity(.15),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 3.h),
-                  Text(
-                    "${podcast.host} • ${podcast.durationMinutes} min",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(color: Colors.white.withOpacity(.55), fontSize: 9.5.sp),
+                  child: Icon(
+                    podcast.isOwned
+                        ? Icons.play_circle_fill_rounded
+                        : category.icon,
+                    color: Colors.white,
+                    size: 26.sp,
                   ),
-                  SizedBox(height: 6.h),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        podcast.title,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5.sp,
+                        ),
+                      ),
+                      SizedBox(height: 3.h),
+                      Text(
+                        "${podcast.host} • ${podcast.durationMinutes} min",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(.55),
+                          fontSize: 9.5.sp,
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 7.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: levelColor(podcast.level).withOpacity(.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          levelLabel(podcast.level),
+                          style: GoogleFonts.poppins(
+                            color: levelColor(podcast.level),
+                            fontSize: 8.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                if (podcast.isOwned)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: levelColor(podcast.level).withOpacity(.15),
-                      borderRadius: BorderRadius.circular(10.r),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 8.h,
                     ),
-                    child: Text(
-                      levelLabel(podcast.level),
-                      style: GoogleFonts.poppins(
-                        color: levelColor(podcast.level),
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.w600,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4ADE80).withOpacity(.15),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(
+                        color: const Color(0xFF4ADE80).withOpacity(.4),
                       ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: const Color(0xFF4ADE80),
+                          size: 15.sp,
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          "Owned",
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF4ADE80),
+                            fontSize: 8.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 8.h,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.orange, AppColors.yellow],
+                      ),
+                      borderRadius: BorderRadius.circular(14.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.yellow.withOpacity(.4),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.diamond_rounded,
+                          color: Colors.black,
+                          size: 13.sp,
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          "${podcast.points}",
+                          style: GoogleFonts.poppins(
+                            color: Colors.black,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-            SizedBox(width: 8.w),
-            if (podcast.isOwned)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4ADE80).withOpacity(.15),
-                  borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: const Color(0xFF4ADE80).withOpacity(.4)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle_rounded, color: const Color(0xFF4ADE80), size: 15.sp),
-                    SizedBox(height: 2.h),
-                    Text(
-                      "Owned",
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF4ADE80),
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.orange, AppColors.yellow]),
-                  borderRadius: BorderRadius.circular(14.r),
-                  boxShadow: [BoxShadow(color: AppColors.yellow.withOpacity(.4), blurRadius: 8)],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.diamond_rounded, color: Colors.black, size: 13.sp),
-                    SizedBox(height: 2.h),
-                    Text(
-                      "${podcast.points}",
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate()
         .fadeIn(delay: (100 + index * 70).ms, duration: 400.ms)
         .moveX(begin: 12, end: 0, curve: Curves.easeOutCubic);

@@ -6,7 +6,7 @@ class LevelExceptionDeleteCubit extends Cubit<LevelExceptionDeleteState> {
   final LevelExceptionRepository repository;
 
   LevelExceptionDeleteCubit(this.repository)
-      : super(LevelExceptionDeleteInitial());
+    : super(LevelExceptionDeleteInitial());
 
   Future<void> delete(int id) async {
     emit(LevelExceptionDeleteLoading(id));
@@ -16,14 +16,19 @@ class LevelExceptionDeleteCubit extends Cubit<LevelExceptionDeleteState> {
 
     if (result['success'] == true) {
       print("🎉 [LevelExceptionDeleteCubit] Deleted successfully");
-      emit(LevelExceptionDeleteSuccess(
-        id: id,
-        message: result['message'] ?? 'تم الحذف بنجاح',
-      ));
+      emit(
+        LevelExceptionDeleteSuccess(
+          id: id,
+          message: result['message'] ?? 'Deleted successfully',
+        ),
+      );
     } else {
       print("❌ [LevelExceptionDeleteCubit] Failed: ${result['message']}");
-      emit(LevelExceptionDeleteFailure(
-          result['message'] ?? 'فشل حذف الطلب'));
+      emit(
+        LevelExceptionDeleteFailure(
+          result['message'] ?? 'Failed to delete request',
+        ),
+      );
     }
   }
 

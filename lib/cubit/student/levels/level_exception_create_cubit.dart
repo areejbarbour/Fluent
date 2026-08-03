@@ -4,12 +4,11 @@ import 'package:fluent/data/models/level_exception_model.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'level_exception_create_state.dart';
 
-
 class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
   final LevelExceptionRepository repository;
 
   LevelExceptionCreateCubit(this.repository)
-      : super(LevelExceptionCreateInitial());
+    : super(LevelExceptionCreateInitial());
 
   Future<void> create({
     required int levelId,
@@ -17,7 +16,9 @@ class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
     List<MultipartFile>? attachments,
   }) async {
     emit(LevelExceptionCreateLoading());
-    print("🟡 [LevelExceptionCreateCubit] Creating exception for level #$levelId...");
+    print(
+      "🟡 [LevelExceptionCreateCubit] Creating exception for level #$levelId...",
+    );
 
     final result = await repository.createException(
       levelId: levelId,
@@ -27,14 +28,19 @@ class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
 
     if (result['success'] == true) {
       print("🎉 [LevelExceptionCreateCubit] Created successfully");
-      emit(LevelExceptionCreateSuccess(
-        data: result['data'],
-        message: result['message'] ?? 'تم إرسال الطلب بنجاح',
-      ));
+      emit(
+        LevelExceptionCreateSuccess(
+          data: result['data'],
+          message: result['message'] ?? 'Request submitted successfully',
+        ),
+      );
     } else {
       print("❌ [LevelExceptionCreateCubit] Failed: ${result['message']}");
-      emit(LevelExceptionCreateFailure(
-          result['message'] ?? 'فشل إرسال الطلب'));
+      emit(
+        LevelExceptionCreateFailure(
+          result['message'] ?? 'Failed to submit request',
+        ),
+      );
     }
   }
 

@@ -266,27 +266,28 @@ class _PlacementTestScreenState extends State<PlacementTestScreen>
               return Positioned(
                 left: left * 1.sw,
                 top: top * 1.sh,
-                child: Container(
-                  width: size.w,
-                  height: size.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.5),
-                        blurRadius: 3,
-                      ),
-                    ],
-                  ),
-                )
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(
-                      begin: 0,
-                      end: 0.8,
-                      duration: (1500 + rng.nextInt(2000)).ms,
-                      delay: (rng.nextInt(2000)).ms,
-                    ),
+                child:
+                    Container(
+                          width: size.w,
+                          height: size.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.5),
+                                blurRadius: 3,
+                              ),
+                            ],
+                          ),
+                        )
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .fade(
+                          begin: 0,
+                          end: 0.8,
+                          duration: (1500 + rng.nextInt(2000)).ms,
+                          delay: (rng.nextInt(2000)).ms,
+                        ),
               );
             }),
           ),
@@ -532,8 +533,8 @@ class _IntroView extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        final state = context.findAncestorStateOfType<
-            _PlacementTestScreenState>();
+        final state = context
+            .findAncestorStateOfType<_PlacementTestScreenState>();
         state?._startTest();
       },
       child: Container(
@@ -665,27 +666,28 @@ class _QuizView extends StatelessWidget {
           ...List.generate(question.options.length, (i) {
             return Padding(
               padding: EdgeInsets.only(bottom: 12.h),
-              child: _OptionTile(
-                index: i,
-                label: question.options[i],
-                selected: selectedOption == i,
-                showFeedback: showFeedback,
-                isCorrectAnswer: question.correctIndex == i,
-                isUserWrong:
-                    showFeedback && selectedOption == i && !isCorrect,
-                onTap: () => onSelect(i),
-              )
-                  .animate(key: ValueKey('opt-$currentIndex-$i'))
-                  .fadeIn(delay: (50 * i).ms, duration: 300.ms)
-                  .moveX(begin: 16, end: 0),
+              child:
+                  _OptionTile(
+                        index: i,
+                        label: question.options[i],
+                        selected: selectedOption == i,
+                        showFeedback: showFeedback,
+                        isCorrectAnswer: question.correctIndex == i,
+                        isUserWrong:
+                            showFeedback && selectedOption == i && !isCorrect,
+                        onTap: () => onSelect(i),
+                      )
+                      .animate(key: ValueKey('opt-$currentIndex-$i'))
+                      .fadeIn(delay: (50 * i).ms, duration: 300.ms)
+                      .moveX(begin: 16, end: 0),
             );
           }),
           SizedBox(height: 8.h),
           if (showFeedback)
-            _feedbackBox(question.explanation, isCorrect)
-                .animate()
-                .fadeIn(duration: 250.ms)
-                .moveY(begin: 8, end: 0)
+            _feedbackBox(
+              question.explanation,
+              isCorrect,
+            ).animate().fadeIn(duration: 250.ms).moveY(begin: 8, end: 0)
           else
             _submitButton(context),
           SizedBox(height: 24.h),
@@ -712,8 +714,7 @@ class _QuizView extends StatelessWidget {
               ),
               border: Border.all(color: Colors.white.withOpacity(0.25)),
             ),
-            child: Icon(Icons.close_rounded,
-                color: Colors.white, size: 20.sp),
+            child: Icon(Icons.close_rounded, color: Colors.white, size: 20.sp),
           ),
         ),
         SizedBox(width: 14.w),
@@ -798,10 +799,7 @@ class _QuizView extends StatelessWidget {
       borderRadius: BorderRadius.circular(10.r),
       child: Stack(
         children: [
-          Container(
-            height: 8.h,
-            color: Colors.white.withOpacity(0.10),
-          ),
+          Container(height: 8.h, color: Colors.white.withOpacity(0.10)),
           FractionallySizedBox(
             widthFactor: pct,
             child: Container(
@@ -826,10 +824,7 @@ class _QuizView extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20.r),
           gradient: LinearGradient(
-            colors: [
-              color.withOpacity(0.30),
-              color.withOpacity(0.10),
-            ],
+            colors: [color.withOpacity(0.30), color.withOpacity(0.10)],
           ),
           border: Border.all(color: color.withOpacity(0.5)),
         ),
@@ -839,8 +834,7 @@ class _QuizView extends StatelessWidget {
             Container(
               width: 6.w,
               height: 6.w,
-              decoration:
-                  BoxDecoration(shape: BoxShape.circle, color: color),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
             ),
             SizedBox(width: 8.w),
             Text(
@@ -880,11 +874,7 @@ class _QuizView extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.sky,
-                size: 20.sp,
-              ),
+              Icon(Icons.menu_book_rounded, color: AppColors.sky, size: 20.sp),
               SizedBox(width: 12.w),
               Expanded(
                 child: Text(
@@ -1051,10 +1041,7 @@ class _QuizView extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
         gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.18),
-            color.withOpacity(0.06),
-          ],
+          colors: [color.withOpacity(0.18), color.withOpacity(0.06)],
         ),
         border: Border.all(color: color.withOpacity(0.4)),
       ),
@@ -1062,9 +1049,7 @@ class _QuizView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            correct
-                ? Icons.check_circle_rounded
-                : Icons.cancel_rounded,
+            correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
             color: color,
             size: 22.sp,
           ),
@@ -1351,9 +1336,7 @@ class _OptionTile extends StatelessWidget {
         shape: BoxShape.circle,
         color: color.withOpacity(0.25),
         border: Border.all(color: color, width: 1.5),
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.5), blurRadius: 8),
-        ],
+        boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)],
       ),
       child: Icon(icon, color: color, size: 16.sp),
     );
@@ -1403,8 +1386,11 @@ class _ResultView extends StatelessWidget {
                     color: Colors.white.withOpacity(0.10),
                     border: Border.all(color: Colors.white.withOpacity(0.25)),
                   ),
-                  child: Icon(Icons.close_rounded,
-                      color: Colors.white, size: 20.sp),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 20.sp,
+                  ),
                 ),
               ),
             ],
@@ -1434,7 +1420,8 @@ class _ResultView extends StatelessWidget {
               child: AnimatedBuilder(
                 animation: controller,
                 builder: (_, __) {
-                  final scale = 0.6 +
+                  final scale =
+                      0.6 +
                       (Curves.easeOutBack.transform(controller.value) * 0.4);
                   return Transform.scale(
                     scale: scale.clamp(0.6, 1.0),
@@ -1442,9 +1429,7 @@ class _ResultView extends StatelessWidget {
                       Icons.workspace_premium_rounded,
                       color: info.color,
                       size: 70.sp,
-                      shadows: [
-                        Shadow(color: info.color, blurRadius: 20),
-                      ],
+                      shadows: [Shadow(color: info.color, blurRadius: 20)],
                     ),
                   );
                 },
@@ -1488,72 +1473,72 @@ class _ResultView extends StatelessWidget {
 
   Widget _recommendedLevelCard(String title, String code, Color color) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: EdgeInsets.all(22.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withOpacity(0.30),
-                color.withOpacity(0.06),
-              ],
-            ),
-            border: Border.all(color: color.withOpacity(0.55), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 28,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Text(
-                'RECOMMENDED LEVEL',
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 11.sp,
-                  letterSpacing: 2.5,
-                  fontWeight: FontWeight.w700,
+          borderRadius: BorderRadius.circular(22.r),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              padding: EdgeInsets.all(22.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22.r),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color.withOpacity(0.30), color.withOpacity(0.06)],
                 ),
-              ),
-              SizedBox(height: 14.h),
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    LinearGradient(colors: [color, Colors.white])
-                        .createShader(bounds),
-                child: Text(
-                  code,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 72.sp,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                    letterSpacing: 2,
+                border: Border.all(color: color.withOpacity(0.55), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 28,
+                    spreadRadius: 1,
                   ),
-                ),
+                ],
               ),
-              SizedBox(height: 4.h),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
+              child: Column(
+                children: [
+                  Text(
+                    'RECOMMENDED LEVEL',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 11.sp,
+                      letterSpacing: 2.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [color, Colors.white],
+                    ).createShader(bounds),
+                    child: Text(
+                      code,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 72.sp,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ).animate().fadeIn(delay: 500.ms).scale(
+        )
+        .animate()
+        .fadeIn(delay: 500.ms)
+        .scale(
           begin: const Offset(0.92, 0.92),
           end: const Offset(1, 1),
           duration: 500.ms,
@@ -1587,49 +1572,55 @@ class _ResultView extends StatelessWidget {
       children: List.generate(stats.length, (i) {
         final s = stats[i];
         return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: i == stats.length - 1 ? 0 : 10.w,
-            ),
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 14.h),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18.r),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.10),
-                    Colors.white.withOpacity(0.04),
-                  ],
-                ),
-                border: Border.all(color: Colors.white.withOpacity(0.15)),
-              ),
-              child: Column(
-                children: [
-                  Icon(s.icon, color: s.color, size: 22.sp),
-                  SizedBox(height: 6.h),
-                  Text(
-                    s.value,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w800,
+          child:
+              Padding(
+                    padding: EdgeInsets.only(
+                      right: i == stats.length - 1 ? 0 : 10.w,
                     ),
-                  ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    s.label,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18.r),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.10),
+                            Colors.white.withOpacity(0.04),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.15),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(s.icon, color: s.color, size: 22.sp),
+                          SizedBox(height: 6.h),
+                          Text(
+                            s.value,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            s.label,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ).animate().fadeIn(delay: (700 + i * 100).ms).moveY(begin: 14, end: 0),
+                  )
+                  .animate()
+                  .fadeIn(delay: (700 + i * 100).ms)
+                  .moveY(begin: 14, end: 0),
         );
       }),
     );
@@ -1671,8 +1662,11 @@ class _ResultView extends StatelessWidget {
               ),
             ),
             SizedBox(width: 10.w),
-            Icon(Icons.arrow_forward_rounded,
-                color: AppColors.dark, size: 22.sp),
+            Icon(
+              Icons.arrow_forward_rounded,
+              color: AppColors.dark,
+              size: 22.sp,
+            ),
           ],
         ),
       ),
@@ -1693,8 +1687,7 @@ class _ResultView extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.refresh_rounded,
-                color: AppColors.sky, size: 18.sp),
+            Icon(Icons.refresh_rounded, color: AppColors.sky, size: 18.sp),
             SizedBox(width: 8.w),
             Text(
               'Retake Test',

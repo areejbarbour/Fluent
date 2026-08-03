@@ -1,6 +1,6 @@
-  const String baseUrl = 'http://192.168.1.5:8000';
-//const String baseUrl = 'http://192.168.10.224:8000';
- //const String baseUrl = 'http://172.20.10.2:8000';
+// const String baseUrl = 'http://192.168.1.5:8000';
+const String baseUrl = 'http://192.168.10.224:8000';
+//const String baseUrl = 'http://172.20.10.2:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -68,6 +68,7 @@ const String lessonStudentDetailRoute = '/lesson-student-detail';
 
 // ✅ Level Exception API
 const String apiLevelExceptionsPending = '/api/levelexceptions/pending';
+const String apiLevelExceptionsInReview = '/api/levelexceptions/in_review';
 const String apiLevelExceptionsRejected = '/api/levelexceptions/rejected';
 const String apiLevelExceptionsApproved = '/api/levelexceptions/approved';
 const String levelExceptionDetailsRoute = '/level-exception-details';
@@ -78,10 +79,17 @@ String apiLevelExceptionDetails(int id) => '/api/levelexceptions/$id/details';
 String apiUpdateLevelException(int id) => '/api/levelexceptions/$id/update';
 
 // create Exception
-String apiCreateLevelException(int levelId) => '/api/levelexceptions/$levelId/create';
+String apiCreateLevelException(int levelId) =>
+    '/api/levelexceptions/$levelId/create';
 
 // delete Exception
 String apiDeleteLevelException(int id) => '/api/levelexceptions/$id/delete';
+
+// delete a single Level Exception attachment (Spatie Media)
+// Backend: DELETE /api/level-exceptions/{levelException}/attachments/{media}
+// Allowed only while status === pending
+String apiDeleteLevelExceptionAttachment(int exceptionId, int mediaId) =>
+    '/api/level-exceptions/$exceptionId/attachments/$mediaId';
 
 // ✅ Student Word Bank API
 const String apiWordsBankLearning = '/api/words_bank/learning';
@@ -93,6 +101,14 @@ String apiLessonWords(int lessonId) => '/api/words/$lessonId/lesson';
 // ✅ Update word status (student)
 String apiWordToLearning(int wordId) => '/api/words/$wordId/learning';
 String apiWordToKnow(int wordId) => '/api/words/$wordId/know';
+
+// ✅ Student Word Quiz API
+const String apiWordsQuiz = '/api/words/quiz';
+String apiWordQuizCheck(int wordId) => '/api/words/$wordId/quiz_check';
+
+// ✅ Student Rate API (course must be completed — backend RateServiece)
+String apiRateCourse(int courseId) => '/api/rate/$courseId';
+String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';

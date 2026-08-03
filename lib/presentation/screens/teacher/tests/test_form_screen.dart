@@ -165,29 +165,28 @@ class _TestFormScreenState extends State<TestFormScreen> {
 
   // ✅ دالة جديدة لتنفيذ الإرسال الفعلي
   void _performSubmit(BuildContext context) {
-    final formData = FormData.fromMap({
+    // Backend CreateTestRequest / UpdateTestRequest expect JSON:
+    // questions: [ { id, order }, ... ] with sequential order starting at 1.
+    // No files → send application/json (not FormData).
+    final payload = <String, dynamic>{
       'testable_type': widget.testableType,
       'testable_id': widget.testableId,
       'title_en': _titleEnCtrl.text.trim(),
       'title_ar': _titleArCtrl.text.trim(),
       'passing_score': int.parse(_passingScoreCtrl.text.trim()),
-    });
-
-    // ✅ ضمان الترتيب التسلسلي (Sequential Order) يبدأ من 1
-    for (int i = 0; i < _selectedQuestions.length; i++) {
-      formData.fields.add(
-        MapEntry('questions[$i][id]', _selectedQuestions[i].id.toString()),
-      );
-      formData.fields.add(MapEntry('questions[$i][order]', (i + 1).toString()));
-    }
+      'questions': [
+        for (int i = 0; i < _selectedQuestions.length; i++)
+          {'id': _selectedQuestions[i].id, 'order': i + 1},
+      ],
+    };
 
     if (isEditMode) {
       context.read<TestUpdateCubit>().updateTest(
         widget.initialTest!.id,
-        formData,
+        payload,
       );
     } else {
-      context.read<TestCreateCubit>().createTest(formData);
+      context.read<TestCreateCubit>().createTest(payload);
     }
   }
 

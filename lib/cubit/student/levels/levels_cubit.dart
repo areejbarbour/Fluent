@@ -18,7 +18,7 @@ class StudentLevelsCubit extends Cubit<StudentLevelsState> {
       emit(StudentLevelsSuccess(result['data']));
     } else {
       print("❌ [StudentLevelsCubit] Failed: ${result['message']}");
-      emit(StudentLevelsFailure(result['message'] ?? 'فشل تحميل المستويات'));
+      emit(StudentLevelsFailure(result['message'] ?? 'Failed to load levels'));
     }
   }
 }

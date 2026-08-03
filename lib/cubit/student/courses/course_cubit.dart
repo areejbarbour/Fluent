@@ -17,7 +17,9 @@ class StudentCoursesCubit extends Cubit<StudentCoursesState> {
       emit(StudentCoursesSuccess(result['data']));
     } else {
       print("❌ [StudentCoursesCubit] Failed: ${result['message']}");
-      emit(StudentCoursesFailure(result['message'] ?? 'فشل تحميل الكورسات'));
+      emit(
+        StudentCoursesFailure(result['message'] ?? 'Failed to load courses'),
+      );
     }
   }
 }

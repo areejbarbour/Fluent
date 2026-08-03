@@ -1,5 +1,3 @@
-
-
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
@@ -32,6 +30,9 @@ class CreateLevelExceptionSheet extends StatefulWidget {
 class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
   final TextEditingController _reasonCtrl = TextEditingController();
   final List<String> _selectedFilePaths = [];
+
+  /// Inline form error (shown inside the sheet — no need to go back).
+  String? _formError;
 
   @override
   void dispose() {
@@ -80,21 +81,11 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
   Future<void> _submit() async {
     final reason = _reasonCtrl.text.trim();
     if (reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please enter a reason for your request',
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-        ),
-      );
+      setState(() => _formError = 'Please enter a reason for your request');
       return;
     }
+
+    setState(() => _formError = null);
 
     List<MultipartFile>? attachments;
     if (_selectedFilePaths.isNotEmpty) {
@@ -109,10 +100,53 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
     if (!mounted) return;
 
     context.read<LevelExceptionCreateCubit>().create(
-          levelId: widget.levelId,
-          reason: reason,
-          attachments: attachments,
-        );
+      levelId: widget.levelId,
+      reason: reason,
+      attachments: attachments,
+    );
+  }
+
+  Widget _inlineErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            color: Colors.redAccent,
+            size: 18.sp,
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                color: Colors.red.shade200,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _formError = null),
+            child: Icon(
+              Icons.close_rounded,
+              color: Colors.white38,
+              size: 16.sp,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -135,19 +169,8 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
             ),
           );
         } else if (state is LevelExceptionCreateFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
-              ),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
-          );
+          // Keep sheet open and show error in-form.
+          setState(() => _formError = state.message);
         }
       },
       child: Padding(
@@ -172,8 +195,7 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
                   ],
                   stops: const [0.0, 0.45, 1.0],
                 ),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(.14)),
                 ),
@@ -211,87 +233,87 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
 
                     // Header
                     Row(
-                      children: [
-                        Container(
-                          width: 50.w,
-                          height: 50.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15.r),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.sky.withOpacity(.30),
-                                AppColors.primary.withOpacity(.20),
-                              ],
+                          children: [
+                            Container(
+                              width: 50.w,
+                              height: 50.w,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15.r),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.sky.withOpacity(.30),
+                                    AppColors.primary.withOpacity(.20),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: AppColors.sky.withOpacity(.45),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.sky.withOpacity(.30),
+                                    blurRadius: 14,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.lock_open_rounded,
+                                color: AppColors.sky,
+                                size: 23.sp,
+                              ),
                             ),
-                            border: Border.all(
-                              color: AppColors.sky.withOpacity(.45),
+                            SizedBox(width: 14.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Request Exception',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16.sp,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3.h),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                      vertical: 3.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.orange.withOpacity(.25),
+                                          AppColors.yellow.withOpacity(.15),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: AppColors.yellow.withOpacity(
+                                          .35,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      widget.levelTitle,
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.yellow,
+                                        fontSize: 11.5.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.sky.withOpacity(.30),
-                                blurRadius: 14,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.lock_open_rounded,
-                            color: AppColors.sky,
-                            size: 23.sp,
-                          ),
-                        ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Request Exception',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16.sp,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              SizedBox(height: 3.h),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w,
-                                  vertical: 3.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.orange.withOpacity(.25),
-                                      AppColors.yellow.withOpacity(.15),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color: AppColors.yellow.withOpacity(.35),
-                                  ),
-                                ),
-                                child: Text(
-                                  widget.levelTitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: AppColors.yellow,
-                                    fontSize: 11.5.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ).animate().fadeIn(duration: 400.ms).moveY(
-                          begin: 8,
-                          end: 0,
-                        ),
+                          ],
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .moveY(begin: 8, end: 0),
 
                     SizedBox(height: 12.h),
 
@@ -306,10 +328,17 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
 
                     SizedBox(height: 20.h),
 
+                    if (_formError != null) _inlineErrorBanner(_formError!),
+
                     // Reason field
                     TextField(
                       controller: _reasonCtrl,
                       maxLines: 4,
+                      onChanged: (_) {
+                        if (_formError != null) {
+                          setState(() => _formError = null);
+                        }
+                      },
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 13.5.sp,
@@ -475,77 +504,79 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
                         final isPdf = name.toLowerCase().endsWith('.pdf');
 
                         return Container(
-                          margin: EdgeInsets.only(bottom: 8.h),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 11.h,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.sky.withOpacity(.12),
-                                AppColors.primary.withOpacity(.08),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                              color: AppColors.sky.withOpacity(.28),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(6.r),
-                                decoration: BoxDecoration(
-                                  color: AppColors.sky.withOpacity(.18),
-                                  borderRadius: BorderRadius.circular(8.r),
+                              margin: EdgeInsets.only(bottom: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 11.h,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.sky.withOpacity(.12),
+                                    AppColors.primary.withOpacity(.08),
+                                  ],
                                 ),
-                                child: Icon(
-                                  isPdf
-                                      ? Icons.picture_as_pdf_rounded
-                                      : Icons.image_rounded,
-                                  color: AppColors.sky,
-                                  size: 16.sp,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: AppColors.sky.withOpacity(.28),
                                 ),
                               ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(6.r),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.sky.withOpacity(.18),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                    child: Icon(
+                                      isPdf
+                                          ? Icons.picture_as_pdf_rounded
+                                          : Icons.image_rounded,
+                                      color: AppColors.sky,
+                                      size: 16.sp,
+                                    ),
                                   ),
-                                ),
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() {
+                                        _selectedFilePaths.removeAt(index);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(5.r),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withOpacity(
+                                          .12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.redAccent,
+                                        size: 15.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  setState(() {
-                                    _selectedFilePaths.removeAt(index);
-                                  });
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.all(5.r),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(.12),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    color: Colors.redAccent,
-                                    size: 15.sp,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
+                            )
                             .animate()
                             .fadeIn(duration: 300.ms)
                             .moveX(begin: 10, end: 0);
@@ -555,76 +586,82 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
                     SizedBox(height: 24.h),
 
                     // Submit button
-                    BlocBuilder<LevelExceptionCreateCubit,
-                        LevelExceptionCreateState>(
-                      builder: (context, state) {
-                        final isLoading =
-                            state is LevelExceptionCreateLoading;
+                    BlocBuilder<
+                          LevelExceptionCreateCubit,
+                          LevelExceptionCreateState
+                        >(
+                          builder: (context, state) {
+                            final isLoading =
+                                state is LevelExceptionCreateLoading;
 
-                        return GestureDetector(
-                          onTap: isLoading
-                              ? null
-                              : () {
-                                  HapticFeedback.mediumImpact();
-                                  _submit();
-                                },
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isLoading
-                                    ? [
-                                        AppColors.orange.withOpacity(.45),
-                                        AppColors.yellow.withOpacity(.45),
-                                      ]
-                                    : [AppColors.orange, AppColors.yellow],
-                              ),
-                              borderRadius: BorderRadius.circular(16.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.yellow
-                                      .withOpacity(isLoading ? .15 : .40),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: isLoading
-                                  ? SizedBox(
-                                      width: 22.sp,
-                                      height: 22.sp,
-                                      child: const CircularProgressIndicator(
-                                        color: Colors.black,
-                                        strokeWidth: 2.4,
+                            return GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () {
+                                      HapticFeedback.mediumImpact();
+                                      _submit();
+                                    },
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: isLoading
+                                        ? [
+                                            AppColors.orange.withOpacity(.45),
+                                            AppColors.yellow.withOpacity(.45),
+                                          ]
+                                        : [AppColors.orange, AppColors.yellow],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.yellow.withOpacity(
+                                        isLoading ? .15 : .40,
                                       ),
-                                    )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.send_rounded,
-                                          color: Colors.black,
-                                          size: 17.sp,
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Text(
-                                          'Submit Request',
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14.sp,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                      ],
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
                                     ),
-                            ),
-                          ),
-                        );
-                      },
-                    ).animate().fadeIn(delay: 220.ms, duration: 400.ms),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: isLoading
+                                      ? SizedBox(
+                                          width: 22.sp,
+                                          height: 22.sp,
+                                          child:
+                                              const CircularProgressIndicator(
+                                                color: Colors.black,
+                                                strokeWidth: 2.4,
+                                              ),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.send_rounded,
+                                              color: Colors.black,
+                                              size: 17.sp,
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Text(
+                                              'Submit Request',
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14.sp,
+                                                letterSpacing: 0.3,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                        .animate()
+                        .fadeIn(delay: 220.ms, duration: 400.ms),
                   ],
                 ),
               ),

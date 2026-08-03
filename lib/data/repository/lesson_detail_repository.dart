@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/helper/api_error_helper.dart';
 import '../models/lesson_detail_model.dart';
 import 'package:fluent/data/services/lesson_detail_service.dart';
 
@@ -8,28 +9,11 @@ class LessonDetailRepository {
 
   /// يستخرج رسالة خطأ واضحة من استجابة Laravel (message أو errors.comment)
   static String extractErrorMessage(dynamic errorData, String fallback) {
-    if (errorData is! Map) return fallback;
-    final map = Map<String, dynamic>.from(errorData);
-
-    final errors = map['errors'];
-    if (errors is Map) {
-      final commentErr = errors['comment'];
-      if (commentErr is List && commentErr.isNotEmpty) {
-        return commentErr.first.toString();
-      }
-      if (commentErr != null) return commentErr.toString();
-      // أول خطأ متاح
-      for (final v in errors.values) {
-        if (v is List && v.isNotEmpty) return v.first.toString();
-        if (v != null) return v.toString();
-      }
-    }
-
-    final msg = map['message'];
-    if (msg is String && msg.isNotEmpty) return msg;
-    if (msg is List && msg.isNotEmpty) return msg.first.toString();
-
-    return fallback;
+    return ApiErrorHelper.extract(
+      errorData,
+      fallback,
+      preferredKeys: const ['comment', 'lesson', 'message'],
+    );
   }
 
   /// يفكّ CommentResource سواء كان { data: {...} } أو الكائن مباشرة
@@ -90,12 +74,15 @@ class LessonDetailRepository {
             'raw': map,
           };
         }
-        return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
+        return {'success': false, 'message': 'Unexpected response format'};
       } else {
         final errorData = response.data;
         return {
           'success': false,
-          'message': extractErrorMessage(errorData, 'فشل في جلب تفاصيل الدرس'),
+          'message': extractErrorMessage(
+            errorData,
+            'Failed to load lesson details',
+          ),
         };
       }
     } on DioException catch (e) {
@@ -103,11 +90,14 @@ class LessonDetailRepository {
       final errorData = e.response?.data;
       return {
         'success': false,
-        'message': extractErrorMessage(errorData, e.message ?? 'حدث خطأ ما'),
+        'message': extractErrorMessage(
+          errorData,
+          e.message ?? 'Something went wrong',
+        ),
       };
     } catch (e) {
       print("❌ GetLessonDetail Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 
@@ -132,11 +122,14 @@ class LessonDetailRepository {
             ),
           };
         }
-        return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
+        return {'success': false, 'message': 'Unexpected response format'};
       } else {
         return {
           'success': false,
-          'message': extractErrorMessage(response.data, 'فشل في إضافة التعليق'),
+          'message': extractErrorMessage(
+            response.data,
+            'Failed to add comment',
+          ),
         };
       }
     } on DioException catch (e) {
@@ -145,12 +138,12 @@ class LessonDetailRepository {
         'success': false,
         'message': extractErrorMessage(
           e.response?.data,
-          e.message ?? 'حدث خطأ ما',
+          e.message ?? 'Something went wrong',
         ),
       };
     } catch (e) {
       print("❌ PostComment Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 
@@ -178,11 +171,14 @@ class LessonDetailRepository {
             ),
           };
         }
-        return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
+        return {'success': false, 'message': 'Unexpected response format'};
       } else {
         return {
           'success': false,
-          'message': extractErrorMessage(response.data, 'فشل في تعديل التعليق'),
+          'message': extractErrorMessage(
+            response.data,
+            'Failed to update comment',
+          ),
         };
       }
     } on DioException catch (e) {
@@ -191,12 +187,12 @@ class LessonDetailRepository {
         'success': false,
         'message': extractErrorMessage(
           e.response?.data,
-          e.message ?? 'حدث خطأ ما',
+          e.message ?? 'Something went wrong',
         ),
       };
     } catch (e) {
       print("❌ UpdateComment Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 
@@ -211,7 +207,10 @@ class LessonDetailRepository {
       } else {
         return {
           'success': false,
-          'message': extractErrorMessage(response.data, 'فشل في حذف التعليق'),
+          'message': extractErrorMessage(
+            response.data,
+            'Failed to delete comment',
+          ),
         };
       }
     } on DioException catch (e) {
@@ -220,12 +219,12 @@ class LessonDetailRepository {
         'success': false,
         'message': extractErrorMessage(
           e.response?.data,
-          e.message ?? 'حدث خطأ ما',
+          e.message ?? 'Something went wrong',
         ),
       };
     } catch (e) {
       print("❌ DeleteComment Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 }

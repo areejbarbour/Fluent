@@ -14,8 +14,10 @@ import 'package:fluent/data/models/words_bank_model.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/data/repository/lesson_word_repository.dart';
+import 'package:fluent/presentation/screens/statics/word_quiz_screen.dart';
 
 enum WordStatus { learning, mastered }
+
 enum WordDifficulty { easy, medium, hard }
 
 class WordItem {
@@ -107,293 +109,169 @@ class _WordBankScreenState extends State<WordBankScreen>
     _scrollOffset.dispose();
     super.dispose();
   }
-  
+
   List<WordItem> _mapToWordItems(
-    List<WordsBankItem> learning, List<WordsBankItem> known) {
-  WordItem toItem(WordsBankItem w, WordStatus status) {
-    DateTime added;
-    try {
-      added =
-          w.addedAt != null ? DateTime.parse(w.addedAt!) : DateTime.now();
-    } catch (_) {
-      added = DateTime.now();
-    }
+    List<WordsBankItem> learning,
+    List<WordsBankItem> known,
+  ) {
+    WordItem toItem(WordsBankItem w, WordStatus status) {
+      DateTime added;
+      try {
+        added = w.addedAt != null ? DateTime.parse(w.addedAt!) : DateTime.now();
+      } catch (_) {
+        added = DateTime.now();
+      }
 
-    String? audioUrl;
-    if (w.word.hasAudio) {
-      final raw = w.word.audio!;
-      audioUrl = raw.startsWith('http') ? raw : '$baseUrl/$raw';
-    }
+      String? audioUrl;
+      if (w.word.hasAudio) {
+        final raw = w.word.audio!;
+        audioUrl = raw.startsWith('http') ? raw : '$baseUrl/$raw';
+      }
 
-    return WordItem(
-      id: w.word.id.toString(),
-      word: w.word.wordEn,
-      translation: w.word.wordAr,
-      status: status,
-      addedAt: added,
-      audioUrl: audioUrl,
-    );
-  }
-
-  return [
-    ...learning.map((w) => toItem(w, WordStatus.learning)),
-    ...known.map((w) => toItem(w, WordStatus.mastered)),
-  ];
-}
-
-Future<void> _toggleWordStatus(WordItem word) async {
-  HapticFeedback.mediumImpact();
-
-  final wordId = int.tryParse(word.id);
-  if (wordId == null) return;
-
-  final repo = context.read<LessonWordRepository>();
-  final isLearning = word.status == WordStatus.learning;
-
-  _showAppSnack(
-    isLearning
-        ? 'Transferring to mastered...'
-        : 'Transferring to learning...',
-  );
-
-  final Map<String, dynamic> result;
-  if (isLearning) {
-    result = await repo.moveToKnow(wordId);
-  } else {
-    result = await repo.moveToLearning(wordId);
-  }
-
-  if (!mounted) return;
-
-  if (result['success'] == true) {
-    setState(() {
-      final idx = _words.indexWhere((w) => w.id == word.id);
-      if (idx == -1) return;
-      _words[idx] = _words[idx].copyWith(
-        status: isLearning ? WordStatus.mastered : WordStatus.learning,
+      return WordItem(
+        id: w.word.id.toString(),
+        word: w.word.wordEn,
+        translation: w.word.wordAr,
+        status: status,
+        addedAt: added,
+        audioUrl: audioUrl,
       );
-    });
-
-    _showAppSnack(
-      result['message'] ??
-          (isLearning ? 'Moved to mastered ✨' : 'Moved to learning 📚'),
-      isSuccess: true,
-    );
-  } else {
-    _showAppSnack(
-      result['message'] ?? 'Transfer failed',
-      isError: true,
-    );
-  }
-}
-
-
-void _showAppSnack(String message, {bool isError = false, bool isSuccess = false}) {
-  HapticFeedback.lightImpact();
-  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      content: ClipRRect(
-        borderRadius: BorderRadius.circular(16.r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16.r),
-              gradient: LinearGradient(
-                colors: isError
-                    ? [
-                        const Color(0xFFFF6B6B).withOpacity(.25),
-                        AppColors.dark.withOpacity(.9),
-                      ]
-                    : isSuccess
-                        ? [
-                            const Color(0xFF4ADE80).withOpacity(.22),
-                            AppColors.dark.withOpacity(.9),
-                          ]
-                        : [
-                            AppColors.sky.withOpacity(.2),
-                            AppColors.dark.withOpacity(.9),
-                          ],
-              ),
-              border: Border.all(
-                color: isError
-                    ? const Color(0xFFFF6B6B).withOpacity(.45)
-                    : isSuccess
-                        ? const Color(0xFF4ADE80).withOpacity(.45)
-                        : AppColors.sky.withOpacity(.35),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 32.w,
-                  height: 32.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: isError
-                          ? const [Color(0xFFFF6B6B), Color(0xFFE53935)]
-                          : isSuccess
-                              ? const [Color(0xFF4ADE80), Color(0xFF22C55E)]
-                              : const [AppColors.sky, Color(0xFFB388FF)],
-                    ),
-                  ),
-                  child: Icon(
-                    isError
-                        ? Icons.error_outline_rounded
-                        : isSuccess
-                            ? Icons.check_rounded
-                            : Icons.info_outline_rounded,
-                    color: Colors.white,
-                    size: 16.sp,
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 12.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-void _deleteWord(WordItem word) {
-  HapticFeedback.mediumImpact();
-  setState(() {
-    _words.removeWhere((w) => w.id == word.id);
-  });
-  _showAppSnack("'${word.word}' removed", isError: true);
-}
-
-  void _openPractice() {
-    final learningWords =
-        _words.where((w) => w.status == WordStatus.learning).toList();
-    if (learningWords.isEmpty) {
-      _showNoWordsToPracticeDialog();
-      return;
     }
+
+    return [
+      ...learning.map((w) => toItem(w, WordStatus.learning)),
+      ...known.map((w) => toItem(w, WordStatus.mastered)),
+    ];
+  }
+
+  Future<void> _toggleWordStatus(WordItem word) async {
     HapticFeedback.mediumImpact();
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: true,
-        transitionDuration: 500.ms,
-        pageBuilder: (_, __, ___) => FlashcardPracticeScreen(
-          words: learningWords,
-          onUpdateWord: _updateWord,
-        ),
-        transitionsBuilder: (_, anim, __, child) {
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.05),
-                end: Offset.zero,
-              ).animate(
-                  CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-      ),
+
+    final wordId = int.tryParse(word.id);
+    if (wordId == null) return;
+
+    final repo = context.read<LessonWordRepository>();
+    final isLearning = word.status == WordStatus.learning;
+
+    _showAppSnack(
+      isLearning
+          ? 'Transferring to mastered...'
+          : 'Transferring to learning...',
     );
+
+    final Map<String, dynamic> result;
+    if (isLearning) {
+      result = await repo.moveToKnow(wordId);
+    } else {
+      result = await repo.moveToLearning(wordId);
+    }
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      setState(() {
+        final idx = _words.indexWhere((w) => w.id == word.id);
+        if (idx == -1) return;
+        _words[idx] = _words[idx].copyWith(
+          status: isLearning ? WordStatus.mastered : WordStatus.learning,
+        );
+      });
+
+      _showAppSnack(
+        result['message'] ??
+            (isLearning ? 'Moved to mastered ✨' : 'Moved to learning 📚'),
+        isSuccess: true,
+      );
+    } else {
+      _showAppSnack(result['message'] ?? 'Transfer failed', isError: true);
+    }
   }
 
-  void _updateWord(WordItem word) {
-    setState(() {
-      final idx = _words.indexWhere((w) => w.id == word.id);
-      if (idx != -1) _words[idx] = word;
-    });
-  }
-
-  void _showNoWordsToPracticeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
+  void _showAppSnack(
+    String message, {
+    bool isError = false,
+    bool isSuccess = false,
+  }) {
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24.r),
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(16.r),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              padding: EdgeInsets.all(22.w),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
               decoration: BoxDecoration(
-                color: AppColors.dark.withOpacity(.92),
-                borderRadius: BorderRadius.circular(24.r),
-                border: Border.all(color: Colors.white.withOpacity(.15)),
+                borderRadius: BorderRadius.circular(16.r),
+                gradient: LinearGradient(
+                  colors: isError
+                      ? [
+                          const Color(0xFFFF6B6B).withOpacity(.25),
+                          AppColors.dark.withOpacity(.9),
+                        ]
+                      : isSuccess
+                      ? [
+                          const Color(0xFF4ADE80).withOpacity(.22),
+                          AppColors.dark.withOpacity(.9),
+                        ]
+                      : [
+                          AppColors.sky.withOpacity(.2),
+                          AppColors.dark.withOpacity(.9),
+                        ],
+                ),
+                border: Border.all(
+                  color: isError
+                      ? const Color(0xFFFF6B6B).withOpacity(.45)
+                      : isSuccess
+                      ? const Color(0xFF4ADE80).withOpacity(.45)
+                      : AppColors.sky.withOpacity(.35),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(14.r),
+                    width: 32.w,
+                    height: 32.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.yellow.withOpacity(.15),
-                    ),
-                    child: Icon(Icons.menu_book_rounded,
-                        color: AppColors.yellow, size: 26.sp),
-                  ),
-                  SizedBox(height: 14.h),
-                  Text(
-                    "No words to practice!",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    "Add some words to your learning list to start practicing.",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.65),
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 32.w, vertical: 12.h),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.orange, AppColors.yellow],
-                        ),
-                        borderRadius: BorderRadius.circular(14.r),
+                      gradient: LinearGradient(
+                        colors: isError
+                            ? const [Color(0xFFFF6B6B), Color(0xFFE53935)]
+                            : isSuccess
+                            ? const [Color(0xFF4ADE80), Color(0xFF22C55E)]
+                            : const [AppColors.sky, Color(0xFFB388FF)],
                       ),
-                      child: Text(
-                        "OK",
-                        style: GoogleFonts.poppins(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                        ),
+                    ),
+                    child: Icon(
+                      isError
+                          ? Icons.error_outline_rounded
+                          : isSuccess
+                          ? Icons.check_rounded
+                          : Icons.info_outline_rounded,
+                      color: Colors.white,
+                      size: 16.sp,
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -416,8 +294,7 @@ void _deleteWord(WordItem word) {
         listener: (context, state) {
           if (state is WordsBankSuccess) {
             setState(() {
-              _words =
-                  _mapToWordItems(state.learningWords, state.knownWords);
+              _words = _mapToWordItems(state.learningWords, state.knownWords);
             });
           }
         },
@@ -447,14 +324,17 @@ void _deleteWord(WordItem word) {
                           children: [
                             _buildWordsList(
                               words: _words
-                                  .where((w) =>
-                                      w.status == WordStatus.learning &&
-                                      (searchQuery.isEmpty ||
-                                          w.word
-                                              .toLowerCase()
-                                              .contains(searchQuery) ||
-                                          w.translation
-                                              .contains(searchQuery)))
+                                  .where(
+                                    (w) =>
+                                        w.status == WordStatus.learning &&
+                                        (searchQuery.isEmpty ||
+                                            w.word.toLowerCase().contains(
+                                              searchQuery,
+                                            ) ||
+                                            w.translation.contains(
+                                              searchQuery,
+                                            )),
+                                  )
                                   .toList(),
                               targetStatus: WordStatus.mastered,
                               actionLabel: "Mark as Mastered",
@@ -463,17 +343,20 @@ void _deleteWord(WordItem word) {
                             ),
                             _buildWordsList(
                               words: _words
-                                  .where((w) =>
-                                      w.status == WordStatus.mastered &&
-                                      (searchQuery.isEmpty ||
-                                          w.word
-                                              .toLowerCase()
-                                              .contains(searchQuery) ||
-                                          w.translation
-                                              .contains(searchQuery)))
+                                  .where(
+                                    (w) =>
+                                        w.status == WordStatus.mastered &&
+                                        (searchQuery.isEmpty ||
+                                            w.word.toLowerCase().contains(
+                                              searchQuery,
+                                            ) ||
+                                            w.translation.contains(
+                                              searchQuery,
+                                            )),
+                                  )
                                   .toList(),
                               targetStatus: WordStatus.learning,
-                              actionLabel: "Practice Again",
+                              actionLabel: "Move to Learning",
                               actionIcon: Icons.replay_rounded,
                               actionColor: AppColors.yellow,
                             ),
@@ -492,9 +375,7 @@ void _deleteWord(WordItem word) {
   }
 
   Widget _buildLoadingState() {
-    return Center(
-      child: CircularProgressIndicator(color: AppColors.yellow),
-    );
+    return Center(child: CircularProgressIndicator(color: AppColors.yellow));
   }
 
   Widget _buildErrorState(String message) {
@@ -504,8 +385,11 @@ void _deleteWord(WordItem word) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded,
-                color: Colors.redAccent, size: 48.sp),
+            Icon(
+              Icons.error_outline_rounded,
+              color: Colors.redAccent,
+              size: 48.sp,
+            ),
             SizedBox(height: 14.h),
             Text(
               message,
@@ -519,8 +403,7 @@ void _deleteWord(WordItem word) {
                 context.read<WordsBankCubit>().fetchAll();
               },
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.orange, AppColors.yellow],
@@ -534,7 +417,7 @@ void _deleteWord(WordItem word) {
                   ],
                 ),
                 child: Text(
-                  "إعادة المحاولة",
+                  "Retry",
                   style: GoogleFonts.poppins(
                     color: Colors.black,
                     fontWeight: FontWeight.w800,
@@ -610,28 +493,29 @@ void _deleteWord(WordItem word) {
     required int duration,
     required Offset endOffset,
   }) {
-    Widget glow = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.10),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.30),
-            blurRadius: 160,
-            spreadRadius: 40,
-          ),
-        ],
-      ),
-    )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .move(
-          begin: Offset.zero,
-          end: endOffset,
-          duration: duration.ms,
-          curve: Curves.easeInOut,
-        );
+    Widget glow =
+        Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.10),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.30),
+                    blurRadius: 160,
+                    spreadRadius: 40,
+                  ),
+                ],
+              ),
+            )
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .move(
+              begin: Offset.zero,
+              end: endOffset,
+              duration: duration.ms,
+              curve: Curves.easeInOut,
+            );
 
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffset,
@@ -665,8 +549,6 @@ void _deleteWord(WordItem word) {
               children: [
                 Text(
                   "Word Bank",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 22.sp,
@@ -676,8 +558,6 @@ void _deleteWord(WordItem word) {
                 ),
                 Text(
                   "Your personal vocabulary",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(.6),
                     fontSize: 11.sp,
@@ -686,13 +566,6 @@ void _deleteWord(WordItem word) {
                 ),
               ],
             ),
-          ),
-          _circleIconButton(
-            icon: Icons.add_rounded,
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              _showAddWordSheet();
-            },
           ),
         ],
       ),
@@ -779,8 +652,10 @@ void _deleteWord(WordItem word) {
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 14.h,
+            ),
           ),
         ),
       ),
@@ -788,10 +663,12 @@ void _deleteWord(WordItem word) {
   }
 
   Widget _buildTabBar() {
-    final learningCount =
-        _words.where((w) => w.status == WordStatus.learning).length;
-    final masteredCount =
-        _words.where((w) => w.status == WordStatus.mastered).length;
+    final learningCount = _words
+        .where((w) => w.status == WordStatus.learning)
+        .length;
+    final masteredCount = _words
+        .where((w) => w.status == WordStatus.mastered)
+        .length;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -839,7 +716,9 @@ void _deleteWord(WordItem word) {
                   SizedBox(width: 6.w),
                   Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: 6.w, vertical: 1.h),
+                      horizontal: 6.w,
+                      vertical: 1.h,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(.2),
                       borderRadius: BorderRadius.circular(10.r),
@@ -865,7 +744,9 @@ void _deleteWord(WordItem word) {
                   SizedBox(width: 6.w),
                   Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: 6.w, vertical: 1.h),
+                      horizontal: 6.w,
+                      vertical: 1.h,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(.2),
                       borderRadius: BorderRadius.circular(10.r),
@@ -909,7 +790,6 @@ void _deleteWord(WordItem word) {
             word: words[index],
             index: index,
             onMove: () => _toggleWordStatus(words[index]),
-            onDelete: () => _deleteWord(words[index]),
             actionLabel: actionLabel,
             actionIcon: actionIcon,
             actionColor: actionColor,
@@ -933,10 +813,7 @@ void _deleteWord(WordItem word) {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    AppColors.sky.withOpacity(.2),
-                    Colors.transparent,
-                  ],
+                  colors: [AppColors.sky.withOpacity(.2), Colors.transparent],
                 ),
               ),
               child: Icon(
@@ -967,45 +844,15 @@ void _deleteWord(WordItem word) {
                 fontSize: 12.sp,
               ),
             ),
-            SizedBox(height: 24.h),
-            GestureDetector(
-              onTap: () => _showAddWordSheet(),
-              child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.orange, AppColors.yellow],
-                  ),
-                  borderRadius: BorderRadius.circular(14.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.yellow.withOpacity(.5),
-                      blurRadius: 12,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_rounded, color: Colors.black, size: 18.sp),
-                    SizedBox(width: 6.w),
-                    Text(
-                      "Add Word",
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
     ).animate().fadeIn(duration: 500.ms);
+  }
+
+  void _openQuiz() {
+    HapticFeedback.mediumImpact();
+    WordQuizScreen.open(context);
   }
 
   Widget _buildFABs() {
@@ -1014,297 +861,46 @@ void _deleteWord(WordItem word) {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // Backend quiz (MCQ from /api/words/quiz)
           Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.orange, AppColors.yellow],
-              ),
-              borderRadius: BorderRadius.circular(30.r),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.yellow.withOpacity(.5),
-                  blurRadius: 16,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(30.r),
-                onTap: _openPractice,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 16.w, vertical: 12.h),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.bolt_rounded,
-                          color: Colors.black, size: 18.sp),
-                      SizedBox(width: 6.w),
-                      Text(
-                        "Practice",
-                        style: GoogleFonts.poppins(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                    ],
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.orange, AppColors.yellow],
                   ),
-                ),
-              ),
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(
-                begin: 1,
-                end: 1.04,
-                duration: 1500.ms,
-                curve: Curves.easeInOut,
-              )
-              .shimmer(
-                duration: 2000.ms,
-                color: Colors.white.withOpacity(.4),
-              ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddWordSheet() {
-    final wordCtrl = TextEditingController();
-    final translationCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    WordDifficulty selectedDifficulty = WordDifficulty.medium;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: ClipRRect(
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28.r)),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Container(
-                    padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-                    decoration: BoxDecoration(
-                      color: AppColors.dark.withOpacity(.92),
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(28.r)),
-                      border: Border(
-                        top: BorderSide(
-                            color: Colors.white.withOpacity(.12)),
-                      ),
+                  borderRadius: BorderRadius.circular(30.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(.5),
+                      blurRadius: 16,
+                      spreadRadius: 1,
                     ),
-                    child: Form(
-                      key: formKey,
-                      child: Column(
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(30.r),
+                    onTap: _openQuiz,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 12.h,
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Center(
-                            child: Container(
-                              width: 40.w,
-                              height: 4.h,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.25),
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                            ),
+                          Icon(
+                            Icons.quiz_rounded,
+                            color: Colors.black,
+                            size: 18.sp,
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(width: 6.w),
                           Text(
-                            "Add New Word",
+                            'Quiz',
                             style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16.sp,
-                            ),
-                          ),
-                          SizedBox(height: 18.h),
-                          _sheetField(
-                            ctrl: wordCtrl,
-                            label: "Word (English)",
-                            icon: Icons.translate_rounded,
-                            iconColor: AppColors.sky,
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? "Enter the word"
-                                    : null,
-                          ),
-                          SizedBox(height: 14.h),
-                          _sheetField(
-                            ctrl: translationCtrl,
-                            label: "Translation",
-                            icon: Icons.language_rounded,
-                            iconColor: AppColors.yellow,
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? "Enter the translation"
-                                    : null,
-                          ),
-                          SizedBox(height: 18.h),
-                          Text(
-                            "Difficulty",
-                            style: GoogleFonts.poppins(
-                              color: Colors.white.withOpacity(.6),
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 10.h),
-                          Row(
-                            children: WordDifficulty.values.map((difficulty) {
-                              final isSelected = selectedDifficulty == difficulty;
-                              Color color;
-                              String label;
-                              switch (difficulty) {
-                                case WordDifficulty.easy:
-                                  color = const Color(0xFF4ADE80);
-                                  label = "Easy";
-                                  break;
-                                case WordDifficulty.medium:
-                                  color = AppColors.yellow;
-                                  label = "Medium";
-                                  break;
-                                case WordDifficulty.hard:
-                                  color = Colors.redAccent;
-                                  label = "Hard";
-                                  break;
-                              }
-                              return Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                      right: difficulty ==
-                                              WordDifficulty.values.last
-                                          ? 0
-                                          : 8.w),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      setSheetState(() =>
-                                          selectedDifficulty = difficulty);
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: 200.ms,
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 12.h),
-                                      decoration: BoxDecoration(
-                                        gradient: isSelected
-                                            ? LinearGradient(colors: [
-                                                color.withOpacity(.4),
-                                                color.withOpacity(.15),
-                                              ])
-                                            : null,
-                                        color: isSelected
-                                            ? null
-                                            : Colors.white.withOpacity(.06),
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
-                                        border: Border.all(
-                                          color: isSelected
-                                              ? color.withOpacity(.7)
-                                              : Colors.white.withOpacity(.12),
-                                          width: isSelected ? 1.5 : 1,
-                                        ),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        label,
-                                        style: GoogleFonts.poppins(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.white.withOpacity(.6),
-                                          fontWeight: isSelected
-                                              ? FontWeight.w800
-                                              : FontWeight.w600,
-                                          fontSize: 12.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          SizedBox(height: 22.h),
-                          GestureDetector(
-                            onTap: () {
-                              if (formKey.currentState?.validate() ?? false) {
-                                setState(() {
-                                  _words.insert(
-                                    0,
-                                    WordItem(
-                                      id: DateTime.now()
-                                          .millisecondsSinceEpoch
-                                          .toString(),
-                                      word: wordCtrl.text.trim(),
-                                      translation:
-                                          translationCtrl.text.trim(),
-                                      status: WordStatus.learning,
-                                      difficulty: selectedDifficulty,
-                                      addedAt: DateTime.now(),
-                                    ),
-                                  );
-                                });
-                                Navigator.pop(context);
-                                HapticFeedback.mediumImpact();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        const Icon(Icons.check_circle,
-                                            color: Colors.white, size: 18),
-                                        SizedBox(width: 8.w),
-                                        Expanded(
-                                            child: Text(
-                                                "Word added to learning!")),
-                                      ],
-                                    ),
-                                    backgroundColor: AppColors.primary,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12.r),
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(vertical: 15.h),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.orange, AppColors.yellow],
-                                ),
-                                borderRadius: BorderRadius.circular(16.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.yellow.withOpacity(.5),
-                                    blurRadius: 16,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                "Add to Learning",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14.sp,
-                                  letterSpacing: .3,
-                                ),
-                              ),
+                              color: Colors.black,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.sp,
                             ),
                           ),
                         ],
@@ -1312,11 +908,17 @@ void _deleteWord(WordItem word) {
                     ),
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scaleXY(
+                begin: 1,
+                end: 1.04,
+                duration: 1500.ms,
+                curve: Curves.easeInOut,
+              )
+              .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(.4)),
+        ],
+      ),
     );
   }
 
@@ -1370,11 +972,11 @@ void _deleteWord(WordItem word) {
     );
   }
 }
+
 class _WordCard extends StatefulWidget {
   final WordItem word;
   final int index;
   final VoidCallback onMove;
-  final VoidCallback onDelete;
   final String actionLabel;
   final IconData actionIcon;
   final Color actionColor;
@@ -1383,7 +985,6 @@ class _WordCard extends StatefulWidget {
     required this.word,
     required this.index,
     required this.onMove,
-    required this.onDelete,
     required this.actionLabel,
     required this.actionIcon,
     required this.actionColor,
@@ -1427,1412 +1028,289 @@ class _WordCardState extends State<_WordCard> {
     final accent = isLearning ? AppColors.sky : const Color(0xFF4ADE80);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(.12),
-                Colors.white.withOpacity(.04),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(.14)),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withOpacity(.12),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // شريط جانبي
-                Container(
-                  width: 4.5.w,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: isLearning
-                          ? [AppColors.sky, const Color(0xFFB388FF)]
-                          : [const Color(0xFF4ADE80), AppColors.yellow],
-                    ),
-                    borderRadius: BorderRadius.horizontal(
-                      left: Radius.circular(22.r),
-                    ),
-                  ),
+          borderRadius: BorderRadius.circular(22.r),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22.r),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(.12),
+                    Colors.white.withOpacity(.04),
+                  ],
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 42.w,
-                              height: 42.w,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14.r),
-                                gradient: LinearGradient(
-                                  colors: isLearning
-                                      ? [
-                                          AppColors.sky.withOpacity(.35),
-                                          AppColors.sky.withOpacity(.12),
-                                        ]
-                                      : [
-                                          const Color(0xFF4ADE80)
-                                              .withOpacity(.35),
-                                          const Color(0xFF4ADE80)
-                                              .withOpacity(.12),
-                                        ],
-                                ),
-                                border:
-                                    Border.all(color: accent.withOpacity(.4)),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  widget.word.word.isNotEmpty
-                                      ? widget.word.word[0].toUpperCase()
-                                      : '?',
-                                  style: GoogleFonts.poppins(
-                                    color: accent,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 17.sp,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 11.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.word.word,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 15.sp,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    widget.word.translation,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white.withOpacity(.65),
-                                      fontSize: 12.5.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // ===== زر الصوت =====
-                            GestureDetector(
-                              onTap: _hasAudio ? _playAudio : null,
-                              child: Container(
-                                width: 34.w,
-                                height: 34.w,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: _hasAudio
-                                      ? LinearGradient(
-                                          colors: [
-                                            AppColors.yellow.withOpacity(.9),
-                                            AppColors.orange.withOpacity(.85),
-                                          ],
-                                        )
-                                      : null,
-                                  color: _hasAudio
-                                      ? null
-                                      : Colors.white.withOpacity(.06),
-                                  border: Border.all(
-                                    color: _hasAudio
-                                        ? AppColors.yellow.withOpacity(.5)
-                                        : Colors.white.withOpacity(.1),
-                                  ),
-                                  boxShadow: _hasAudio
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.yellow
-                                                .withOpacity(.35),
-                                            blurRadius: 10,
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Icon(
-                                  _isPlaying
-                                      ? Icons.volume_up_rounded
-                                      : Icons.volume_up_rounded,
-                                  color: _hasAudio
-                                      ? Colors.black
-                                      : Colors.white.withOpacity(.28),
-                                  size: 16.sp,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 6.w),
-
-                            // زر الحذف
-                            GestureDetector(
-                              onTap: widget.onDelete,
-                              child: Container(
-                                width: 32.w,
-                                height: 32.w,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(.06),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(.1),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.close_rounded,
-                                  color: Colors.white.withOpacity(.45),
-                                  size: 15.sp,
-                                ),
-                              ),
-                            ),
-                          ],
+                border: Border.all(color: Colors.white.withOpacity(.14)),
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withOpacity(.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // شريط جانبي
+                    Container(
+                      width: 4.5.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: isLearning
+                              ? [AppColors.sky, const Color(0xFFB388FF)]
+                              : [const Color(0xFF4ADE80), AppColors.yellow],
                         ),
-
-                        SizedBox(height: 12.h),
-                        Container(
-                            height: 1, color: Colors.white.withOpacity(.07)),
-                        SizedBox(height: 10.h),
-
-                        // بادج + زر النقل
-                        Row(
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(22.r),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 9.w, vertical: 4.h),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20.r),
-                                color: accent.withOpacity(.12),
-                                border:
-                                    Border.all(color: accent.withOpacity(.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isLearning
-                                        ? Icons.school_rounded
-                                        : Icons.verified_rounded,
-                                    size: 11.sp,
-                                    color: accent,
-                                  ),
-                                  SizedBox(width: 4.w),
-                                  Text(
-                                    isLearning ? 'Learning' : 'Mastered',
-                                    style: GoogleFonts.poppins(
-                                      color: accent,
-                                      fontSize: 10.sp,
-                                      fontWeight: FontWeight.w700,
+                            Row(
+                              children: [
+                                Container(
+                                  width: 42.w,
+                                  height: 42.w,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14.r),
+                                    gradient: LinearGradient(
+                                      colors: isLearning
+                                          ? [
+                                              AppColors.sky.withOpacity(.35),
+                                              AppColors.sky.withOpacity(.12),
+                                            ]
+                                          : [
+                                              const Color(
+                                                0xFF4ADE80,
+                                              ).withOpacity(.35),
+                                              const Color(
+                                                0xFF4ADE80,
+                                              ).withOpacity(.12),
+                                            ],
+                                    ),
+                                    border: Border.all(
+                                      color: accent.withOpacity(.4),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: widget.onMove,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 12.w, vertical: 7.h),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14.r),
-                                  gradient: LinearGradient(
-                                    colors: isLearning
-                                        ? const [
-                                            Color(0xFF4ADE80),
-                                            Color(0xFF22C55E),
-                                          ]
-                                        : const [
-                                            AppColors.orange,
-                                            AppColors.yellow,
-                                          ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (isLearning
-                                              ? const Color(0xFF4ADE80)
-                                              : AppColors.yellow)
-                                          .withOpacity(.4),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      widget.actionIcon,
-                                      color: isLearning
-                                          ? Colors.white
-                                          : Colors.black,
-                                      size: 14.sp,
-                                    ),
-                                    SizedBox(width: 5.w),
-                                    Text(
-                                      widget.actionLabel,
+                                  child: Center(
+                                    child: Text(
+                                      widget.word.word.isNotEmpty
+                                          ? widget.word.word[0].toUpperCase()
+                                          : '?',
                                       style: GoogleFonts.poppins(
-                                        color: isLearning
-                                            ? Colors.white
-                                            : Colors.black,
+                                        color: accent,
                                         fontWeight: FontWeight.w800,
-                                        fontSize: 11.sp,
+                                        fontSize: 17.sp,
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                SizedBox(width: 11.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.word.word,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15.sp,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        widget.word.translation,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white.withOpacity(.65),
+                                          fontSize: 12.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // ===== زر الصوت =====
+                                GestureDetector(
+                                  onTap: _hasAudio ? _playAudio : null,
+                                  child: Container(
+                                    width: 34.w,
+                                    height: 34.w,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: _hasAudio
+                                          ? LinearGradient(
+                                              colors: [
+                                                AppColors.yellow.withOpacity(
+                                                  .9,
+                                                ),
+                                                AppColors.orange.withOpacity(
+                                                  .85,
+                                                ),
+                                              ],
+                                            )
+                                          : null,
+                                      color: _hasAudio
+                                          ? null
+                                          : Colors.white.withOpacity(.06),
+                                      border: Border.all(
+                                        color: _hasAudio
+                                            ? AppColors.yellow.withOpacity(.5)
+                                            : Colors.white.withOpacity(.1),
+                                      ),
+                                      boxShadow: _hasAudio
+                                          ? [
+                                              BoxShadow(
+                                                color: AppColors.yellow
+                                                    .withOpacity(.35),
+                                                blurRadius: 10,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Icon(
+                                      _isPlaying
+                                          ? Icons.volume_up_rounded
+                                          : Icons.volume_up_rounded,
+                                      color: _hasAudio
+                                          ? Colors.black
+                                          : Colors.white.withOpacity(.28),
+                                      size: 16.sp,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                              ],
+                            ),
+
+                            SizedBox(height: 12.h),
+                            Container(
+                              height: 1,
+                              color: Colors.white.withOpacity(.07),
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // بادج + زر النقل
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 9.w,
+                                    vertical: 4.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20.r),
+                                    color: accent.withOpacity(.12),
+                                    border: Border.all(
+                                      color: accent.withOpacity(.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isLearning
+                                            ? Icons.school_rounded
+                                            : Icons.verified_rounded,
+                                        size: 11.sp,
+                                        color: accent,
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        isLearning ? 'Learning' : 'Mastered',
+                                        style: GoogleFonts.poppins(
+                                          color: accent,
+                                          fontSize: 10.sp,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: widget.onMove,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 7.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14.r),
+                                      gradient: LinearGradient(
+                                        colors: isLearning
+                                            ? const [
+                                                Color(0xFF4ADE80),
+                                                Color(0xFF22C55E),
+                                              ]
+                                            : const [
+                                                AppColors.orange,
+                                                AppColors.yellow,
+                                              ],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              (isLearning
+                                                      ? const Color(0xFF4ADE80)
+                                                      : AppColors.yellow)
+                                                  .withOpacity(.4),
+                                          blurRadius: 12,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          widget.actionIcon,
+                                          color: isLearning
+                                              ? Colors.white
+                                              : Colors.black,
+                                          size: 14.sp,
+                                        ),
+                                        SizedBox(width: 5.w),
+                                        Text(
+                                          widget.actionLabel,
+                                          style: GoogleFonts.poppins(
+                                            color: isLearning
+                                                ? Colors.white
+                                                : Colors.black,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11.sp,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    )
+        )
         .animate()
         .fadeIn(delay: (40 * widget.index).ms, duration: 350.ms)
         .moveY(begin: 12, end: 0, curve: Curves.easeOutCubic);
-  }
-}
-
-class FlashcardPracticeScreen extends StatefulWidget {
-  final List<WordItem> words;
-  final void Function(WordItem) onUpdateWord;
-
-  const FlashcardPracticeScreen({
-    super.key,
-    required this.words,
-    required this.onUpdateWord,
-  });
-
-  @override
-  State<FlashcardPracticeScreen> createState() =>
-      _FlashcardPracticeScreenState();
-}
-
-class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
-    with TickerProviderStateMixin {
-  late List<WordItem> _queue;
-  int _currentIndex = 0;
-  int _correctCount = 0;
-  int _totalAnswered = 0;
-  bool _showAnswer = false;
-  late AnimationController _flipController;
-  late AnimationController _slideController;
-  Offset _slideOffset = Offset.zero;
-  bool _isAnimating = false;
-  Offset _targetSlide = Offset.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _queue = List.from(widget.words)..shuffle();
-    _flipController = AnimationController(
-      vsync: this,
-      duration: 500.ms,
-    );
-    _slideController = AnimationController(
-      vsync: this,
-      duration: 400.ms,
-    )..addListener(() {
-        setState(() {
-          _slideOffset = Offset.lerp(
-            const Offset(0, 0),
-            _targetSlide,
-            _slideController.value,
-          )!;
-        });
-      });
-  }
-
-  @override
-  void dispose() {
-    _flipController.dispose();
-    _slideController.dispose();
-    super.dispose();
-  }
-
-  void _flipCard() {
-    if (_showAnswer) return;
-    HapticFeedback.selectionClick();
-    setState(() => _showAnswer = true);
-    _flipController.forward();
-  }
-
-  void _answer(bool knowsIt) {
-    if (_isAnimating) return;
-    _isAnimating = true;
-    HapticFeedback.mediumImpact();
-
-    final word = _queue[_currentIndex];
-    final updated = word.copyWith(
-      totalAttempts: word.totalAttempts + 1,
-      correctAnswers: word.correctAnswers + (knowsIt ? 1 : 0),
-      status: knowsIt ? WordStatus.mastered : WordStatus.learning,
-    );
-    widget.onUpdateWord(updated);
-
-    setState(() {
-      _correctCount += knowsIt ? 1 : 0;
-      _totalAnswered += 1;
-    });
-
-    _targetSlide = knowsIt
-        ? const Offset(1.5, 0)
-        : const Offset(-1.5, 0);
-
-    _slideController.forward(from: 0).then((_) {
-      _flipController.reset();
-      setState(() {
-        _showAnswer = false;
-        _currentIndex++;
-        _slideOffset = Offset.zero;
-        _isAnimating = false;
-      });
-      if (_currentIndex >= _queue.length) {
-        _showResults();
-      }
-    });
-  }
-
-  void _showResults() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _PracticeResultsDialog(
-        correct: _correctCount,
-        total: _totalAnswered,
-        onClose: () {
-          Navigator.pop(context);
-          Navigator.pop(context);
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_currentIndex >= _queue.length) {
-      return const SizedBox.shrink();
-    }
-
-    final word = _queue[_currentIndex];
-    final progress = (_currentIndex + 1) / _queue.length;
-
-    return Scaffold(
-      backgroundColor: AppColors.dark,
-      body: Stack(
-        children: [
-          _buildBackground(),
-          _TwinklingStars(count: 30),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(progress),
-                SizedBox(height: 16.h),
-                _buildProgressBar(progress),
-                SizedBox(height: 20.h),
-
-                SizedBox(
-                  height: 340.h,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24.w),
-                      child: Transform.translate(
-                        offset: Offset(
-                          _slideOffset.dx * 180.w,
-                          _slideOffset.dy * 80.h,
-                        ),
-                        child: Transform.rotate(
-                          angle: _slideOffset.dx * 0.25,
-                          child: _Flashcard(
-                            word: word,
-                            showAnswer: _showAnswer,
-                            flipController: _flipController,
-                            onTap: _flipCard,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                Spacer(),
-                _buildAnswerButtons(),
-
-                SizedBox(height: 10.h),
-
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  child: Text(
-                    _showAnswer
-                        ? "Tap a button to continue"
-                        : "Tap the card to reveal the answer",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.4),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xff011826),
-                AppColors.dark,
-                AppColors.primary,
-                Color(0xff01466A),
-                AppColors.dark,
-              ],
-              stops: [0.0, 0.2, 0.55, 0.8, 1.0],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -100.h,
-          right: -80.w,
-          child: Container(
-            width: 280.w,
-            height: 280.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.yellow.withOpacity(0.10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.yellow.withOpacity(.3),
-                  blurRadius: 160,
-                  spreadRadius: 40,
-                ),
-              ],
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(
-                begin: 1,
-                end: 1.1,
-                duration: 5000.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-        Positioned(
-          bottom: 100.h,
-          left: -80.w,
-          child: Container(
-            width: 240.w,
-            height: 240.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.sky.withOpacity(0.10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.sky.withOpacity(.3),
-                  blurRadius: 160,
-                  spreadRadius: 40,
-                ),
-              ],
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(
-                begin: 1,
-                end: 1.12,
-                duration: 6000.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopBar(double progress) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              _showExitConfirm();
-            },
-            child: Container(
-              width: 44.w,
-              height: 44.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.10),
-                border: Border.all(color: Colors.white.withOpacity(.20)),
-              ),
-              child:
-                  Icon(Icons.close_rounded, color: Colors.white, size: 20.sp),
-            ),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Practice",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  "${_currentIndex + 1} of ${_queue.length} • $_correctCount correct",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.6),
-                    fontSize: 10.sp,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.orange, AppColors.yellow],
-              ),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bolt_rounded, color: Colors.black, size: 13.sp),
-                SizedBox(width: 3.w),
-                Text(
-                  "${(_correctCount * 10)}",
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 300.ms);
-  }
-
-  Widget _buildProgressBar(double progress) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Container(
-        height: 8.h,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.10),
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        child: Stack(
-          children: [
-            AnimatedContainer(
-              duration: 400.ms,
-              curve: Curves.easeOutCubic,
-              width: MediaQuery.of(context).size.width * 0.9 * progress,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                ),
-                borderRadius: BorderRadius.circular(10.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.5),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnswerButtons() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Row(
-        children: [
-          Expanded(
-            child: _answerButton(
-              label: "Still Learning",
-              icon: Icons.replay_rounded,
-              gradient: const [Colors.redAccent, Color(0xFFFF6B6B)],
-              onTap: () => _answer(false),
-            ),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: _answerButton(
-              label: "I Know It",
-              icon: Icons.check_rounded,
-              gradient: const [Color(0xFF4ADE80), Color(0xFF22C55E)],
-              onTap: () => _answer(true),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _answerButton({
-  required String label,
-  required IconData icon,
-  required List<Color> gradient,
-  required VoidCallback onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: EdgeInsets.symmetric(vertical: 15.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient),
-        borderRadius: BorderRadius.circular(18.r),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.first.withOpacity(.5),
-            blurRadius: 16,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 18.sp),
-          SizedBox(width: 6.w),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 12.5.sp,
-                fontWeight: FontWeight.w800,
-                letterSpacing: .3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-  void _showExitConfirm() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              padding: EdgeInsets.all(22.w),
-              decoration: BoxDecoration(
-                color: AppColors.dark.withOpacity(.92),
-                borderRadius: BorderRadius.circular(24.r),
-                border: Border.all(color: Colors.white.withOpacity(.15)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(14.r),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.redAccent.withOpacity(.15),
-                    ),
-                    child: Icon(Icons.exit_to_app_rounded,
-                        color: Colors.redAccent, size: 26.sp),
-                  ),
-                  SizedBox(height: 14.h),
-                  Text(
-                    "Exit Practice?",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    "Your progress will be lost.",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.65),
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 13.h),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(.08),
-                              borderRadius: BorderRadius.circular(14.r),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(.15)),
-                            ),
-                            child: Text(
-                              "Continue",
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 13.h),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Colors.redAccent, Color(0xFFFF6B6B)],
-                              ),
-                              borderRadius: BorderRadius.circular(14.r),
-                            ),
-                            child: Text(
-                              "Exit",
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Flashcard extends StatelessWidget {
-  final WordItem word;
-  final bool showAnswer;
-  final AnimationController flipController;
-  final VoidCallback onTap;
-
-  const _Flashcard({
-    required this.word,
-    required this.showAnswer,
-    required this.flipController,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedBuilder(
-        animation: flipController,
-        builder: (context, _) {
-          final value = flipController.value;
-          final isFront = value < 0.5;
-          final rotation = value * math.pi;
-
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(rotation),
-            child: isFront
-                ? _cardFront(word)
-                : Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    child: _cardBack(word),
-                  ),
-          );
-        },
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 300.ms)
-        .scaleXY(
-          begin: 0.95,
-          end: 1,
-          duration: 400.ms,
-          curve: Curves.easeOutBack,
-        );
-  }
-
-  Widget _cardFront(WordItem word) {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(minHeight: 280.h, maxHeight: 340.h),
-      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.12),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.20), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.sky.withOpacity(.25),
-            blurRadius: 30,
-            spreadRadius: 2,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8.r),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.sky.withOpacity(.35),
-                  AppColors.sky.withOpacity(.05),
-                ],
-              ),
-            ),
-            child: Icon(
-              Icons.translate_rounded,
-              color: AppColors.sky,
-              size: 22.sp,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          Text(
-            "What does this mean?",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.55),
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-              letterSpacing: .5,
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                word.word,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 28.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: .2,
-                  height: 1.15,
-                ),
-              ),
-            ),
-          ),
-          if (word.pronunciation != null) ...[
-            SizedBox(height: 10.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.volume_up_rounded,
-                    color: Colors.white.withOpacity(.5), size: 13.sp),
-                SizedBox(width: 4.w),
-                Flexible(
-                  child: Text(
-                    word.pronunciation!,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.5),
-                      fontSize: 11.sp,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          SizedBox(height: 14.h),
-          if (!showAnswer)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.08),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: Colors.white.withOpacity(.15)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.touch_app_rounded,
-                      color: Colors.white.withOpacity(.7), size: 12.sp),
-                  SizedBox(width: 5.w),
-                  Text(
-                    "Tap to reveal",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.7),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scaleXY(begin: 1, end: 1.05, duration: 1200.ms),
-        ],
-      ),
-    );
-  }
-
-  Widget _cardBack(WordItem word) {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(minHeight: 280.h, maxHeight: 340.h),
-      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.yellow.withOpacity(.30),
-            AppColors.orange.withOpacity(.15),
-          ],
-        ),
-        border:
-            Border.all(color: AppColors.yellow.withOpacity(.50), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.yellow.withOpacity(.35),
-            blurRadius: 30,
-            spreadRadius: 2,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8.r),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.yellow.withOpacity(.40),
-                  AppColors.yellow.withOpacity(.05),
-                ],
-              ),
-            ),
-            child: Icon(
-              Icons.lightbulb_rounded,
-              color: AppColors.yellow,
-              size: 22.sp,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          Text(
-            "The translation is",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.7),
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-              letterSpacing: .5,
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                word.translation,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 26.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: .2,
-                  height: 1.2,
-                ),
-              ),
-            ),
-          ),
-          if (word.exampleSentence != null) ...[
-            SizedBox(height: 14.h),
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(.30),
-                borderRadius: BorderRadius.circular(14.r),
-                border: Border.all(color: Colors.white.withOpacity(.15)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.format_quote_rounded,
-                          color: AppColors.yellow, size: 12.sp),
-                      SizedBox(width: 4.w),
-                      Text(
-                        "Example",
-                        style: GoogleFonts.poppins(
-                          color: AppColors.yellow,
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    word.exampleSentence!,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.9),
-                      fontSize: 10.5.sp,
-                      fontStyle: FontStyle.italic,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PracticeResultsDialog extends StatefulWidget {
-  final int correct;
-  final int total;
-  final VoidCallback onClose;
-
-  const _PracticeResultsDialog({
-    required this.correct,
-    required this.total,
-    required this.onClose,
-  });
-
-  @override
-  State<_PracticeResultsDialog> createState() => _PracticeResultsDialogState();
-}
-
-class _PracticeResultsDialogState extends State<_PracticeResultsDialog>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: 1500.ms,
-    )..forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final percent =
-        widget.total == 0 ? 0 : (widget.correct * 100 ~/ widget.total);
-    final xp = widget.correct * 10;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28.r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            padding: EdgeInsets.all(24.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.dark.withOpacity(.92),
-                  AppColors.primary.withOpacity(.60),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(28.r),
-              border: Border.all(color: Colors.white.withOpacity(.20)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 120.w,
-                  height: 120.w,
-                  child: AnimatedBuilder(
-                    animation: _controller,
-                    builder: (context, _) {
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: Size(120.w, 120.w),
-                            painter: _CircularPercentPainter(
-                              percent: percent / 100,
-                              animationValue: _controller.value,
-                            ),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "$percent%",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 24.sp,
-                                ),
-                              ),
-                              Text(
-                                "Score",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.7),
-                                  fontSize: 10.sp,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(height: 20.h),
-                Text(
-                  _getMessage(percent),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20.sp,
-                    letterSpacing: .2,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                Text(
-                  "${widget.correct} of ${widget.total} correct answers",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 13.sp,
-                  ),
-                ),
-                SizedBox(height: 20.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _resultStat(
-                        icon: Icons.star_rounded,
-                        value: "+$xp",
-                        label: "XP Earned",
-                        color: AppColors.yellow,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: _resultStat(
-                        icon: Icons.local_fire_department_rounded,
-                        value: "${widget.correct}",
-                        label: "Streak +",
-                        color: AppColors.orange,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: _resultStat(
-                        icon: Icons.check_circle_rounded,
-                        value: "${widget.total - widget.correct}",
-                        label: "To Review",
-                        color: AppColors.sky,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: widget.onClose,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.10),
-                            borderRadius: BorderRadius.circular(14.r),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(.15)),
-                          ),
-                          child: Text(
-                            "Done",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13.sp,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getMessage(int percent) {
-    if (percent == 100) return "🏆 Perfect!";
-    if (percent >= 80) return "🌟 Excellent!";
-    if (percent >= 60) return "👏 Great Job!";
-    if (percent >= 40) return "💪 Keep Going!";
-    return "📚 Keep Practicing!";
-  }
-
-  Widget _resultStat({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(.20),
-            color.withOpacity(.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withOpacity(.30)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16.sp),
-          SizedBox(height: 4.h),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.6),
-              fontSize: 8.5.sp,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -2903,32 +1381,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),

@@ -12,7 +12,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
 enum ProgressPeriod { daily, weekly, monthly }
 
 class _ChartData {
@@ -31,7 +30,6 @@ class _ChartData {
   double get total => values.fold(0, (a, b) => a + b);
   double get average => values.isEmpty ? 0 : total / values.length;
 }
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -163,9 +161,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // _buildPreferencesCard(),
                         // SizedBox(height: 26.h),
                         _buildPreferencesCard(),
-                         SizedBox(height: 14.h),          // ← مسافة صغيرة
-                         _buildLevelExceptionsCard(),     // ← الزر الجديد
-                          SizedBox(height: 26.h),
+                        SizedBox(height: 14.h), // ← مسافة صغيرة
+                        _buildLevelExceptionsCard(), // ← الزر الجديد
+                        SizedBox(height: 26.h),
                         _buildSectionHeader(
                           title: "Activity",
                           icon: Icons.insights_rounded,
@@ -281,8 +279,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   "My Profile",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 17.sp,
@@ -531,8 +527,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Flexible(
                 child: Text(
                   _name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
@@ -579,8 +573,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Text(
             _email,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.55),
@@ -767,7 +759,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fit: BoxFit.scaleDown,
             child: Text(
               stat.value,
-              maxLines: 1,
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -778,8 +769,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 1.h),
           Text(
             stat.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.55),
@@ -960,8 +949,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     SizedBox(height: 2.h),
                     Text(
                       value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 13.sp,
@@ -1108,8 +1095,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     SizedBox(height: 2.h),
                     Text(
                       subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white.withOpacity(.55),
                         fontSize: 10.sp,
@@ -1250,80 +1235,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLevelExceptionsCard() {
-  return GestureDetector(
-    onTap: () {
-      HapticFeedback.selectionClick();
-      Navigator.pushNamed(context, levelExceptionsRoute);
-    },
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.10),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.12)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44.w,
-            height: 44.w,
+    return GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.pushNamed(context, levelExceptionsRoute);
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(22.r),
               gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
-                  AppColors.yellow.withOpacity(.25),
-                  AppColors.orange.withOpacity(.15),
+                  Colors.white.withOpacity(.10),
+                  Colors.white.withOpacity(.04),
                 ],
               ),
-              border: Border.all(color: AppColors.yellow.withOpacity(.35)),
+              border: Border.all(color: Colors.white.withOpacity(.12)),
             ),
-            child: Icon(
-              Icons.assignment_turned_in_rounded,
-              color: AppColors.yellow,
-              size: 20.sp,
-            ),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'Exception Request ',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  width: 44.w,
+                  height: 44.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12.r),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.yellow.withOpacity(.25),
+                        AppColors.orange.withOpacity(.15),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: AppColors.yellow.withOpacity(.35),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.assignment_turned_in_rounded,
+                    color: AppColors.yellow,
+                    size: 20.sp,
                   ),
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  'Display requests by status',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.55),
-                    fontSize: 10.5.sp,
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Exception Request ',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 13.5.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Display requests by status',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(.55),
+                          fontSize: 10.5.sp,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withOpacity(.5),
+                  size: 20.sp,
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: Colors.white.withOpacity(.5),
-            size: 20.sp,
-          ),
-        ],
-      ),
-    ),
-  ).animate().fadeIn(delay: 180.ms, duration: 500.ms).moveY(begin: 12, end: 0);
-}
+        )
+        .animate()
+        .fadeIn(delay: 180.ms, duration: 500.ms)
+        .moveY(begin: 12, end: 0);
+  }
 
   Widget _buildProgressCard(_ChartData data) {
     return Container(
@@ -1418,7 +1408,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              maxLines: 1,
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -1428,8 +1417,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.60),
@@ -1487,7 +1474,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   t.$2,
                   textAlign: TextAlign.center,
-                  maxLines: 1,
                   style: GoogleFonts.poppins(
                     color: selected
                         ? Colors.black
@@ -2302,6 +2288,7 @@ class _GradientRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _GradientRingPainter oldDelegate) =>
       oldDelegate.progress != progress || oldDelegate.colors != colors;
 }
+
 class _BottomSheetShell extends StatelessWidget {
   final String title;
   final Widget child;
@@ -2420,7 +2407,6 @@ class _BarChart extends StatelessWidget {
                             child: Text(
                               value.toStringAsFixed(0),
                               textAlign: TextAlign.center,
-                              maxLines: 1,
                               style: GoogleFonts.poppins(
                                 color: isPeak
                                     ? AppColors.yellow
@@ -2505,8 +2491,6 @@ class _BarChart extends StatelessWidget {
               child: Text(
                 data.labels[i],
                 textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   color: isPeak
                       ? AppColors.yellow

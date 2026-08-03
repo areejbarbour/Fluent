@@ -1,4 +1,3 @@
-
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -48,80 +47,87 @@ class _LevelExceptionDetailsScreenState
                   child: _buildTopBar(),
                 ),
                 Expanded(
-                  child: BlocBuilder<LevelExceptionDetailsCubit,
-                      LevelExceptionDetailsState>(
-                    builder: (context, state) {
-                      if (state is LevelExceptionDetailsLoading) {
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 36.w,
-                                height: 36.w,
-                                child: const CircularProgressIndicator(
-                                  color: AppColors.yellow,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
-                              SizedBox(height: 14.h),
-                              Text(
-                                'Loading...',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white54,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (state is LevelExceptionDetailsFailure) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32.w),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(16.r),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.redAccent.withOpacity(.12),
-                                    border: Border.all(
-                                      color: Colors.redAccent.withOpacity(.25),
+                  child:
+                      BlocBuilder<
+                        LevelExceptionDetailsCubit,
+                        LevelExceptionDetailsState
+                      >(
+                        builder: (context, state) {
+                          if (state is LevelExceptionDetailsLoading) {
+                            return Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 36.w,
+                                    height: 36.w,
+                                    child: const CircularProgressIndicator(
+                                      color: AppColors.yellow,
+                                      strokeWidth: 2.5,
                                     ),
                                   ),
-                                  child: Icon(
-                                    Icons.error_outline_rounded,
-                                    color: Colors.redAccent,
-                                    size: 32.sp,
+                                  SizedBox(height: 14.h),
+                                  Text(
+                                    'Loading...',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white54,
+                                      fontSize: 12.sp,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 16.h),
-                                Text(
-                                  state.message,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white70,
-                                    fontSize: 13.sp,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
+                                ],
+                              ),
+                            );
+                          }
 
-                      if (state is LevelExceptionDetailsSuccess) {
-                        return _DetailsBody(details: state.details);
-                      }
+                          if (state is LevelExceptionDetailsFailure) {
+                            return Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(32.w),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(16.r),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.redAccent.withOpacity(
+                                          .12,
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.redAccent.withOpacity(
+                                            .25,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.error_outline_rounded,
+                                        color: Colors.redAccent,
+                                        size: 32.sp,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Text(
+                                      state.message,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white70,
+                                        fontSize: 13.sp,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
 
-                      return const SizedBox.shrink();
-                    },
-                  ),
+                          if (state is LevelExceptionDetailsSuccess) {
+                            return _DetailsBody(details: state.details);
+                          }
+
+                          return const SizedBox.shrink();
+                        },
+                      ),
                 ),
               ],
             ),
@@ -222,8 +228,6 @@ class _LevelExceptionDetailsScreenState
               children: [
                 Text(
                   'Request Details',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 17.sp,
@@ -246,15 +250,24 @@ class _LevelExceptionDetailsScreenState
             ),
           ),
         ),
-        _circleIconButton(
-          icon: Icons.edit_rounded,
-          iconColor: AppColors.yellow,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            final state = context.read<LevelExceptionDetailsCubit>().state;
-            if (state is LevelExceptionDetailsSuccess) {
-              _showEditSheet(context, state.details);
+        Builder(
+          builder: (context) {
+            final state = context.watch<LevelExceptionDetailsCubit>().state;
+            final canEdit =
+                state is LevelExceptionDetailsSuccess &&
+                state.details.isPending;
+            if (!canEdit) {
+              // Keep layout balanced when edit is hidden
+              return SizedBox(width: 44.w);
             }
+            return _circleIconButton(
+              icon: Icons.edit_rounded,
+              iconColor: AppColors.yellow,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _showEditSheet(context, state.details);
+              },
+            );
           },
         ),
       ],
@@ -305,15 +318,14 @@ class _LevelExceptionDetailsScreenState
       backgroundColor: Colors.transparent,
       builder: (_) {
         return BlocProvider(
-          create: (ctx) => LevelExceptionUpdateCubit(
-            ctx.read<LevelExceptionRepository>(),
-          ),
+          create: (ctx) =>
+              LevelExceptionUpdateCubit(ctx.read<LevelExceptionRepository>()),
           child: _EditExceptionSheet(
             details: details,
             onSuccess: (_) {
-              context
-                  .read<LevelExceptionDetailsCubit>()
-                  .fetchDetails(widget.exceptionId);
+              context.read<LevelExceptionDetailsCubit>().fetchDetails(
+                widget.exceptionId,
+              );
             },
           ),
         );
@@ -329,30 +341,37 @@ class _DetailsBody extends StatelessWidget {
   final LevelExceptionModel details;
   const _DetailsBody({required this.details});
 
+  /// Colors / icons aligned with teacher StatusUI + Status Board.
   Color get statusColor {
     switch (details.status?.toLowerCase()) {
+      case 'in_review':
+        return AppColors.sky;
       case 'approved':
-        return const Color(0xFF69F0AE);
+        return const Color(0xFF69F0AE); // greenAccent
       case 'rejected':
         return Colors.redAccent;
-      default:
-        return AppColors.yellow;
+      default: // pending → StatusUI lightOrange
+        return AppColors.lightOrange;
     }
   }
 
   IconData get statusIcon {
     switch (details.status?.toLowerCase()) {
+      case 'in_review':
+        return Icons.rate_review_outlined;
       case 'approved':
-        return Icons.check_circle_rounded;
+        return Icons.verified_outlined;
       case 'rejected':
-        return Icons.cancel_rounded;
-      default:
+        return Icons.cancel_outlined;
+      default: // pending
         return Icons.hourglass_top_rounded;
     }
   }
 
   String get statusLabel {
     switch (details.status?.toLowerCase()) {
+      case 'in_review':
+        return 'In Review';
       case 'approved':
         return 'Approved';
       case 'rejected':
@@ -372,96 +391,92 @@ class _DetailsBody extends StatelessWidget {
         children: [
           // ── Status Hero ──
           Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    statusColor.withOpacity(.20),
-                    statusColor.withOpacity(.08),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(30.r),
-                border: Border.all(color: statusColor.withOpacity(.40)),
-                boxShadow: [
-                  BoxShadow(
-                    color: statusColor.withOpacity(.20),
-                    blurRadius: 16,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 10.h,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(statusIcon, color: statusColor, size: 16.sp),
-                  SizedBox(width: 8.w),
-                  Text(
-                    statusLabel,
-                    style: GoogleFonts.poppins(
-                      color: statusColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        statusColor.withOpacity(.20),
+                        statusColor.withOpacity(.08),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(30.r),
+                    border: Border.all(color: statusColor.withOpacity(.40)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(.20),
+                        blurRadius: 16,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ).animate().fadeIn(duration: 450.ms).scale(
-                begin: const Offset(0.9, 0.9),
-                end: const Offset(1, 1),
-              ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, color: statusColor, size: 16.sp),
+                      SizedBox(width: 8.w),
+                      Text(
+                        statusLabel,
+                        style: GoogleFonts.poppins(
+                          color: statusColor,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 450.ms)
+              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
 
           SizedBox(height: 24.h),
 
-          // ── Request Info ──
-          _sectionCard(
-            icon: Icons.info_outline_rounded,
-            iconColor: AppColors.sky,
-            title: 'Request Info',
-            children: [
-              _infoTile(
-                icon: Icons.tag_rounded,
-                label: 'Request ID',
-                value: '#${details.id}',
-              ),
-              if (details.requestedLevel?.name != null) ...[
-                _tileDivider(),
-                _infoTile(
-                  icon: Icons.school_rounded,
-                  label: 'Target Level',
-                  value: details.requestedLevel!.name!,
-                ),
-              ],
-            ],
-          ).animate().fadeIn(delay: 80.ms, duration: 450.ms).moveY(
-                begin: 12,
-                end: 0,
-              ),
-
-          SizedBox(height: 14.h),
+          // ── Request Info (only when level name is available)
+          if (details.requestedLevelName != null) ...[
+            _sectionCard(
+                  icon: Icons.info_outline_rounded,
+                  iconColor: AppColors.sky,
+                  title: 'Request Info',
+                  children: [
+                    _infoTile(
+                      icon: Icons.school_rounded,
+                      label: 'Requested Level',
+                      value: details.requestedLevelName!,
+                    ),
+                  ],
+                )
+                .animate()
+                .fadeIn(delay: 80.ms, duration: 450.ms)
+                .moveY(begin: 12, end: 0),
+            SizedBox(height: 14.h),
+          ],
 
           // ── Reason ──
           if (details.reason != null && details.reason!.isNotEmpty)
             _sectionCard(
-              icon: Icons.chat_bubble_outline_rounded,
-              iconColor: AppColors.yellow,
-              title: 'Reason',
-              children: [
-                Text(
-                  details.reason!,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.90),
-                    fontSize: 13.sp,
-                    height: 1.6,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-            ).animate().fadeIn(delay: 140.ms, duration: 450.ms).moveY(
-                  begin: 12,
-                  end: 0,
-                ),
+                  icon: Icons.chat_bubble_outline_rounded,
+                  iconColor: AppColors.yellow,
+                  title: 'Reason',
+                  children: [
+                    Text(
+                      details.reason!,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.90),
+                        fontSize: 13.sp,
+                        height: 1.6,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                )
+                .animate()
+                .fadeIn(delay: 140.ms, duration: 450.ms)
+                .moveY(begin: 12, end: 0),
 
           if (details.reason != null && details.reason!.isNotEmpty)
             SizedBox(height: 14.h),
@@ -469,23 +484,23 @@ class _DetailsBody extends StatelessWidget {
           // ── Admin Note ──
           if (details.reviewNote != null && details.reviewNote!.isNotEmpty)
             _sectionCard(
-              icon: Icons.admin_panel_settings_rounded,
-              iconColor: const Color(0xffB388FF),
-              title: 'Admin Note',
-              children: [
-                Text(
-                  details.reviewNote!,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.80),
-                    fontSize: 13.sp,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ).animate().fadeIn(delay: 200.ms, duration: 450.ms).moveY(
-                  begin: 12,
-                  end: 0,
-                ),
+                  icon: Icons.admin_panel_settings_rounded,
+                  iconColor: const Color(0xffB388FF),
+                  title: 'Admin Note',
+                  children: [
+                    Text(
+                      details.reviewNote!,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.80),
+                        fontSize: 13.sp,
+                        height: 1.6,
+                      ),
+                    ),
+                  ],
+                )
+                .animate()
+                .fadeIn(delay: 200.ms, duration: 450.ms)
+                .moveY(begin: 12, end: 0),
 
           if (details.reviewNote != null && details.reviewNote!.isNotEmpty)
             SizedBox(height: 14.h),
@@ -493,71 +508,206 @@ class _DetailsBody extends StatelessWidget {
           // ── Attachments ──
           if (details.attachments.isNotEmpty)
             _sectionCard(
-              icon: Icons.attach_file_rounded,
-              iconColor: AppColors.orange,
-              title: 'Attachments (${details.attachments.length})',
-              children: details.attachments.asMap().entries.map((entry) {
-                final i = entry.key;
-                final url = entry.value;
-                final fileName = url.split('/').last;
-                final isPdf = fileName.toLowerCase().endsWith('.pdf');
+                  icon: Icons.attach_file_rounded,
+                  iconColor: AppColors.orange,
+                  title: 'Attachments (${details.attachments.length})',
+                  children: details.attachments.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final attachment = entry.value;
+                    final fileName = attachment.fileName;
+                    final isPdf = attachment.isPdf;
+                    final canDelete =
+                        details.canManageAttachments && attachment.canDelete;
 
-                return Container(
-                  margin: EdgeInsets.only(
-                    bottom: i == details.attachments.length - 1 ? 0 : 10.h,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 12.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.05),
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: Colors.white.withOpacity(.10)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(
-                          color: AppColors.sky.withOpacity(.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: Icon(
-                          isPdf
-                              ? Icons.picture_as_pdf_rounded
-                              : Icons.image_rounded,
-                          color: AppColors.sky,
-                          size: 18.sp,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 12.5.sp,
-                            fontWeight: FontWeight.w500,
+                    return BlocBuilder<
+                      LevelExceptionDetailsCubit,
+                      LevelExceptionDetailsState
+                    >(
+                      buildWhen: (prev, curr) {
+                        final prevId = prev is LevelExceptionDetailsSuccess
+                            ? prev.deletingMediaId
+                            : null;
+                        final currId = curr is LevelExceptionDetailsSuccess
+                            ? curr.deletingMediaId
+                            : null;
+                        return prevId != currId;
+                      },
+                      builder: (context, state) {
+                        final deletingId = state is LevelExceptionDetailsSuccess
+                            ? state.deletingMediaId
+                            : null;
+                        final isDeletingThis = deletingId == attachment.id;
+
+                        return Container(
+                          margin: EdgeInsets.only(
+                            bottom: i == details.attachments.length - 1
+                                ? 0
+                                : 10.h,
                           ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.white.withOpacity(.35),
-                        size: 18.sp,
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ).animate().fadeIn(delay: 260.ms, duration: 450.ms).moveY(
-                  begin: 12,
-                  end: 0,
-                ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 12.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.05),
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.10),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  color: AppColors.sky.withOpacity(.15),
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                                child: Icon(
+                                  isPdf
+                                      ? Icons.picture_as_pdf_rounded
+                                      : Icons.image_rounded,
+                                  color: AppColors.sky,
+                                  size: 18.sp,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Text(
+                                  fileName,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (canDelete)
+                                GestureDetector(
+                                  onTap: isDeletingThis
+                                      ? null
+                                      : () => _confirmDeleteAttachment(
+                                          context,
+                                          details.id,
+                                          attachment,
+                                        ),
+                                  child: Container(
+                                    width: 34.w,
+                                    height: 34.w,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withOpacity(.12),
+                                      borderRadius: BorderRadius.circular(10.r),
+                                      border: Border.all(
+                                        color: Colors.redAccent.withOpacity(
+                                          .28,
+                                        ),
+                                      ),
+                                    ),
+                                    child: isDeletingThis
+                                        ? SizedBox(
+                                            width: 16.w,
+                                            height: 16.w,
+                                            child:
+                                                const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.redAccent,
+                                                ),
+                                          )
+                                        : Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: Colors.redAccent,
+                                            size: 17.sp,
+                                          ),
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white.withOpacity(.35),
+                                  size: 18.sp,
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                )
+                .animate()
+                .fadeIn(delay: 260.ms, duration: 450.ms)
+                .moveY(begin: 12, end: 0),
         ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAttachment(
+    BuildContext context,
+    int exceptionId,
+    LevelExceptionAttachment attachment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text(
+          'Remove attachment?',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 16.sp,
+          ),
+        ),
+        content: Text(
+          '“${attachment.fileName}” will be permanently removed from this request.',
+          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Remove',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    HapticFeedback.mediumImpact();
+    final error = await context
+        .read<LevelExceptionDetailsCubit>()
+        .deleteAttachment(exceptionId: exceptionId, mediaId: attachment.id);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ?? 'Attachment deleted successfully.',
+          style: GoogleFonts.poppins(fontSize: 13.sp),
+        ),
+        backgroundColor: error == null ? AppColors.sky : Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.r),
+        ),
       ),
     );
   }
@@ -686,10 +836,7 @@ class _EditExceptionSheet extends StatefulWidget {
   final LevelExceptionModel details;
   final Function(LevelExceptionModel?) onSuccess;
 
-  const _EditExceptionSheet({
-    required this.details,
-    required this.onSuccess,
-  });
+  const _EditExceptionSheet({required this.details, required this.onSuccess});
 
   @override
   State<_EditExceptionSheet> createState() => _EditExceptionSheetState();
@@ -697,8 +844,11 @@ class _EditExceptionSheet extends StatefulWidget {
 
 class _EditExceptionSheetState extends State<_EditExceptionSheet> {
   late TextEditingController _reasonCtrl;
-  late List<String> _existingAttachments;
+  late List<LevelExceptionAttachment> _existingAttachments;
   final List<String> _newFilePaths = [];
+
+  /// Inline form error (shown inside the sheet — no need to go back).
+  String? _formError;
 
   @override
   void initState() {
@@ -753,21 +903,11 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
   Future<void> _submit() async {
     final reason = _reasonCtrl.text.trim();
     if (reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please enter a reason for your request',
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-        ),
-      );
+      setState(() => _formError = 'Please enter a reason for your request');
       return;
     }
+
+    setState(() => _formError = null);
 
     List<MultipartFile>? attachments;
 
@@ -783,10 +923,53 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
     if (!mounted) return;
 
     context.read<LevelExceptionUpdateCubit>().update(
-          id: widget.details.id,
-          reason: reason,
-          attachments: attachments,
-        );
+      id: widget.details.id,
+      reason: reason,
+      attachments: attachments,
+    );
+  }
+
+  Widget _inlineErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            color: Colors.redAccent,
+            size: 18.sp,
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                color: Colors.red.shade200,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _formError = null),
+            child: Icon(
+              Icons.close_rounded,
+              color: Colors.white38,
+              size: 16.sp,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -810,19 +993,8 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
           );
           widget.onSuccess(state.updated);
         } else if (state is LevelExceptionUpdateFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
-              ),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
-          );
+          // Keep sheet open and show error in-form.
+          setState(() => _formError = state.message);
         }
       },
       child: Padding(
@@ -847,8 +1019,7 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                   ],
                   stops: const [0.0, 0.45, 1.0],
                 ),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(.14)),
                 ),
@@ -886,87 +1057,72 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
 
                     // Header (Icon + Title + ID Tag)
                     Row(
-                      children: [
-                        Container(
-                          width: 50.w,
-                          height: 50.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15.r),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.sky.withOpacity(.30),
-                                AppColors.primary.withOpacity(.20),
-                              ],
+                          children: [
+                            Container(
+                              width: 50.w,
+                              height: 50.w,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15.r),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.sky.withOpacity(.30),
+                                    AppColors.primary.withOpacity(.20),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: AppColors.sky.withOpacity(.45),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.sky.withOpacity(.30),
+                                    blurRadius: 14,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.edit_rounded,
+                                color: AppColors.sky,
+                                size: 23.sp,
+                              ),
                             ),
-                            border: Border.all(
-                              color: AppColors.sky.withOpacity(.45),
+                            SizedBox(width: 14.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Edit Request',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16.sp,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  if (widget.details.requestedLevelName !=
+                                      null) ...[
+                                    SizedBox(height: 3.h),
+                                    Text(
+                                      widget.details.requestedLevelName!,
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.yellow.withOpacity(
+                                          .85,
+                                        ),
+                                        fontSize: 11.5.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.sky.withOpacity(.30),
-                                blurRadius: 14,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.edit_rounded,
-                            color: AppColors.sky,
-                            size: 23.sp,
-                          ),
-                        ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Edit Request',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16.sp,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              SizedBox(height: 3.h),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w,
-                                  vertical: 3.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.orange.withOpacity(.25),
-                                      AppColors.yellow.withOpacity(.15),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color: AppColors.yellow.withOpacity(.35),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Request ID #${widget.details.id}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: AppColors.yellow,
-                                    fontSize: 11.5.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ).animate().fadeIn(duration: 400.ms).moveY(
-                          begin: 8,
-                          end: 0,
-                        ),
+                          ],
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .moveY(begin: 8, end: 0),
 
                     SizedBox(height: 12.h),
 
@@ -981,10 +1137,17 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
 
                     SizedBox(height: 20.h),
 
+                    if (_formError != null) _inlineErrorBanner(_formError!),
+
                     // Reason field
                     TextField(
                       controller: _reasonCtrl,
                       maxLines: 4,
+                      onChanged: (_) {
+                        if (_formError != null) {
+                          setState(() => _formError = null);
+                        }
+                      },
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 13.5.sp,
@@ -1073,8 +1236,8 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                       SizedBox(height: 10.h),
                       ..._existingAttachments.asMap().entries.map((entry) {
                         final index = entry.key;
-                        final url = entry.value;
-                        final name = url.split('/').last;
+                        final attachment = entry.value;
+                        final name = attachment.fileName;
                         final isPdf = name.toLowerCase().endsWith('.pdf');
 
                         return Container(
@@ -1117,8 +1280,6 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                               Expanded(
                                 child: Text(
                                   name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 12.sp,
@@ -1127,8 +1288,39 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () {
+                                onTap: () async {
                                   HapticFeedback.selectionClick();
+                                  final item = _existingAttachments[index];
+                                  // If we have a real media id and request is pending,
+                                  // delete on the server immediately.
+                                  if (item.canDelete &&
+                                      widget.details.canManageAttachments) {
+                                    final repo = context
+                                        .read<LevelExceptionRepository>();
+                                    final result = await repo.deleteAttachment(
+                                      exceptionId: widget.details.id,
+                                      mediaId: item.id,
+                                    );
+                                    if (!mounted) return;
+                                    if (result['success'] != true) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            result['message']?.toString() ??
+                                                'Failed to delete attachment',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13.sp,
+                                            ),
+                                          ),
+                                          backgroundColor: Colors.redAccent,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                  }
                                   setState(() {
                                     _existingAttachments.removeAt(index);
                                   });
@@ -1148,10 +1340,7 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                               ),
                             ],
                           ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 300.ms)
-                            .moveX(begin: 10, end: 0);
+                        ).animate().fadeIn(duration: 300.ms).moveX(begin: 10, end: 0);
                       }),
                       SizedBox(height: 14.h),
                     ],
@@ -1278,77 +1467,79 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                         final isPdf = name.toLowerCase().endsWith('.pdf');
 
                         return Container(
-                          margin: EdgeInsets.only(bottom: 8.h),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 11.h,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.yellow.withOpacity(.12),
-                                AppColors.orange.withOpacity(.06),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                              color: AppColors.yellow.withOpacity(.28),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(6.r),
-                                decoration: BoxDecoration(
-                                  color: AppColors.yellow.withOpacity(.18),
-                                  borderRadius: BorderRadius.circular(8.r),
+                              margin: EdgeInsets.only(bottom: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 11.h,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.yellow.withOpacity(.12),
+                                    AppColors.orange.withOpacity(.06),
+                                  ],
                                 ),
-                                child: Icon(
-                                  isPdf
-                                      ? Icons.picture_as_pdf_rounded
-                                      : Icons.image_rounded,
-                                  color: AppColors.yellow,
-                                  size: 16.sp,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: AppColors.yellow.withOpacity(.28),
                                 ),
                               ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(6.r),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.yellow.withOpacity(.18),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                    child: Icon(
+                                      isPdf
+                                          ? Icons.picture_as_pdf_rounded
+                                          : Icons.image_rounded,
+                                      color: AppColors.yellow,
+                                      size: 16.sp,
+                                    ),
                                   ),
-                                ),
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() {
+                                        _newFilePaths.removeAt(index);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(5.r),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withOpacity(
+                                          .12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.redAccent,
+                                        size: 15.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  setState(() {
-                                    _newFilePaths.removeAt(index);
-                                  });
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.all(5.r),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(.12),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    color: Colors.redAccent,
-                                    size: 15.sp,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
+                            )
                             .animate()
                             .fadeIn(duration: 300.ms)
                             .moveX(begin: 10, end: 0);
@@ -1358,76 +1549,82 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                     SizedBox(height: 24.h),
 
                     // Save changes button
-                    BlocBuilder<LevelExceptionUpdateCubit,
-                        LevelExceptionUpdateState>(
-                      builder: (context, state) {
-                        final isLoading =
-                            state is LevelExceptionUpdateLoading;
+                    BlocBuilder<
+                          LevelExceptionUpdateCubit,
+                          LevelExceptionUpdateState
+                        >(
+                          builder: (context, state) {
+                            final isLoading =
+                                state is LevelExceptionUpdateLoading;
 
-                        return GestureDetector(
-                          onTap: isLoading
-                              ? null
-                              : () {
-                                  HapticFeedback.mediumImpact();
-                                  _submit();
-                                },
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isLoading
-                                    ? [
-                                        AppColors.orange.withOpacity(.45),
-                                        AppColors.yellow.withOpacity(.45),
-                                      ]
-                                    : [AppColors.orange, AppColors.yellow],
-                              ),
-                              borderRadius: BorderRadius.circular(16.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.yellow
-                                      .withOpacity(isLoading ? .15 : .40),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: isLoading
-                                  ? SizedBox(
-                                      width: 22.sp,
-                                      height: 22.sp,
-                                      child: const CircularProgressIndicator(
-                                        color: Colors.black,
-                                        strokeWidth: 2.4,
+                            return GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () {
+                                      HapticFeedback.mediumImpact();
+                                      _submit();
+                                    },
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: isLoading
+                                        ? [
+                                            AppColors.orange.withOpacity(.45),
+                                            AppColors.yellow.withOpacity(.45),
+                                          ]
+                                        : [AppColors.orange, AppColors.yellow],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.yellow.withOpacity(
+                                        isLoading ? .15 : .40,
                                       ),
-                                    )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.save_rounded,
-                                          color: Colors.black,
-                                          size: 17.sp,
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Text(
-                                          'Save Changes',
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14.sp,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                      ],
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
                                     ),
-                            ),
-                          ),
-                        );
-                      },
-                    ).animate().fadeIn(delay: 220.ms, duration: 400.ms),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: isLoading
+                                      ? SizedBox(
+                                          width: 22.sp,
+                                          height: 22.sp,
+                                          child:
+                                              const CircularProgressIndicator(
+                                                color: Colors.black,
+                                                strokeWidth: 2.4,
+                                              ),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.save_rounded,
+                                              color: Colors.black,
+                                              size: 17.sp,
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Text(
+                                              'Save Changes',
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14.sp,
+                                                letterSpacing: 0.3,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                        .animate()
+                        .fadeIn(delay: 220.ms, duration: 400.ms),
                   ],
                 ),
               ),
@@ -1460,32 +1657,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),

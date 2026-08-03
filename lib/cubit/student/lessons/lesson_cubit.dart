@@ -5,7 +5,7 @@ import 'package:fluent/cubit/student/lessons/lesson_state.dart';
 class StudentLessonsCubit extends Cubit<StudentLessonsState> {
   final StudentLessonRepository studentLessonRepository;
   StudentLessonsCubit(this.studentLessonRepository)
-      : super(StudentLessonsInitial());
+    : super(StudentLessonsInitial());
 
   Future<void> fetchStudentLessons(int courseId) async {
     emit(StudentLessonsLoading());
@@ -18,7 +18,9 @@ class StudentLessonsCubit extends Cubit<StudentLessonsState> {
       emit(StudentLessonsSuccess(result['data']));
     } else {
       print("❌ [StudentLessonsCubit] Failed: ${result['message']}");
-      emit(StudentLessonsFailure(result['message'] ?? 'فشل تحميل الدروس'));
+      emit(
+        StudentLessonsFailure(result['message'] ?? 'Failed to load lessons'),
+      );
     }
   }
 }

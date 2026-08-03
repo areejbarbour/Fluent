@@ -8,7 +8,7 @@ class LevelExceptionUpdateCubit extends Cubit<LevelExceptionUpdateState> {
   final LevelExceptionRepository repository;
 
   LevelExceptionUpdateCubit(this.repository)
-      : super(LevelExceptionUpdateInitial());
+    : super(LevelExceptionUpdateInitial());
 
   Future<void> update({
     required int id,
@@ -26,14 +26,19 @@ class LevelExceptionUpdateCubit extends Cubit<LevelExceptionUpdateState> {
 
     if (result['success'] == true) {
       print("🎉 [LevelExceptionUpdateCubit] Updated successfully");
-      emit(LevelExceptionUpdateSuccess(
-        updated: result['data'],
-        message: result['message'] ?? 'تم التحديث بنجاح',
-      ));
+      emit(
+        LevelExceptionUpdateSuccess(
+          updated: result['data'],
+          message: result['message'] ?? 'Updated successfully',
+        ),
+      );
     } else {
       print("❌ [LevelExceptionUpdateCubit] Failed: ${result['message']}");
-      emit(LevelExceptionUpdateFailure(
-          result['message'] ?? 'فشل تحديث الطلب'));
+      emit(
+        LevelExceptionUpdateFailure(
+          result['message'] ?? 'Failed to update request',
+        ),
+      );
     }
   }
 

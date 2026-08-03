@@ -108,9 +108,9 @@ class TestRepository {
     }
   }
 
-  Future<Map<String, dynamic>> createTest(FormData formData) async {
+  Future<Map<String, dynamic>> createTest(Map<String, dynamic> payload) async {
     try {
-      final response = await testService.createTest(formData);
+      final response = await testService.createTest(payload);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
@@ -131,9 +131,12 @@ class TestRepository {
     }
   }
 
-  Future<Map<String, dynamic>> updateTest(int testId, FormData formData) async {
+  Future<Map<String, dynamic>> updateTest(
+    int testId,
+    Map<String, dynamic> payload,
+  ) async {
     try {
-      final response = await testService.updateTest(testId, formData);
+      final response = await testService.updateTest(testId, payload);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;

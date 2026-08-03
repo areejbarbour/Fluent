@@ -1,5 +1,3 @@
-
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'words_bank_state.dart';
@@ -18,17 +16,21 @@ class WordsBankCubit extends Cubit<WordsBankState> {
 
     if (learningResult['success'] == true) {
       print("🎉 [WordsBankCubit] Words loaded");
-      emit(WordsBankSuccess(
-        learningWords: learningResult['data'] ?? [],
-        knownWords: knowResult['success'] == true
-            ? (knowResult['data'] ?? [])
-            : [],
-      ));
+      emit(
+        WordsBankSuccess(
+          learningWords: learningResult['data'] ?? [],
+          knownWords: knowResult['success'] == true
+              ? (knowResult['data'] ?? [])
+              : [],
+        ),
+      );
     } else {
       print("❌ [WordsBankCubit] Failed: ${learningResult['message']}");
-      emit(WordsBankFailure(
-        learningResult['message'] ?? 'فشل تحميل بنك الكلمات',
-      ));
+      emit(
+        WordsBankFailure(
+          learningResult['message'] ?? 'Failed to load word bank',
+        ),
+      );
     }
   }
 }

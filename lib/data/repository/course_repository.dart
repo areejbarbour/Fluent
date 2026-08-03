@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/helper/api_error_helper.dart';
 import '../models/course_model.dart';
 import 'package:fluent/data/services/course_service.dart';
 
@@ -17,28 +18,18 @@ class CourseRepository {
         if (data is Map<String, dynamic>) {
           return {'success': true, 'data': StudentCoursesModel.fromJson(data)};
         }
-        return {'success': false, 'message': 'صيغة استجابة غير متوقعة'};
+        return {'success': false, 'message': 'Unexpected response format'};
       } else {
         final errorData = response.data;
-        return {
-          'success': false,
-          'message': errorData is Map
-              ? errorData['message'] ?? 'فشل في جلب الكورسات'
-              : 'فشل في جلب الكورسات',
-        };
+        return ApiErrorHelper.failure(errorData, 'Failed to load courses');
       }
     } on DioException catch (e) {
       print("❌ GetStudentCourses DioException: ${e.response?.data}");
       final errorData = e.response?.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'حدث خطأ ما'
-            : e.message ?? 'حدث خطأ ما',
-      };
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetStudentCourses Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 }

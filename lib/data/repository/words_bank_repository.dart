@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/helper/api_error_helper.dart';
 import 'package:fluent/data/models/words_bank_model.dart';
 import 'package:fluent/data/services/words_bank_service.dart';
 
@@ -19,44 +20,31 @@ class WordsBankRepository {
         if (data is Map && data['data'] is List) {
           list = (data['data'] as List)
               .whereType<Map>()
-              .map((e) => WordsBankItem.fromJson(
-                    Map<String, dynamic>.from(e),
-                  ))
+              .map((e) => WordsBankItem.fromJson(Map<String, dynamic>.from(e)))
               .toList();
         } else if (data is List) {
           list = data
               .whereType<Map>()
-              .map((e) => WordsBankItem.fromJson(
-                    Map<String, dynamic>.from(e),
-                  ))
+              .map((e) => WordsBankItem.fromJson(Map<String, dynamic>.from(e)))
               .toList();
         }
 
         return {'success': true, 'data': list};
       } else {
         final errorData = response.data;
-        return {
-          'success': false,
-          'message': errorData is Map
-              ? errorData['message'] ?? 'فشل في جلب الكلمات'
-              : 'فشل في جلب الكلمات',
-        };
+        return ApiErrorHelper.failure(errorData, 'Failed to load words');
       }
     } on DioException catch (e) {
       print("❌ GetLearningWords DioException: ${e.response?.data}");
       final errorData = e.response?.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'حدث خطأ ما'
-            : e.message ?? 'حدث خطأ ما',
-      };
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetLearningWords Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
-Future<Map<String, dynamic>> getKnowWords() async {
+
+  Future<Map<String, dynamic>> getKnowWords() async {
     try {
       final response = await service.getKnowWords();
       print("✅ GetKnowWords Status: ${response.statusCode}");
@@ -69,22 +57,15 @@ Future<Map<String, dynamic>> getKnowWords() async {
       final errorData = response.data;
       return {
         'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'فشل في جلب الكلمات'
-            : 'فشل في جلب الكلمات',
+        'message': ApiErrorHelper.extract(errorData, 'Failed to load words'),
       };
     } on DioException catch (e) {
       print("❌ GetKnowWords DioException: ${e.response?.data}");
       final errorData = e.response?.data;
-      return {
-        'success': false,
-        'message': errorData is Map
-            ? errorData['message'] ?? 'حدث خطأ ما'
-            : e.message ?? 'حدث خطأ ما',
-      };
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetKnowWords Unexpected error: $e");
-      return {'success': false, 'message': 'حدث خطأ غير متوقع'};
+      return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
 

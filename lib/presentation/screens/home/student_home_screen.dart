@@ -1,4 +1,3 @@
-
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -32,7 +31,7 @@ class LevelPathData {
   final IconData icon;
   final double? price;
   final int? order;
-  final List<Color>? colors; 
+  final List<Color>? colors;
 
   const LevelPathData({
     this.id,
@@ -51,7 +50,7 @@ class StudentHomeScreen extends StatefulWidget {
   final int xp;
   final int streakDays;
   final int level;
-  final double levelProgress; 
+  final double levelProgress;
 
   const StudentHomeScreen({
     super.key,
@@ -130,11 +129,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     final available = [...data.availableLevels]
       ..sort((a, b) => a.order.compareTo(b.order));
     for (int i = 0; i < available.length; i++) {
-      list.add(_toPathData(
-        available[i],
-        LevelStatus.available,
-        colors: _availableColorsFor(i),
-      ));
+      list.add(
+        _toPathData(
+          available[i],
+          LevelStatus.available,
+          colors: _availableColorsFor(i),
+        ),
+      );
     }
 
     final locked = [...data.lockedLevels]
@@ -197,9 +198,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     vertical: 10.h,
                   ),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: constraints.maxWidth,
-                    ),
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -266,8 +265,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       radius: 20.r,
       child: Column(
         children: [
-          Icon(Icons.wifi_off_rounded,
-              color: Colors.white.withOpacity(.7), size: 28.sp),
+          Icon(
+            Icons.wifi_off_rounded,
+            color: Colors.white.withOpacity(.7),
+            size: 28.sp,
+          ),
           SizedBox(height: 8.h),
           Text(
             message,
@@ -413,7 +415,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
-    Widget _buildHeroGreetingCard() {
+  Widget _buildHeroGreetingCard() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(26.r),
       child: BackdropFilter(
@@ -449,30 +451,29 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     alignment: Alignment.center,
                     children: [
                       Container(
-                        width: 60.w,
-                        height: 60.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const SweepGradient(
-                            colors: [
-                              AppColors.yellow,
-                              AppColors.orange,
-                              AppColors.sky,
-                              AppColors.yellow,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.yellow.withOpacity(.45),
-                              blurRadius: 18,
-                              spreadRadius: 1,
+                            width: 60.w,
+                            height: 60.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const SweepGradient(
+                                colors: [
+                                  AppColors.yellow,
+                                  AppColors.orange,
+                                  AppColors.sky,
+                                  AppColors.yellow,
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.yellow.withOpacity(.45),
+                                  blurRadius: 18,
+                                  spreadRadius: 1,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ).animate(onPlay: (c) => c.repeat()).rotate(
-                            duration: 8.seconds,
-                            curve: Curves.linear,
-                          ),
+                          )
+                          .animate(onPlay: (c) => c.repeat())
+                          .rotate(duration: 8.seconds, curve: Curves.linear),
                       Container(
                         width: 50.w,
                         height: 50.w,
@@ -489,24 +490,29 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       ),
                       Positioned(
                         top: -10.h,
-                        child: Icon(
-                          Icons.workspace_premium_rounded,
-                          color: AppColors.yellow,
-                          size: 18.sp,
-                          shadows: [
-                            Shadow(color: AppColors.orange, blurRadius: 10),
-                            Shadow(
-                                color: AppColors.yellow.withOpacity(.6),
-                                blurRadius: 18),
-                          ],
-                        )
-                            .animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(
-                              begin: const Offset(1, 1),
-                              end: const Offset(1.12, 1.12),
-                              duration: 1600.ms,
-                              curve: Curves.easeInOut,
-                            ),
+                        child:
+                            Icon(
+                                  Icons.workspace_premium_rounded,
+                                  color: AppColors.yellow,
+                                  size: 18.sp,
+                                  shadows: [
+                                    Shadow(
+                                      color: AppColors.orange,
+                                      blurRadius: 10,
+                                    ),
+                                    Shadow(
+                                      color: AppColors.yellow.withOpacity(.6),
+                                      blurRadius: 18,
+                                    ),
+                                  ],
+                                )
+                                .animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.12, 1.12),
+                                  duration: 1600.ms,
+                                  curve: Curves.easeInOut,
+                                ),
                       ),
                     ],
                   ),
@@ -522,7 +528,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                             Flexible(
                               child: Text(
                                 "Good evening,",
-                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white.withOpacity(.75),
                                   fontSize: 13.sp,
@@ -537,8 +542,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           ).createShader(bounds),
                           child: Text(
                             widget.userName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 21.sp,
@@ -693,10 +696,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 ],
               ),
               boxShadow: [
-                BoxShadow(
-                  color: iconColor.withOpacity(.4),
-                  blurRadius: 8,
-                ),
+                BoxShadow(color: iconColor.withOpacity(.4), blurRadius: 8),
               ],
             ),
             child: Icon(icon, color: iconColor, size: 15.sp),
@@ -716,7 +716,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     curve: Curves.easeOutCubic,
                     builder: (context, v, _) => Text(
                       "${_formatNumber(v)}$suffix",
-                      maxLines: 1,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -727,8 +726,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 ),
                 Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white.withOpacity(.6),
                     fontSize: 9.sp,
@@ -768,8 +765,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 ),
               ],
             ),
-            child: Icon(Icons.military_tech_rounded,
-                color: Colors.white, size: 15.sp),
+            child: Icon(
+              Icons.military_tech_rounded,
+              color: Colors.white,
+              size: 15.sp,
+            ),
           ),
           SizedBox(width: 7.w),
           Flexible(
@@ -779,8 +779,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               children: [
                 Text(
                   "Lvl ${widget.level}",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -811,26 +809,29 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment(
-                                widget.levelProgress.clamp(0.0, 1.0) - 0.5, 0),
-                            child: Container(
-                              width: 8.w,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.white.withOpacity(.6),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            )
-                                .animate(onPlay: (c) => c.repeat())
-                                .moveX(
-                                  begin: -30,
-                                  end: 30,
-                                  duration: 1800.ms,
-                                  curve: Curves.easeInOut,
-                                ),
+                              widget.levelProgress.clamp(0.0, 1.0) - 0.5,
+                              0,
+                            ),
+                            child:
+                                Container(
+                                      width: 8.w,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.white.withOpacity(.6),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .animate(onPlay: (c) => c.repeat())
+                                    .moveX(
+                                      begin: -30,
+                                      end: 30,
+                                      duration: 1800.ms,
+                                      curve: Curves.easeInOut,
+                                    ),
                           ),
                         ),
                       ],
@@ -847,13 +848,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   Widget _buildDailyChallengeAndLeaders() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 6, child: _dailyChallengeCard()),
-        SizedBox(width: 10.w),
-        Expanded(flex: 5, child: _topLearnersCard()),
-      ],
-    ).animate().fadeIn(delay: 250.ms, duration: 500.ms).moveY(begin: 10, end: 0);
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 6, child: _dailyChallengeCard()),
+            SizedBox(width: 10.w),
+            Expanded(flex: 5, child: _topLearnersCard()),
+          ],
+        )
+        .animate()
+        .fadeIn(delay: 250.ms, duration: 500.ms)
+        .moveY(begin: 10, end: 0);
   }
 
   Widget _dailyChallengeRingIcon() {
@@ -884,8 +888,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               ),
             ),
           ),
-          Icon(Icons.local_fire_department_rounded,
-              color: AppColors.orange, size: 14.sp),
+          Icon(
+            Icons.local_fire_department_rounded,
+            color: AppColors.orange,
+            size: 14.sp,
+          ),
         ],
       ),
     );
@@ -910,8 +917,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               Flexible(
                 child: Text(
                   "Daily Challenge",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -924,8 +929,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           SizedBox(height: 10.h),
           Text(
             "Complete 10 new words",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.85),
               fontSize: 11.sp,
@@ -962,25 +965,26 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               Positioned.fill(
                 child: Align(
                   alignment: const Alignment(0.2, 0),
-                  child: Container(
-                    width: 12.w,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withOpacity(.7),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  )
-                      .animate(onPlay: (c) => c.repeat())
-                      .moveX(
-                        begin: -20,
-                        end: 30,
-                        duration: 1500.ms,
-                        curve: Curves.easeInOut,
-                      ),
+                  child:
+                      Container(
+                            width: 12.w,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white.withOpacity(.7),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat())
+                          .moveX(
+                            begin: -20,
+                            end: 30,
+                            duration: 1500.ms,
+                            curve: Curves.easeInOut,
+                          ),
                 ),
               ),
             ],
@@ -1010,8 +1014,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           SizedBox(height: 8.h),
           Row(
             children: [
-              Icon(Icons.card_giftcard_rounded,
-                      color: AppColors.yellow, size: 15.sp)
+              Icon(
+                    Icons.card_giftcard_rounded,
+                    color: AppColors.yellow,
+                    size: 15.sp,
+                  )
                   .animate(onPlay: (c) => c.repeat(reverse: true))
                   .scale(
                     begin: const Offset(1, 1),
@@ -1030,13 +1037,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         fontSize: 10.sp,
                       ),
                     ),
-                    Icon(Icons.star_rounded,
-                        color: AppColors.yellow, size: 11.sp),
+                    Icon(
+                      Icons.star_rounded,
+                      color: AppColors.yellow,
+                      size: 11.sp,
+                    ),
                     SizedBox(width: 2.w),
                     Flexible(
                       child: Text(
                         "250 XP",
-                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(
                           color: AppColors.yellow,
                           fontSize: 11.sp,
@@ -1075,14 +1084,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.emoji_events_rounded,
-                  color: AppColors.yellow, size: 15.sp),
+              Icon(
+                Icons.emoji_events_rounded,
+                color: AppColors.yellow,
+                size: 15.sp,
+              ),
               SizedBox(width: 5.w),
               Expanded(
                 child: Text(
                   "Top Learners",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -1109,8 +1119,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             children: [
               _podiumSlot(leaders[1], pedestalHeight: 46.h, avatarSize: 30.w),
               SizedBox(width: 4.w),
-              _podiumSlot(leaders[0],
-                  pedestalHeight: 62.h, avatarSize: 38.w, crown: true),
+              _podiumSlot(
+                leaders[0],
+                pedestalHeight: 62.h,
+                avatarSize: 38.w,
+                crown: true,
+              ),
               SizedBox(width: 4.w),
               _podiumSlot(leaders[2], pedestalHeight: 36.h, avatarSize: 26.w),
             ],
@@ -1133,7 +1147,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           if (crown)
-            Icon(Icons.emoji_events_rounded, color: AppColors.yellow, size: 15.sp)
+            Icon(
+                  Icons.emoji_events_rounded,
+                  color: AppColors.yellow,
+                  size: 15.sp,
+                )
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .scale(
                   begin: const Offset(1, 1),
@@ -1150,7 +1168,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(colors: [color, color.withOpacity(.6)]),
-              border: Border.all(color: Colors.white.withOpacity(.5), width: 1.2),
+              border: Border.all(
+                color: Colors.white.withOpacity(.5),
+                width: 1.2,
+              ),
               boxShadow: [
                 BoxShadow(color: color.withOpacity(.55), blurRadius: 10),
               ],
@@ -1169,8 +1190,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           SizedBox(height: 6.h),
           Text(
             name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white,
@@ -1180,8 +1199,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           ),
           Text(
             "$xp XP",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(.6),
@@ -1217,8 +1234,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Widget _buildJourneyOverview() {
-    final completed =
-        _levels.where((l) => l.status == LevelStatus.completed).length;
+    final completed = _levels
+        .where((l) => l.status == LevelStatus.completed)
+        .length;
     final total = _levels.isNotEmpty ? _levels.length : 1;
 
     Color dotColor(LevelStatus status) {
@@ -1270,7 +1288,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     color: color,
                     boxShadow: isLocked
                         ? []
-                        : [BoxShadow(color: color.withOpacity(.7), blurRadius: 5)],
+                        : [
+                            BoxShadow(
+                              color: color.withOpacity(.7),
+                              blurRadius: 5,
+                            ),
+                          ],
                   ),
                 ),
               );
@@ -1350,39 +1373,53 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           return Expanded(
                             child: GestureDetector(
                               onTap: () async {
-                               HapticFeedback.selectionClick();
-                               setState(() => _selectedNavIndex = i);
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedNavIndex = i);
 
                                 if (i == 0) return;
 
-                                  Future<void>? navigationFuture;
-                                  switch (i) {
-                                   case 1: // WORD BANK
-                                  navigationFuture = Navigator.pushNamed(context, wordBankRoute);
+                                Future<void>? navigationFuture;
+                                switch (i) {
+                                  case 1: // WORD BANK
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      wordBankRoute,
+                                    );
                                     break;
-                                   case 2: // PODCASTS
-                                   navigationFuture = Navigator.pushNamed(context, podcastsRoute);
-                                     break;
-                                    case 3: // AI CONVERSATION
-                                   navigationFuture = Navigator.pushNamed(context, aiConversationRoute);
-                                     break;
-                                    case 4: // PROFILE
-                                   navigationFuture = Navigator.pushNamed(context, profileRoute);
-                                        break;
-                                       }
+                                  case 2: // PODCASTS
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      podcastsRoute,
+                                    );
+                                    break;
+                                  case 3: // AI CONVERSATION
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      aiConversationRoute,
+                                    );
+                                    break;
+                                  case 4: // PROFILE
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      profileRoute,
+                                    );
+                                    break;
+                                }
 
-                                    await navigationFuture;
-                                     if (mounted) {
-                                     setState(() => _selectedNavIndex = 0);
-                                      }
-                                       },
-                                       
+                                await navigationFuture;
+                                if (mounted) {
+                                  setState(() => _selectedNavIndex = 0);
+                                }
+                              },
+
                               behavior: HitTestBehavior.opaque,
                               child: AnimatedContainer(
                                 duration: 250.ms,
                                 curve: Curves.easeOut,
                                 padding: EdgeInsets.symmetric(
-                                    vertical: 10.h, horizontal: 2.w),
+                                  vertical: 10.h,
+                                  horizontal: 2.w,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1424,8 +1461,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                               icon,
                                               color: selected
                                                   ? AppColors.yellow
-                                                  : Colors.white
-                                                      .withOpacity(.75),
+                                                  : Colors.white.withOpacity(
+                                                      .75,
+                                                    ),
                                               size: 22.sp,
                                               shadows: selected
                                                   ? [
@@ -1450,7 +1488,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                                 gradient: const LinearGradient(
                                                   colors: [
                                                     AppColors.yellow,
-                                                    AppColors.orange
+                                                    AppColors.orange,
                                                   ],
                                                 ),
                                                 boxShadow: [
@@ -1487,7 +1525,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                         ),
                                         child: Text(
                                           label,
-                                          maxLines: 1,
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
@@ -1502,23 +1539,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       Positioned(
                         right: 10,
                         top: 8,
-                        child: Icon(
-                          Icons.auto_awesome_rounded,
-                          color: AppColors.sky.withOpacity(.55),
-                          size: 9.sp,
-                        )
-                            .animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(
-                              begin: const Offset(1, 1),
-                              end: const Offset(1.6, 1.6),
-                              duration: 1500.ms,
-                              curve: Curves.easeInOut,
-                            )
-                            .fade(
-                              begin: .3,
-                              end: .8,
-                              duration: 1500.ms,
-                            ),
+                        child:
+                            Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: AppColors.sky.withOpacity(.55),
+                                  size: 9.sp,
+                                )
+                                .animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.6, 1.6),
+                                  duration: 1500.ms,
+                                  curve: Curves.easeInOut,
+                                )
+                                .fade(begin: .3, end: .8, duration: 1500.ms),
                       ),
                     ],
                   ),
@@ -1549,14 +1583,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: gradientColors ??
+              colors:
+                  gradientColors ??
                   [
                     Colors.white.withOpacity(.10),
                     Colors.white.withOpacity(.04),
                   ],
             ),
             border: Border.all(
-                color: borderColor ?? Colors.white.withOpacity(.15)),
+              color: borderColor ?? Colors.white.withOpacity(.15),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(.15),
@@ -1604,36 +1640,33 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(
-                  begin: maxOpacity,
-                  end: 0,
-                  duration: duration.ms,
-                ),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),
@@ -1685,34 +1718,35 @@ class _PathTransition extends StatelessWidget {
             ];
             return Align(
               alignment: positions[i],
-              child: Container(
-                width: (2 + (i % 2) * 1.5).w,
-                height: (2 + (i % 2) * 1.5).w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i.isEven ? AppColors.yellow : Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          (i.isEven ? AppColors.yellow : Colors.white)
-                              .withOpacity(.7),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .fade(
-                    begin: 0,
-                    end: 1,
-                    duration: (1200 + i * 200).ms,
-                    delay: (i * 180).ms,
-                  )
-                  .scale(
-                    begin: const Offset(0.4, 0.4),
-                    end: const Offset(1.3, 1.3),
-                  ),
+              child:
+                  Container(
+                        width: (2 + (i % 2) * 1.5).w,
+                        height: (2 + (i % 2) * 1.5).w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i.isEven ? AppColors.yellow : Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  (i.isEven ? AppColors.yellow : Colors.white)
+                                      .withOpacity(.7),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      )
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .fade(
+                        begin: 0,
+                        end: 1,
+                        duration: (1200 + i * 200).ms,
+                        delay: (i * 180).ms,
+                      )
+                      .scale(
+                        begin: const Offset(0.4, 0.4),
+                        end: const Offset(1.3, 1.3),
+                      ),
             );
           }),
         ],
@@ -1799,10 +1833,7 @@ class _AnimatedBorderPainter extends CustomPainter {
   final double animationValue; // 0..1 — بيدور 360° كل دورة
   final double radius;
 
-  _AnimatedBorderPainter({
-    required this.animationValue,
-    required this.radius,
-  });
+  _AnimatedBorderPainter({required this.animationValue, required this.radius});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2039,15 +2070,12 @@ class _PathPainter extends CustomPainter {
       final segmentPath = Path()..moveTo(p0.dx, p0.dy);
       final cp1 = Offset(p0.dx, (p0.dy + p1.dy) / 2);
       final cp2 = Offset(p1.dx, (p0.dy + p1.dy) / 2);
-      segmentPath.cubicTo(
-        cp1.dx, cp1.dy,
-        cp2.dx, cp2.dy,
-        p1.dx, p1.dy,
-      );
+      segmentPath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p1.dx, p1.dy);
 
       final bounds = Rect.fromPoints(p0, p1).inflate(40);
 
-      final isLocked = levels[i].status == LevelStatus.locked ||
+      final isLocked =
+          levels[i].status == LevelStatus.locked ||
           levels[i + 1].status == LevelStatus.locked;
 
       if (isLocked) {
@@ -2064,11 +2092,7 @@ class _PathPainter extends CustomPainter {
     Rect bounds, {
     required int segmentIndex,
   }) {
-    final gradientColors = [
-      AppColors.orange,
-      AppColors.yellow,
-      AppColors.sky,
-    ];
+    final gradientColors = [AppColors.orange, AppColors.yellow, AppColors.sky];
 
     canvas.drawPath(
       path,
@@ -2193,7 +2217,9 @@ class _LevelRow extends StatelessWidget {
 
     final maxLeft = containerWidth - cardWidth - edgePadding;
     final clampedLeft = desiredLeft.clamp(
-        edgePadding, maxLeft < edgePadding ? edgePadding : maxLeft);
+      edgePadding,
+      maxLeft < edgePadding ? edgePadding : maxLeft,
+    );
 
     return SizedBox(
       height: 165.h,
@@ -2244,42 +2270,39 @@ class _CurrentRibbon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.orange, AppColors.yellow],
-        ),
-        borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.yellow.withOpacity(.7),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.flag_rounded, color: Colors.black, size: 11.sp),
-          SizedBox(width: 3.w),
-          Text(
-            "Current",
-            style: GoogleFonts.poppins(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-              fontSize: 9.5.sp,
-              letterSpacing: .5,
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.orange, AppColors.yellow],
             ),
+            borderRadius: BorderRadius.circular(14.r),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.yellow.withOpacity(.7),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-        ],
-      ),
-    )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .shimmer(
-          duration: 1800.ms,
-          color: Colors.white.withOpacity(.6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.flag_rounded, color: Colors.black, size: 11.sp),
+              SizedBox(width: 3.w),
+              Text(
+                "Current",
+                style: GoogleFonts.poppins(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5.sp,
+                  letterSpacing: .5,
+                ),
+              ),
+            ],
+          ),
         )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .shimmer(duration: 1800.ms, color: Colors.white.withOpacity(.6))
         .scale(
           begin: const Offset(1, 1),
           end: const Offset(1.05, 1.05),
@@ -2309,64 +2332,63 @@ class _LevelNode extends StatelessWidget {
   });
 
   void _handleTap(BuildContext context) {
-  final isLocked = level.status == LevelStatus.locked;
-  final isAvailable = level.status == LevelStatus.available;
+    final isLocked = level.status == LevelStatus.locked;
+    final isAvailable = level.status == LevelStatus.available;
 
-  if (isLocked) {
-    HapticFeedback.mediumImpact();
-    _showCreateExceptionSheet(context);
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Row(
-    //       children: [
-    //         const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-    //         SizedBox(width: 8.w),
-    //         const Expanded(
-    //           child: Text("Finish the previous level to unlock this one! 💪"),
-    //         ),
-    //       ],
-    //     ),
-    //     backgroundColor: AppColors.primary,
-    //     behavior: SnackBarBehavior.floating,
-    //     shape: RoundedRectangleBorder(
-    //       borderRadius: BorderRadius.circular(12.r),
-    //     ),
-    //     duration: const Duration(seconds: 2),
-    //   ),
-    // );
-    return;
-  }
+    if (isLocked) {
+      HapticFeedback.mediumImpact();
+      _showCreateExceptionSheet(context);
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Row(
+      //       children: [
+      //         const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+      //         SizedBox(width: 8.w),
+      //         const Expanded(
+      //           child: Text("Finish the previous level to unlock this one! 💪"),
+      //         ),
+      //       ],
+      //     ),
+      //     backgroundColor: AppColors.primary,
+      //     behavior: SnackBarBehavior.floating,
+      //     shape: RoundedRectangleBorder(
+      //       borderRadius: BorderRadius.circular(12.r),
+      //     ),
+      //     duration: const Duration(seconds: 2),
+      //   ),
+      // );
+      return;
+    }
 
-  if (isAvailable) {
+    if (isAvailable) {
+      HapticFeedback.lightImpact();
+      _showPurchaseSheet(context);
+      return;
+    }
+
+    if (level.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error: Level ID is missing")),
+      );
+      return;
+    }
+
     HapticFeedback.lightImpact();
-    _showPurchaseSheet(context);   
-    return;
-  }
-
-  if (level.id == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("خطأ: معرف المستوى غير موجود")),
+    Navigator.pushNamed(
+      context,
+      levelCoursesRoute,
+      arguments: {
+        'levelId': level.id,
+        'userName': userName,
+        'xp': xp,
+        'streakDays': streakDays,
+        'level': level.order ?? level.id ?? 1,
+        'levelProgress': levelProgress,
+        'levelTitle': level.title,
+        'levelSubtitle': level.subtitle,
+      },
     );
-    return;
   }
-
-  HapticFeedback.lightImpact();
-  Navigator.pushNamed(
-    context,
-    levelCoursesRoute,
-    arguments: {
-      'levelId': level.id,                    
-      'userName': userName,
-      'xp': xp,
-      'streakDays': streakDays,
-      'level': level.order ?? level.id ?? 1,  
-      'levelProgress': levelProgress,
-      'levelTitle': level.title,
-      'levelSubtitle': level.subtitle,
-    },
-  );
-}
-
 
   void _showPurchaseSheet(BuildContext context) {
     final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
@@ -2382,8 +2404,7 @@ class _LevelNode extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dark.withOpacity(.9),
               border: Border.all(color: Colors.white.withOpacity(.15)),
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(24.r)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2400,8 +2421,11 @@ class _LevelNode extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Icon(Icons.lock_open_rounded,
-                        color: sheetColors.first, size: 20.sp),
+                    Icon(
+                      Icons.lock_open_rounded,
+                      color: sheetColors.first,
+                      size: 20.sp,
+                    ),
                     SizedBox(width: 8.w),
                     Expanded(
                       child: Text(
@@ -2470,14 +2494,16 @@ class _LevelNode extends StatelessWidget {
     final isCompleted = level.status == LevelStatus.completed;
     final isAvailable = level.status == LevelStatus.available;
 
-    final double size =
-        (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(58.0, 92.0);
+    final double size = (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(
+      58.0,
+      92.0,
+    );
 
     List<Color> gradientColors;
     if (isLocked) {
       gradientColors = [
         Colors.white.withOpacity(.12),
-        Colors.white.withOpacity(.04)
+        Colors.white.withOpacity(.04),
       ];
     } else if (isBoss) {
       gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
@@ -2493,73 +2519,77 @@ class _LevelNode extends StatelessWidget {
 
     Widget aura = const SizedBox.shrink();
     if (isCurrent) {
-      aura = Container(
-        width: size + 30.w,
-        height: size + 30.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              AppColors.yellow.withOpacity(.5),
-              AppColors.yellow.withOpacity(0),
-            ],
-          ),
-        ),
-      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.15, 1.15),
-            duration: 1400.ms,
-            curve: Curves.easeInOut,
-          );
+      aura =
+          Container(
+                width: size + 30.w,
+                height: size + 30.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.yellow.withOpacity(.5),
+                      AppColors.yellow.withOpacity(0),
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.15, 1.15),
+                duration: 1400.ms,
+                curve: Curves.easeInOut,
+              );
     }
 
     Widget rotatingRing = const SizedBox.shrink();
     if (isCurrent) {
-      rotatingRing = Container(
-        width: size + 18.w,
-        height: size + 18.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.yellow.withOpacity(.4),
-            width: 1.5,
-          ),
-          gradient: const SweepGradient(
-            colors: [
-              AppColors.yellow,
-              Colors.transparent,
-              AppColors.orange,
-              Colors.transparent,
-              AppColors.yellow,
-            ],
-            stops: [0.0, 0.3, 0.5, 0.8, 1.0],
-          ),
-        ),
-      ).animate(onPlay: (c) => c.repeat()).rotate(
-            duration: 6.seconds,
-            curve: Curves.linear,
-          );
+      rotatingRing =
+          Container(
+                width: size + 18.w,
+                height: size + 18.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.yellow.withOpacity(.4),
+                    width: 1.5,
+                  ),
+                  gradient: const SweepGradient(
+                    colors: [
+                      AppColors.yellow,
+                      Colors.transparent,
+                      AppColors.orange,
+                      Colors.transparent,
+                      AppColors.yellow,
+                    ],
+                    stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .rotate(duration: 6.seconds, curve: Curves.linear);
     }
 
     Widget bossCrown = const SizedBox.shrink();
     if (isBoss) {
       bossCrown = Positioned(
         top: -8.h,
-        child: Icon(
-          Icons.workspace_premium_rounded,
-          color: const Color(0xFFFFD35B),
-          size: 18.sp,
-          shadows: const [
-            Shadow(color: Color(0xffB861F5), blurRadius: 12),
-            Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
-          ],
-        )
-            .animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(
-              begin: const Offset(1, 1),
-              end: const Offset(1.15, 1.15),
-              duration: 1400.ms,
-            ),
+        child:
+            Icon(
+                  Icons.workspace_premium_rounded,
+                  color: const Color(0xFFFFD35B),
+                  size: 18.sp,
+                  shadows: const [
+                    Shadow(color: Color(0xffB861F5), blurRadius: 12),
+                    Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+                  ],
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 1400.ms,
+                ),
       );
     }
 
@@ -2593,9 +2623,11 @@ class _LevelNode extends StatelessWidget {
         child: Center(
           child: isLocked
               ? Icon(Icons.lock_rounded, color: Colors.white54, size: 28.sp)
-              : Icon(level.icon,
+              : Icon(
+                  level.icon,
                   color: Colors.white,
-                  size: isBoss ? 34.sp : (isCurrent ? 32.sp : 28.sp)),
+                  size: isBoss ? 34.sp : (isCurrent ? 32.sp : 28.sp),
+                ),
         ),
       ),
     );
@@ -2623,7 +2655,11 @@ class _LevelNode extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(Icons.check_rounded, size: 12.sp, color: Colors.white),
+              child: Icon(
+                Icons.check_rounded,
+                size: 12.sp,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -2655,8 +2691,11 @@ class _LevelNode extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_open_rounded,
-                      size: 9.sp, color: Colors.white),
+                  Icon(
+                    Icons.lock_open_rounded,
+                    size: 9.sp,
+                    color: Colors.white,
+                  ),
                   SizedBox(width: 2.w),
                   Text(
                     "\$${level.price!.toStringAsFixed(0)}",
@@ -2686,81 +2725,81 @@ class _LevelNode extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => _handleTap(context),
-      child: SizedBox(
-        width: size + 30.w,
-        height: size + 30.w,
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            aura,
-            rotatingRing,
-            if (isBoss) bossCrown else const SizedBox.shrink(),
-            node,
-          ],
-        ),
-      ),
-    )
+          onTap: () => _handleTap(context),
+          child: SizedBox(
+            width: size + 30.w,
+            height: size + 30.w,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                aura,
+                rotatingRing,
+                if (isBoss) bossCrown else const SizedBox.shrink(),
+                node,
+              ],
+            ),
+          ),
+        )
         .animate()
         .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
         .scale(
-            begin: const Offset(.7, .7),
-            end: const Offset(1, 1),
-            curve: Curves.easeOutBack);
+          begin: const Offset(.7, .7),
+          end: const Offset(1, 1),
+          curve: Curves.easeOutBack,
+        );
   }
 
-//   void _showCreateExceptionSheet(BuildContext context) {
-//   if (level.id == null) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(content: Text('معرف المستوى غير موجود')),
-//     );
-//     return;
-//   }
+  //   void _showCreateExceptionSheet(BuildContext context) {
+  //   if (level.id == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Level ID is missing')),
+  //     );
+  //     return;
+  //   }
 
-//   showModalBottomSheet(
-//     context: context,
-//     isScrollControlled: true,
-//     backgroundColor: Colors.transparent,
-//     builder: (_) {
-//       return BlocProvider(
-//         create: (ctx) => LevelExceptionCreateCubit(
-//           ctx.read<LevelExceptionRepository>(),
-//         ),
-//         child: _CreateExceptionSheet(
-//           levelId: level.id!,
-//           levelTitle: level.title,
-//         ),
-//       );
-//     },
-//   );
-// }
+  //   showModalBottomSheet(
+  //     context: context,
+  //     isScrollControlled: true,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (_) {
+  //       return BlocProvider(
+  //         create: (ctx) => LevelExceptionCreateCubit(
+  //           ctx.read<LevelExceptionRepository>(),
+  //         ),
+  //         child: _CreateExceptionSheet(
+  //           levelId: level.id!,
+  //           levelTitle: level.title,
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
-void _showCreateExceptionSheet(BuildContext context) {
-  if (level.id == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('معرف المستوى غير موجود')),
+  void _showCreateExceptionSheet(BuildContext context) {
+    if (level.id == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Level ID is missing')));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return BlocProvider(
+          create: (ctx) =>
+              LevelExceptionCreateCubit(ctx.read<LevelExceptionRepository>()),
+          child: CreateLevelExceptionSheet(
+            levelId: level.id!,
+            levelTitle: level.title,
+          ),
+        );
+      },
     );
-    return;
   }
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) {
-      return BlocProvider(
-        create: (ctx) => LevelExceptionCreateCubit(
-          ctx.read<LevelExceptionRepository>(),
-        ),
-        child: CreateLevelExceptionSheet(
-          levelId: level.id!,
-          levelTitle: level.title,
-        ),
-      );
-    },
-  );
-}
 }
 
 class _LevelInfoCard extends StatelessWidget {
@@ -2819,60 +2858,61 @@ class _LevelInfoCard extends StatelessWidget {
     }
 
     return SizedBox(
-      width: width,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20.r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isCurrent
-                    ? [
-                        AppColors.yellow.withOpacity(.22),
-                        AppColors.orange.withOpacity(.12),
-                      ]
-                    : isBoss
+          width: width,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20.r),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isCurrent
+                        ? [
+                            AppColors.yellow.withOpacity(.22),
+                            AppColors.orange.withOpacity(.12),
+                          ]
+                        : isBoss
                         ? [
                             const Color(0xffB861F5).withOpacity(.22),
                             const Color(0xffFF6FB5).withOpacity(.12),
                           ]
                         : isAvailable
-                            ? [
-                                (level.colors?[0] ?? AppColors.sky)
-                                    .withOpacity(.18),
-                                (level.colors?[1] ?? AppColors.primary)
-                                    .withOpacity(.12),
-                              ]
-                            : [
-                                Colors.white.withOpacity(.10),
-                                Colors.white.withOpacity(.04),
-                              ],
-              ),
-              borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(
-                color: isCurrent
-                    ? AppColors.yellow.withOpacity(.6)
-                    : isBoss
+                        ? [
+                            (level.colors?[0] ?? AppColors.sky).withOpacity(
+                              .18,
+                            ),
+                            (level.colors?[1] ?? AppColors.primary).withOpacity(
+                              .12,
+                            ),
+                          ]
+                        : [
+                            Colors.white.withOpacity(.10),
+                            Colors.white.withOpacity(.04),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(
+                    color: isCurrent
+                        ? AppColors.yellow.withOpacity(.6)
+                        : isBoss
                         ? const Color(0xffFF6FB5).withOpacity(.5)
                         : isAvailable
-                            ? (level.colors?.first ?? AppColors.sky)
-                                .withOpacity(.5)
-                            : Colors.white.withOpacity(.15),
-                width: isCurrent || isBoss || isAvailable ? 1.5 : 1,
-              ),
-              boxShadow: isCurrent
-                  ? [
-                      BoxShadow(
-                        color: AppColors.yellow.withOpacity(.4),
-                        blurRadius: 18,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : isBoss
+                        ? (level.colors?.first ?? AppColors.sky).withOpacity(.5)
+                        : Colors.white.withOpacity(.15),
+                    width: isCurrent || isBoss || isAvailable ? 1.5 : 1,
+                  ),
+                  boxShadow: isCurrent
+                      ? [
+                          BoxShadow(
+                            color: AppColors.yellow.withOpacity(.4),
+                            blurRadius: 18,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : isBoss
                       ? [
                           BoxShadow(
                             color: const Color(0xffB861F5).withOpacity(.4),
@@ -2881,148 +2921,144 @@ class _LevelInfoCard extends StatelessWidget {
                           ),
                         ]
                       : isAvailable
-                          ? [
-                              BoxShadow(
-                                color: (level.colors?.first ?? AppColors.sky)
-                                    .withOpacity(.35),
-                                blurRadius: 16,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isBoss)
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-                    ).createShader(bounds),
-                    child: Text(
-                      "🔥 Boss Level",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.sp,
-                        letterSpacing: .3,
-                      ),
-                    ),
-                  )
-                else
-                  Text(
-                    level.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.sp,
-                      letterSpacing: .2,
-                    ),
-                  ),
-                SizedBox(height: 2.h),
-                Text(
-                  level.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.72),
-                    fontSize: 10.5.sp,
-                  ),
+                      ? [
+                          BoxShadow(
+                            color: (level.colors?.first ?? AppColors.sky)
+                                .withOpacity(.35),
+                            blurRadius: 16,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
                 ),
-                SizedBox(height: 8.h),
-                Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(statusIcon, size: 13.sp, color: statusColor),
-                    SizedBox(width: 4.w),
-                    Flexible(
-                      child: Text(
-                        statusText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: statusColor,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w700,
+                    if (isBoss)
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                        ).createShader(bounds),
+                        child: Text(
+                          "🔥 Boss Level",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.sp,
+                            letterSpacing: .3,
+                          ),
                         ),
+                      )
+                    else
+                      Text(
+                        level.title,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.sp,
+                          letterSpacing: .2,
+                        ),
+                      ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      level.subtitle,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.72),
+                        fontSize: 10.5.sp,
                       ),
                     ),
-                  ],
-                ),
-                if (isCurrent) ...[
-                  SizedBox(height: 10.h),
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pushNamed(
-                        context,
-                        levelCoursesRoute,
-                        arguments: {
-                          'userName': userName,
-                          'xp': xp,
-                          'streakDays': streakDays,
-                          'level': level.order ?? 8,
-                          'levelProgress': levelProgress,
-                          'levelTitle': level.title,
-                          'levelSubtitle': level.subtitle,
-                          'levelId': level.id,
-                        },
-                      );
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 14.w, vertical: 7.h),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.orange, AppColors.yellow],
-                        ),
-                        borderRadius: BorderRadius.circular(20.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.yellow.withOpacity(.6),
-                            blurRadius: 14,
-                            spreadRadius: .5,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "Continue",
+                    SizedBox(height: 8.h),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 13.sp, color: statusColor),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            statusText,
                             style: GoogleFonts.poppins(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11.sp,
+                              color: statusColor,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(width: 4.w),
-                          Icon(Icons.play_arrow_rounded,
-                              color: Colors.black, size: 14.sp),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  )
-                      .animate(onPlay: (c) => c.repeat(reverse: true))
-                      .shimmer(
-                        duration: 1800.ms,
-                        color: Colors.white.withOpacity(.7),
-                      ),
-                ],
-              ],
+                    if (isCurrent) ...[
+                      SizedBox(height: 10.h),
+                      GestureDetector(
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.pushNamed(
+                                context,
+                                levelCoursesRoute,
+                                arguments: {
+                                  'userName': userName,
+                                  'xp': xp,
+                                  'streakDays': streakDays,
+                                  'level': level.order ?? 8,
+                                  'levelProgress': levelProgress,
+                                  'levelTitle': level.title,
+                                  'levelSubtitle': level.subtitle,
+                                  'levelId': level.id,
+                                },
+                              );
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 7.h,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppColors.orange, AppColors.yellow],
+                                ),
+                                borderRadius: BorderRadius.circular(20.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.yellow.withOpacity(.6),
+                                    blurRadius: 14,
+                                    spreadRadius: .5,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Continue",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11.sp,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.black,
+                                    size: 14.sp,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .shimmer(
+                            duration: 1800.ms,
+                            color: Colors.white.withOpacity(.7),
+                          ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-    )
+        )
         .animate()
         .fadeIn(delay: 250.ms, duration: 500.ms)
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
   }
 }
-

@@ -5,10 +5,9 @@ class TestService {
   final Dio dio;
   TestService(this.dio);
 
-  // ✅ نستخدم نفس المسار /api/tests ولكن بـ GET method لجلب القائمة
   Future<Response> getTeacherTests() async {
     return await dio.get(
-      '/api/tests',
+      apiTests,
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
@@ -16,32 +15,39 @@ class TestService {
     );
   }
 
-  Future<Response> createTest(FormData formData) async {
+  /// POST /api/tests — JSON body (no files on CreateTestRequest).
+  Future<Response> createTest(Map<String, dynamic> payload) async {
     return await dio.post(
-      '/api/tests', // نفس المسار الموجود في الباك اند
-      data: formData,
+      apiTests,
+      data: payload,
       options: Options(
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         validateStatus: (status) => status != null && status < 500,
       ),
     );
   }
 
-  Future<Response> updateTest(int testId, FormData formData) async {
+  /// POST /api/tests/{test} — JSON body (matches backend update route).
+  Future<Response> updateTest(int testId, Map<String, dynamic> payload) async {
     return await dio.post(
-      '/api/tests/$testId', // ✅ المسار الصحيح حسب الباك إند
-      data: formData,
+      apiTestDetail(testId),
+      data: payload,
       options: Options(
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         validateStatus: (status) => status != null && status < 500,
       ),
     );
   }
 
   Future<Response> getTestById(int testId) async {
-    // ✅ جديد
     return await dio.get(
-      '/api/tests/$testId',
+      apiTestDetail(testId),
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
@@ -49,10 +55,9 @@ class TestService {
     );
   }
 
-  // ✅ جديد: حذف الاختبار
   Future<Response> deleteTest(int testId) async {
     return await dio.delete(
-      '/api/tests/$testId',
+      apiTestDetail(testId),
       options: Options(
         headers: {'Accept': 'application/json'},
         validateStatus: (status) => status != null && status < 500,
@@ -60,7 +65,6 @@ class TestService {
     );
   }
 
-  // Service
   Future<Response> getAllTests() async {
     return await dio.get(
       apiTests,

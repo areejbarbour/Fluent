@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum PlacementQuestionType {
-  vocabulary, 
-  grammar, 
-  reading, 
-}
+enum PlacementQuestionType { vocabulary, grammar, reading }
 
 enum PlacementDifficulty {
   beginner, // A1
@@ -20,7 +16,7 @@ class PlacementQuestion {
   final PlacementQuestionType type;
   final PlacementDifficulty difficulty;
   final String question;
-  final String? passage; 
+  final String? passage;
   final List<String> options;
   final int correctIndex;
   final String explanation;
@@ -77,10 +73,10 @@ const List<PlacementQuestion> kPlacementQuestions = [
     id: 'q1',
     type: PlacementQuestionType.vocabulary,
     difficulty: PlacementDifficulty.beginner,
-    question: 'What is the English word for "كتاب"؟',
+    question: 'What is the English word for "kitab" (book)?',
     options: ['Book', 'Pen', 'Bag', 'Chair'],
     correctIndex: 0,
-    explanation: 'Book = كتاب 📚',
+    explanation: 'Book = kitab 📚',
   ),
   PlacementQuestion(
     id: 'q2',
@@ -94,17 +90,17 @@ const List<PlacementQuestion> kPlacementQuestions = [
       'She be happy.',
     ],
     correctIndex: 1,
-    explanation: 'مع she/he/it نستخدم "is"',
+    explanation: 'With she/he/it we use "is"',
   ),
 
   PlacementQuestion(
     id: 'q3',
     type: PlacementQuestionType.vocabulary,
     difficulty: PlacementDifficulty.elementary,
-    question: 'Which word means "سعيد"؟',
+    question: 'Which word means "happy"?',
     options: ['Angry', 'Tired', 'Happy', 'Hungry'],
     correctIndex: 2,
-    explanation: 'Happy = سعيد 😊',
+    explanation: 'Happy = saeed 😊',
   ),
   PlacementQuestion(
     id: 'q4',
@@ -113,7 +109,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'I ___ to school every day.',
     options: ['go', 'goes', 'going', 'went'],
     correctIndex: 0,
-    explanation: 'مع I/you/we/they نستخدم الفعل في المصدر (go)',
+    explanation: 'With I/you/we/they we use the base form (go)',
   ),
 
   PlacementQuestion(
@@ -123,7 +119,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'If it rains tomorrow, we ___ at home.',
     options: ['stay', 'will stay', 'stayed', 'would stay'],
     correctIndex: 1,
-    explanation: 'في الجمل الشرطية من النوع الأول: If + present, will + verb',
+    explanation: 'First conditional: If + present, will + verb',
   ),
   PlacementQuestion(
     id: 'q6',
@@ -132,7 +128,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'What does "to accomplish" mean?',
     options: ['To fail', 'To achieve', 'To start', 'To forget'],
     correctIndex: 1,
-    explanation: 'To accomplish = تحقيق / إنجاز ✅',
+    explanation: 'To accomplish = to achieve / complete ✅',
   ),
 
   PlacementQuestion(
@@ -144,7 +140,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'What is Sarah\'s current position?',
     options: ['Junior Developer', 'Project Manager', 'Team Lead', 'CEO'],
     correctIndex: 2,
-    explanation: 'النص يقول "she is now the team lead"',
+    explanation: 'The text says "she is now the team lead"',
   ),
   PlacementQuestion(
     id: 'q8',
@@ -154,7 +150,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     options: ['will finish', 'will have finished', 'have finished', 'finished'],
     correctIndex: 1,
     explanation:
-        'Future Perfect: will have + past participle (لحدث يكتمل قبل آخر في المستقبل)',
+        'Future Perfect: will have + past participle (for an action completed before another in the future)',
   ),
 
   PlacementQuestion(
@@ -164,7 +160,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'Choose the closest synonym to "meticulous":',
     options: ['Careless', 'Thorough', 'Quick', 'Lazy'],
     correctIndex: 1,
-    explanation: 'Meticulous = دقيق / متقن (شبيه بـ Thorough)',
+    explanation: 'Meticulous = very careful / thorough',
   ),
   PlacementQuestion(
     id: 'q10',
@@ -173,7 +169,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'I wish I ___ harder when I was younger.',
     options: ['studied', 'had studied', 'would study', 'have studied'],
     correctIndex: 1,
-    explanation: 'I wish + past perfect (للتعبير عن ندم على الماضي)',
+    explanation: 'I wish + past perfect (to express regret about the past)',
   ),
 
   PlacementQuestion(
@@ -185,7 +181,7 @@ const List<PlacementQuestion> kPlacementQuestions = [
     question: 'The word "ostensibly" most nearly means:',
     options: ['Clearly', 'Supposedly', 'Honestly', 'Obviously'],
     correctIndex: 1,
-    explanation: 'Ostensibly = ظاهرياً / على ما يبدو (Supposedly)',
+    explanation: 'Ostensibly = apparently / supposedly',
   ),
   PlacementQuestion(
     id: 'q12',
