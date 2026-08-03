@@ -33,6 +33,9 @@ import 'package:fluent/data/repository/lesson_detail_repository.dart';
 import 'package:fluent/data/services/lesson_detail_service.dart';
 import 'package:fluent/data/services/word_service.dart';
 import 'package:fluent/data/repository/word_repository.dart';
+import 'package:fluent/data/services/level_exception_service.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +74,9 @@ void main() async {
   final lessonDetailService = LessonDetailService(dioInstance);
   final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
+  final levelExceptionService = LevelExceptionService(dioInstance);
+  final levelExceptionRepository = LevelExceptionRepository(levelExceptionService);
+
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
 
@@ -94,6 +100,7 @@ void main() async {
       studentLessonRepository: studentLessonRepository, // 👈 جديد
       lessonDetailRepository: lessonDetailRepository, // ✅ جديد
       wordRepository: wordRepository,
+      levelExceptionRepository: levelExceptionRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -110,8 +117,9 @@ class MyApp extends StatefulWidget {
   final LessonDetailRepository lessonDetailRepository; // ✅ جديد
   final WordRepository wordRepository;
   final String initialRoute;
+  final LevelExceptionRepository levelExceptionRepository;
   late final AppRouter appRouter;
-
+  
   MyApp({
     super.key,
     required this.authRepository,
@@ -124,6 +132,8 @@ class MyApp extends StatefulWidget {
     required this.lessonDetailRepository, // ✅ جديد
     required this.wordRepository,
     required this.initialRoute,
+    required this.levelExceptionRepository
+    
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -172,6 +182,9 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<WordRepository>.value(
               value: widget.wordRepository,
             ),
+            RepositoryProvider<LevelExceptionRepository>.value(
+            value: widget.levelExceptionRepository,
+             ),
           ],
           child: MultiBlocProvider(
             providers: [

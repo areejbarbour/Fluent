@@ -160,8 +160,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         SizedBox(height: 14.h),
                         _buildSecurityCard(),
                         SizedBox(height: 14.h),
+                        // _buildPreferencesCard(),
+                        // SizedBox(height: 26.h),
                         _buildPreferencesCard(),
-                        SizedBox(height: 26.h),
+                         SizedBox(height: 14.h),          // ← مسافة صغيرة
+                         _buildLevelExceptionsCard(),     // ← الزر الجديد
+                          SizedBox(height: 26.h),
                         _buildSectionHeader(
                           title: "Activity",
                           icon: Icons.insights_rounded,
@@ -1244,6 +1248,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .fadeIn(delay: 150.ms, duration: 500.ms)
         .moveY(begin: 12, end: 0);
   }
+
+  Widget _buildLevelExceptionsCard() {
+  return GestureDetector(
+    onTap: () {
+      HapticFeedback.selectionClick();
+      Navigator.pushNamed(context, levelExceptionsRoute);
+    },
+    child: Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(.10),
+            Colors.white.withOpacity(.04),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44.w,
+            height: 44.w,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12.r),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.yellow.withOpacity(.25),
+                  AppColors.orange.withOpacity(.15),
+                ],
+              ),
+              border: Border.all(color: AppColors.yellow.withOpacity(.35)),
+            ),
+            child: Icon(
+              Icons.assignment_turned_in_rounded,
+              color: AppColors.yellow,
+              size: 20.sp,
+            ),
+          ),
+          SizedBox(width: 14.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Exception Request ',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'Display requests by status',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.55),
+                    fontSize: 10.5.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.white.withOpacity(.5),
+            size: 20.sp,
+          ),
+        ],
+      ),
+    ),
+  ).animate().fadeIn(delay: 180.ms, duration: 500.ms).moveY(begin: 12, end: 0);
+}
 
   Widget _buildProgressCard(_ChartData data) {
     return Container(

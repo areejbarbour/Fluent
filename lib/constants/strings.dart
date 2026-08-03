@@ -1,6 +1,6 @@
-//  const String baseUrl = 'http://192.168.1.7:8000';
-const String baseUrl = 'http://192.168.10.224:8000';
-// const String baseUrl = 'http://172.20.10.2:8000';
+  const String baseUrl = 'http://192.168.1.3:8000';
+//const String baseUrl = 'http://192.168.10.224:8000';
+ //const String baseUrl = 'http://172.20.10.2:8000';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -22,6 +22,7 @@ const String profileRoute = '/profile';
 const String wordBankRoute = '/word_bank';
 const String podcastsRoute = '/podcasts';
 const String aiConversationRoute = '/ai-conversation';
+const String levelExceptionsRoute = '/level-exceptions';
 
 // ✅ Teacher Question routes
 const String questionsListRoute = '/teacher/questions';
@@ -64,6 +65,23 @@ const String testFormRoute = '/teacher/tests/form';
 
 const String testDetailViewRoute = '/teacher/tests/detail-view';
 const String lessonStudentDetailRoute = '/lesson-student-detail';
+
+// ✅ Level Exception API
+const String apiLevelExceptionsPending = '/api/levelexceptions/pending';
+const String apiLevelExceptionsRejected = '/api/levelexceptions/rejected';
+const String apiLevelExceptionsApproved = '/api/levelexceptions/approved';
+const String levelExceptionDetailsRoute = '/level-exception-details';
+
+String apiLevelExceptionDetails(int id) => '/api/levelexceptions/$id/details';
+
+// update Exception
+String apiUpdateLevelException(int id) => '/api/levelexceptions/$id/update';
+
+// create Exception
+String apiCreateLevelException(int levelId) => '/api/levelexceptions/$levelId/create';
+
+// delete Exception
+String apiDeleteLevelException(int id) => '/api/levelexceptions/$id/delete';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';

@@ -14,6 +14,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/cubit/student/levels/levels_state.dart';
 import 'package:fluent/data/models/level_model.dart';
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:fluent/cubit/student/levels/level_exception_create_cubit.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/presentation/screens/statics/create_level_exception_sheet.dart';
+import 'package:fluent/cubit/student/levels/level_exception_create_cubit.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
 
 enum LevelStatus { completed, current, locked, boss, available }
 
@@ -2307,25 +2314,26 @@ class _LevelNode extends StatelessWidget {
 
   if (isLocked) {
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8.w),
-            const Expanded(
-              child: Text("Finish the previous level to unlock this one! 💪"),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    _showCreateExceptionSheet(context);
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Row(
+    //       children: [
+    //         const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+    //         SizedBox(width: 8.w),
+    //         const Expanded(
+    //           child: Text("Finish the previous level to unlock this one! 💪"),
+    //         ),
+    //       ],
+    //     ),
+    //     backgroundColor: AppColors.primary,
+    //     behavior: SnackBarBehavior.floating,
+    //     shape: RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.circular(12.r),
+    //     ),
+    //     duration: const Duration(seconds: 2),
+    //   ),
+    // );
     return;
   }
 
@@ -2701,6 +2709,58 @@ class _LevelNode extends StatelessWidget {
             end: const Offset(1, 1),
             curve: Curves.easeOutBack);
   }
+
+//   void _showCreateExceptionSheet(BuildContext context) {
+//   if (level.id == null) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('معرف المستوى غير موجود')),
+//     );
+//     return;
+//   }
+
+//   showModalBottomSheet(
+//     context: context,
+//     isScrollControlled: true,
+//     backgroundColor: Colors.transparent,
+//     builder: (_) {
+//       return BlocProvider(
+//         create: (ctx) => LevelExceptionCreateCubit(
+//           ctx.read<LevelExceptionRepository>(),
+//         ),
+//         child: _CreateExceptionSheet(
+//           levelId: level.id!,
+//           levelTitle: level.title,
+//         ),
+//       );
+//     },
+//   );
+// }
+
+void _showCreateExceptionSheet(BuildContext context) {
+  if (level.id == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('معرف المستوى غير موجود')),
+    );
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return BlocProvider(
+        create: (ctx) => LevelExceptionCreateCubit(
+          ctx.read<LevelExceptionRepository>(),
+        ),
+        child: CreateLevelExceptionSheet(
+          levelId: level.id!,
+          levelTitle: level.title,
+        ),
+      );
+    },
+  );
+}
 }
 
 class _LevelInfoCard extends StatelessWidget {
@@ -2965,3 +3025,4 @@ class _LevelInfoCard extends StatelessWidget {
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
   }
 }
+

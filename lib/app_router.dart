@@ -67,7 +67,13 @@ import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart'
 import 'package:fluent/data/repository/lesson_detail_repository.dart';
 import 'package:fluent/presentation/screens/lessons/lesson_detail_screen.dart'
     as student_lesson_screen;
-
+import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/presentation/screens/statics/level_exception_screen.dart'; 
+import 'package:fluent/cubit/student/levels/level_exception_details_cubit.dart';
+import 'package:fluent/presentation/screens/statics/level_exception_details_screen.dart';
+import 'package:fluent/cubit/student/levels/level_exception_delete_cubit.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -228,6 +234,36 @@ class AppRouter {
             ),
           ),
         );
+
+  case levelExceptionsRoute:
+  return MaterialPageRoute(
+    builder: (_) => MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (ctx) =>
+              LevelExceptionCubit(ctx.read<LevelExceptionRepository>()),
+        ),
+        BlocProvider(
+          create: (ctx) =>
+              LevelExceptionDeleteCubit(ctx.read<LevelExceptionRepository>()),
+        ),
+      ],
+      child: const LevelExceptionsScreen(),
+    ),
+  );
+
+  case levelExceptionDetailsRoute:
+  final args = settings.arguments as Map<String, dynamic>;
+  final int exceptionId = args['id'] as int;
+
+  return MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (ctx) => LevelExceptionDetailsCubit(
+        ctx.read<LevelExceptionRepository>(),
+      )..fetchDetails(exceptionId),
+      child: LevelExceptionDetailsScreen(exceptionId: exceptionId),
+    ),
+  );
 
       case questionsListRoute:
         return MaterialPageRoute(
