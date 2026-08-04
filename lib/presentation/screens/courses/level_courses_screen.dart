@@ -843,7 +843,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 500.ms);
   }
 
-  Widget _buildBottomNav() {
+    Widget _buildBottomNav() {
     final items = [
       (Icons.home_rounded, "HOME", Icons.refresh_rounded),
       (Icons.menu_book_rounded, "WORD BANK", null),
@@ -867,9 +867,11 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  height: 76.h,
+                  height: 72.h, // ↓ كان 76 وعم يعمل overflow
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [
                         AppColors.dark.withOpacity(.55),
                         AppColors.primary.withOpacity(.35),
@@ -880,6 +882,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                       BoxShadow(
                         color: AppColors.sky.withOpacity(.25),
                         blurRadius: 25,
+                        spreadRadius: -3,
                       ),
                       BoxShadow(
                         color: Colors.black.withOpacity(.4),
@@ -888,92 +891,75 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(items.length, (i) {
-                      final selected = i == _selectedNavIndex;
-                      final (icon, label, badge) = items[i];
+                  child: Stack(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: List.generate(items.length, (i) {
+                          final selected = i == _selectedNavIndex;
+                          final (icon, label, badge) = items[i];
 
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedNavIndex = i);
 
-                            // إذا ضغط على HOME → نرجع للصفحة الرئيسية
-                            if (i == 0) {
-                              Navigator.popUntil(
-                                context,
-                                (route) => route.isFirst,
-                              );
-                              return;
-                            }
+                                if (i == 0) return;
 
-                            setState(() => _selectedNavIndex = i);
-
-                            Future<void>? navigationFuture;
-
-                            switch (i) {
-                              case 1: // WORD BANK
-                                navigationFuture = Navigator.pushNamed(
-                                  context,
-                                  wordBankRoute,
-                                );
-                                break;
-                              case 2: // PODCASTS
-                                navigationFuture = Navigator.pushNamed(
-                                  context,
-                                  podcastsRoute,
-                                );
-                                break;
-                              case 3: // AI CONVERSATION
-                                navigationFuture = Navigator.pushNamed(
-                                  context,
-                                  aiConversationRoute,
-                                );
-                                break;
-                              case 4: // PROFILE
-                                navigationFuture = Navigator.pushNamed(
-                                  context,
-                                  profileRoute,
-                                );
-                                break;
-                            }
-
-                            if (navigationFuture != null) {
-                              navigationFuture.then((_) {
-                                if (mounted) {
-                                  setState(
-                                    () => _selectedNavIndex = 0,
-                                  ); // نرجع للـ Home icon
+                                Future<void>? navigationFuture;
+                                switch (i) {
+                                  case 1:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      wordBankRoute,
+                                    );
+                                    break;
+                                  case 2:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      podcastsRoute,
+                                    );
+                                    break;
+                                  case 3:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      aiConversationRoute,
+                                    );
+                                    break;
+                                  case 4:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      profileRoute,
+                                    );
+                                    break;
                                 }
-                              });
-                            }
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: AnimatedContainer(
-                            duration: 250.ms,
-                            padding: EdgeInsets.symmetric(vertical: 10.h),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    AnimatedScale(
-                                      scale: selected ? 1.12 : 1.0,
-                                      duration: 300.ms,
-                                      child: Container(
-                                        padding: EdgeInsets.all(7.r),
+
+                                await navigationFuture;
+                                if (mounted) {
+                                  setState(() => _selectedNavIndex = 0);
+                                }
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 250),
+                                        width: selected ? 42.w : 36.w,
+                                        height: selected ? 42.w : 36.w,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           gradient: selected
                                               ? RadialGradient(
                                                   colors: [
                                                     AppColors.yellow
-                                                        .withOpacity(.35),
-                                                    AppColors.orange
-                                                        .withOpacity(.15),
+                                                        .withOpacity(.25),
+                                                    Colors.transparent,
                                                   ],
                                                 )
                                               : null,
@@ -993,57 +979,95 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                                           color: selected
                                               ? AppColors.yellow
                                               : Colors.white.withOpacity(.75),
-                                          size: 22.sp,
+                                          size: 20.sp, // ↓ صغّرته شوي
+                                          shadows: selected
+                                              ? [
+                                                  Shadow(
+                                                    color: AppColors.yellow
+                                                        .withOpacity(.8),
+                                                    blurRadius: 10,
+                                                  ),
+                                                ]
+                                              : null,
                                         ),
                                       ),
-                                    ),
-                                    if (badge != null)
-                                      Positioned(
-                                        top: -2,
-                                        right: -4,
-                                        child: Container(
-                                          padding: EdgeInsets.all(2.r),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [
-                                                AppColors.yellow,
-                                                AppColors.orange,
+                                      if (badge != null)
+                                        Positioned(
+                                          top: -2,
+                                          right: -4,
+                                          child: Container(
+                                            padding: EdgeInsets.all(2.5.r),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: const LinearGradient(
+                                                colors: [
+                                                  AppColors.yellow,
+                                                  AppColors.orange,
+                                                ],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: AppColors.yellow
+                                                      .withOpacity(.6),
+                                                  blurRadius: 6,
+                                                ),
                                               ],
                                             ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            badge,
-                                            size: 8.sp,
-                                            color: Colors.black,
+                                            child: Icon(
+                                              badge,
+                                              size: 7.sp,
+                                              color: Colors.black,
+                                            ),
                                           ),
                                         ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 3.h),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: 250.ms,
+                                      style: GoogleFonts.poppins(
+                                        color: selected
+                                            ? AppColors.yellow
+                                            : Colors.white.withOpacity(.7),
+                                        fontSize: selected ? 8.5.sp : 8.sp, // ↓ صغّرت الخط
+                                        fontWeight: selected
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                        letterSpacing: .2,
                                       ),
-                                  ],
-                                ),
-                                SizedBox(height: 4.h),
-                                AnimatedDefaultTextStyle(
-                                  duration: 250.ms,
-                                  style: GoogleFonts.poppins(
-                                    color: selected
-                                        ? AppColors.yellow
-                                        : Colors.white.withOpacity(.7),
-                                    fontSize: 9.sp,
-                                    fontWeight: selected
-                                        ? FontWeight.w800
-                                        : FontWeight.w500,
+                                      child: Text(
+                                        label,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                      ),
+                                    ),
                                   ),
-                                  child: Text(
-                                    label,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }),
+                          );
+                        }),
+                      ),
+                      Positioned(
+                        right: 10,
+                        top: 8,
+                        child: Icon(
+                              Icons.auto_awesome_rounded,
+                              color: AppColors.sky.withOpacity(.55),
+                              size: 9.sp,
+                            )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(1, 1),
+                              end: const Offset(1.6, 1.6),
+                              duration: 1500.ms,
+                              curve: Curves.easeInOut,
+                            )
+                            .fade(begin: .3, end: .8, duration: 1500.ms),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -2455,36 +2455,66 @@ class _LessonInfoCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
-                    children: [
+                     children: [
                       if (isQuiz)
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-                          ).createShader(bounds),
-                          child: Text(
-                            "🏆 Final Quiz",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13.sp,
-                              letterSpacing: .3,
-                            ),
-                          ),
-                        )
-                      else
-                        Text(
-                          lesson.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13.sp,
-                            letterSpacing: .2,
-                          ),
-                        ),
+  ShaderMask(
+    shaderCallback: (bounds) => const LinearGradient(
+      colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+    ).createShader(bounds),
+    child: Text(
+      "🏆 Final Quiz",
+      maxLines: 2,
+      overflow: TextOverflow.visible,
+      style: GoogleFonts.poppins(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: 13.sp,
+        letterSpacing: .3,
+      ),
+    ),
+  )
+else
+  Text(
+    lesson.title,
+    maxLines: 2,                    // ← صار ياخد سطرين
+    overflow: TextOverflow.visible, // ← ما عاد يقطع
+    style: GoogleFonts.poppins(
+      color: Colors.white,
+      fontWeight: FontWeight.w800,
+      fontSize: 12.5.sp,            // ← صغّرت شوي عشان ينفع أكتر
+      letterSpacing: .2,
+      height: 1.25,
+    ),
+  ),
+                    //   if (isQuiz)
+                    //     ShaderMask(
+                    //       shaderCallback: (bounds) => const LinearGradient(
+                    //         colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                    //       ).createShader(bounds),
+                    //       child: Text(
+                    //         "🏆 Final Quiz",
+                    //         maxLines: 1,
+                    //         overflow: TextOverflow.ellipsis,
+                    //         style: GoogleFonts.poppins(
+                    //           color: Colors.white,
+                    //           fontWeight: FontWeight.w800,
+                    //           fontSize: 13.sp,
+                    //           letterSpacing: .3,
+                    //         ),
+                    //       ),
+                    //     )
+                    //   else
+                    //     Text(
+                    //       lesson.title,
+                    //       maxLines: 1,
+                    //       overflow: TextOverflow.ellipsis,
+                    //       style: GoogleFonts.poppins(
+                    //         color: Colors.white,
+                    //         fontWeight: FontWeight.w800,
+                    //         fontSize: 13.sp,
+                    //         letterSpacing: .2,
+                    //       ),
+                    //     ),
                       SizedBox(height: 2.h),
                       Text(
                         lesson.subtitle,

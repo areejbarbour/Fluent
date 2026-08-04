@@ -1,10 +1,11 @@
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fluent/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,6 +20,14 @@ import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_state.dart';
 import 'package:fluent/data/models/lesson_word_model.dart';
+
+/// Shared time formatter used by both the inline and fullscreen video players.
+String _formatDuration(Duration d) {
+  final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  final hours = d.inHours;
+  return hours > 0 ? "$hours:$minutes:$seconds" : "$minutes:$seconds";
+}
 
 class LessonDetailScreen extends StatefulWidget {
   final int? lessonId;
@@ -72,210 +81,14 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(.65),
+      barrierColor: Colors.black.withOpacity(.7),
       builder: (dialogContext) {
         // ✅ نمرّر نفس الـ Cubit للـ Dialog
         return BlocProvider.value(
           value: cubit,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.symmetric(
-              horizontal: 20.w,
-              vertical: 40.h,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: Container(
-                  constraints: BoxConstraints(maxHeight: 0.7.sh),
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24.r),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.dark.withOpacity(.96),
-                        AppColors.primary.withOpacity(.88),
-                      ],
-                    ),
-                    border: Border.all(color: Colors.white.withOpacity(.16)),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [AppColors.orange, AppColors.yellow],
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.menu_book_rounded,
-                              color: Colors.black,
-                              size: 18.sp,
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: Text(
-                              'Lesson Words',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15.sp,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(dialogContext),
-                            child: Container(
-                              padding: EdgeInsets.all(6.r),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(.08),
-                              ),
-                              child: Icon(
-                                Icons.close_rounded,
-                                color: Colors.white70,
-                                size: 18.sp,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 14.h),
-                      Divider(color: Colors.white.withOpacity(.1), height: 1),
-                      SizedBox(height: 10.h),
-
-                      // Content
-                      Flexible(
-                        child: BlocConsumer<LessonWordsCubit, LessonWordsState>(
-                          listener: (context, state) {
-                            if (state is LessonWordsActionSuccess) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(state.message),
-                                  backgroundColor: AppColors.sky,
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            } else if (state is LessonWordsFailure) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(state.message),
-                                  backgroundColor: Colors.redAccent,
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
-                          builder: (context, state) {
-                            if (state is LessonWordsLoading ||
-                                state is LessonWordsInitial) {
-                              return Padding(
-                                padding: EdgeInsets.symmetric(vertical: 40.h),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: AppColors.yellow,
-                                  ),
-                                ),
-                              );
-                            }
-
-                            // نعرض القائمة من Success أو ActionSuccess
-                            List<LessonWordModel> words = [];
-                            int? busyId;
-
-                            if (state is LessonWordsSuccess) {
-                              words = state.words;
-                              busyId = state.busyWordId;
-                            } else if (state is LessonWordsActionSuccess) {
-                              words = state.words;
-                            } else if (state is LessonWordsFailure) {
-                              return Padding(
-                                padding: EdgeInsets.symmetric(vertical: 30.h),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      state.message,
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white70,
-                                        fontSize: 12.sp,
-                                      ),
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    GestureDetector(
-                                      onTap: () =>
-                                          cubit.fetchLessonWords(lessonId),
-                                      child: Text(
-                                        'Retry',
-                                        style: GoogleFonts.poppins(
-                                          color: AppColors.yellow,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (words.isEmpty) {
-                              return Padding(
-                                padding: EdgeInsets.symmetric(vertical: 40.h),
-                                child: Text(
-                                  'No words for this lesson',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white54,
-                                    fontSize: 13.sp,
-                                  ),
-                                ),
-                              );
-                            }
-
-                            return ListView.separated(
-                              shrinkWrap: true,
-                              padding: EdgeInsets.only(bottom: 8.h),
-                              itemCount: words.length,
-                              separatorBuilder: (_, __) =>
-                                  SizedBox(height: 8.h),
-                              itemBuilder: (context, index) {
-                                final word = words[index];
-                                return _LessonWordTile(
-                                  word: word,
-                                  isBusy: busyId == word.id,
-                                  onPlay: () => _playWordAudio(word.audio),
-                                  onLearn: () {
-                                    HapticFeedback.selectionClick();
-                                    cubit.moveToLearning(word.id);
-                                  },
-                                  onKnow: () {
-                                    HapticFeedback.selectionClick();
-                                    cubit.moveToKnow(word.id);
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          child: _LessonWordsDialog(
+            lessonId: lessonId,
+            onPlayAudio: _playWordAudio,
           ),
         );
       },
@@ -968,9 +781,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         else
           _noVideoCard(),
         SizedBox(height: 16.h),
-        // if (lesson != null) _buildLessonInfoCard(lesson),
-        // SizedBox(height: 24.h),
-        // _buildCommentsHeader(totalLabel),
         if (lesson != null) _buildLessonInfoCard(lesson),
         SizedBox(height: 12.h),
 
@@ -1474,6 +1284,310 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 }
 
+// ===============================================================
+//                     Lesson Words — Premium Dialog
+// ===============================================================
+class _LessonWordsDialog extends StatefulWidget {
+  final int lessonId;
+  final Future<void> Function(String? audioUrl) onPlayAudio;
+
+  const _LessonWordsDialog({required this.lessonId, required this.onPlayAudio});
+
+  @override
+  State<_LessonWordsDialog> createState() => _LessonWordsDialogState();
+}
+
+class _LessonWordsDialogState extends State<_LessonWordsDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _borderController;
+
+  @override
+  void initState() {
+    super.initState();
+    _borderController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _borderController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<LessonWordsCubit>();
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 36.h),
+      child: AnimatedBuilder(
+        animation: _borderController,
+        builder: (context, _) {
+          return CustomPaint(
+            foregroundPainter: _AnimatedBorderPainter(
+              animationValue: _borderController.value,
+              radius: 26.r,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26.r),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: 0.74.sh),
+                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(26.r),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.dark.withOpacity(.97),
+                        AppColors.primary.withOpacity(.9),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(cubit),
+                      SizedBox(height: 14.h),
+                      Divider(color: Colors.white.withOpacity(.08), height: 1),
+                      SizedBox(height: 12.h),
+                      Flexible(child: _buildBody(cubit)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeader(LessonWordsCubit cubit) {
+    return BlocBuilder<LessonWordsCubit, LessonWordsState>(
+      builder: (context, state) {
+        int? total;
+        if (state is LessonWordsSuccess) total = state.words.length;
+        if (state is LessonWordsActionSuccess) total = state.words.length;
+
+        return Row(
+          children: [
+            Container(
+              width: 42.w,
+              height: 42.w,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AppColors.orange, AppColors.yellow],
+                ),
+              ),
+              child: Icon(
+                Icons.menu_book_rounded,
+                color: Colors.black,
+                size: 19.sp,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Lesson Words',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5.sp,
+                    ),
+                  ),
+                  if (total != null) ...[
+                    SizedBox(height: 2.h),
+                    Text(
+                      '$total word${total == 1 ? '' : 's'} in this lesson',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.5),
+                        fontSize: 10.5.sp,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.pop(context);
+              },
+              child: Container(
+                padding: EdgeInsets.all(7.r),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(.08),
+                  border: Border.all(color: Colors.white.withOpacity(.12)),
+                ),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: Colors.white70,
+                  size: 17.sp,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(LessonWordsCubit cubit) {
+    return BlocConsumer<LessonWordsCubit, LessonWordsState>(
+      listener: (context, state) {
+        if (state is LessonWordsActionSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.sky,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else if (state is LessonWordsFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is LessonWordsLoading || state is LessonWordsInitial) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 46.h),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.yellow),
+            ),
+          );
+        }
+
+        List<LessonWordModel> words = [];
+        int? busyId;
+
+        if (state is LessonWordsSuccess) {
+          words = state.words;
+          busyId = state.busyWordId;
+        } else if (state is LessonWordsActionSuccess) {
+          words = state.words;
+        } else if (state is LessonWordsFailure) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 34.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.white.withOpacity(.5),
+                  size: 26.sp,
+                ),
+                SizedBox(height: 10.h),
+                Text(
+                  state.message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 12.sp,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                GestureDetector(
+                  onTap: () => cubit.fetchLessonWords(widget.lessonId),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 8.h,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.orange, AppColors.yellow],
+                      ),
+                      borderRadius: BorderRadius.circular(18.r),
+                    ),
+                    child: Text(
+                      'Retry',
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (words.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 40.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.auto_stories_outlined,
+                  color: Colors.white.withOpacity(.35),
+                  size: 28.sp,
+                ),
+                SizedBox(height: 10.h),
+                Text(
+                  'No words for this lesson',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 13.sp,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          shrinkWrap: true,
+          padding: EdgeInsets.only(bottom: 8.h, top: 2.h),
+          itemCount: words.length,
+          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+          itemBuilder: (context, index) {
+            final word = words[index];
+            return _LessonWordTile(
+                  word: word,
+                  isBusy: busyId == word.id,
+                  onPlay: () => widget.onPlayAudio(word.audio),
+                  onLearn: () {
+                    HapticFeedback.selectionClick();
+                    cubit.moveToLearning(word.id);
+                  },
+                  onKnow: () {
+                    HapticFeedback.selectionClick();
+                    cubit.moveToKnow(word.id);
+                  },
+                )
+                .animate(delay: (30 * index).ms)
+                .fadeIn(duration: 280.ms)
+                .moveX(begin: 8, end: 0, curve: Curves.easeOutCubic);
+          },
+        );
+      },
+    );
+  }
+}
+
 class _LessonWordTile extends StatelessWidget {
   final LessonWordModel word;
   final VoidCallback onPlay;
@@ -1491,153 +1605,159 @@ class _LessonWordTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAudio = word.hasAudio;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14.r),
-        color: Colors.white.withOpacity(.06),
+        borderRadius: BorderRadius.circular(18.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(.07),
+            Colors.white.withOpacity(.025),
+          ],
+        ),
         border: Border.all(color: Colors.white.withOpacity(.10)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // الحرف الأول
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.sky.withOpacity(.3),
-                  AppColors.sky.withOpacity(.1),
-                ],
-              ),
-              border: Border.all(color: AppColors.sky.withOpacity(.3)),
-            ),
-            child: Center(
-              child: Text(
-                word.wordEn.isNotEmpty ? word.wordEn[0].toUpperCase() : '?',
-                style: GoogleFonts.poppins(
-                  color: AppColors.sky,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15.sp,
+          Row(
+            children: [
+              // حرف الكلمة
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(13.r),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.sky.withOpacity(.32),
+                      AppColors.sky.withOpacity(.10),
+                    ],
+                  ),
+                  border: Border.all(color: AppColors.sky.withOpacity(.35)),
                 ),
-              ),
-            ),
-          ),
-          SizedBox(width: 10.w),
-
-          // الكلمة + الترجمة
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  word.wordEn,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5.sp,
+                child: Center(
+                  child: Text(
+                    word.wordEn.isNotEmpty ? word.wordEn[0].toUpperCase() : '?',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.sky,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  word.wordAr,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white60,
-                    fontSize: 12.sp,
+              ),
+              SizedBox(width: 12.w),
+
+              // الكلمة + الترجمة
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      word.wordEn,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    SizedBox(height: 3.h),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.translate_rounded,
+                          size: 10.sp,
+                          color: Colors.white.withOpacity(.35),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            word.wordAr,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white60,
+                              fontSize: 12.sp,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+
+              // زر الصوت — حالة واضحة: مفعّل (فيه صوت) / غير مفعّل (بدون صوت)
+              GestureDetector(
+                onTap: hasAudio && !isBusy ? onPlay : null,
+                child: AnimatedContainer(
+                  duration: 200.ms,
+                  padding: EdgeInsets.all(9.r),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: hasAudio
+                        ? const LinearGradient(
+                            colors: [AppColors.orange, AppColors.yellow],
+                          )
+                        : null,
+                    color: hasAudio ? null : Colors.white.withOpacity(.05),
+                    border: Border.all(
+                      color: hasAudio
+                          ? Colors.transparent
+                          : Colors.white.withOpacity(.12),
+                    ),
+                    boxShadow: hasAudio
+                        ? [
+                            BoxShadow(
+                              color: AppColors.yellow.withOpacity(.45),
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Icon(
+                    hasAudio
+                        ? Icons.volume_up_rounded
+                        : Icons.volume_off_rounded,
+                    color: hasAudio ? Colors.black : Colors.white24,
+                    size: 16.sp,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          SizedBox(height: 10.h),
+          Container(height: 1, color: Colors.white.withOpacity(.06)),
+          SizedBox(height: 10.h),
 
-          // زر الصوت
-          GestureDetector(
-            onTap: isBusy ? null : onPlay,
-            child: Container(
-              padding: EdgeInsets.all(7.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: word.hasAudio
-                    ? AppColors.yellow.withOpacity(.15)
-                    : Colors.white.withOpacity(.05),
-                border: Border.all(
-                  color: word.hasAudio
-                      ? AppColors.yellow.withOpacity(.4)
-                      : Colors.white.withOpacity(.1),
+          // خياري: نقل إلى "قيد التعلم" أو "معروفة"
+          Row(
+            children: [
+              Expanded(
+                child: _WordActionButton(
+                  icon: Icons.school_rounded,
+                  label: 'Learning',
+                  colors: const [AppColors.orange, AppColors.yellow],
+                  isBusy: isBusy,
+                  onTap: onLearn,
                 ),
               ),
-              child: Icon(
-                Icons.volume_up_rounded,
-                color: word.hasAudio ? AppColors.yellow : Colors.white38,
-                size: 16.sp,
-              ),
-            ),
-          ),
-          SizedBox(width: 6.w),
-
-          // زر Learn
-          GestureDetector(
-            onTap: isBusy ? null : onLearn,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.r),
-                color: AppColors.orange.withOpacity(.15),
-                border: Border.all(color: AppColors.orange.withOpacity(.4)),
-              ),
-              child: isBusy
-                  ? SizedBox(
-                      width: 12.w,
-                      height: 12.w,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: AppColors.orange,
-                      ),
-                    )
-                  : Text(
-                      'Learn',
-                      style: GoogleFonts.poppins(
-                        color: AppColors.orange,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10.sp,
-                      ),
-                    ),
-            ),
-          ),
-          SizedBox(width: 5.w),
-
-          // زر Know
-          GestureDetector(
-            onTap: isBusy ? null : onKnow,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.r),
-                color: const Color(0xFF4ADE80).withOpacity(.15),
-                border: Border.all(
-                  color: const Color(0xFF4ADE80).withOpacity(.4),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: _WordActionButton(
+                  icon: Icons.check_circle_rounded,
+                  label: 'I Know it',
+                  colors: const [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                  isBusy: isBusy,
+                  onTap: onKnow,
                 ),
               ),
-              child: isBusy
-                  ? SizedBox(
-                      width: 12.w,
-                      height: 12.w,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: Color(0xFF4ADE80),
-                      ),
-                    )
-                  : Text(
-                      'Know',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF4ADE80),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10.sp,
-                      ),
-                    ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1645,6 +1765,65 @@ class _LessonWordTile extends StatelessWidget {
   }
 }
 
+class _WordActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final List<Color> colors;
+  final bool isBusy;
+  final VoidCallback onTap;
+
+  const _WordActionButton({
+    required this.icon,
+    required this.label,
+    required this.colors,
+    required this.onTap,
+    this.isBusy = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isBusy ? null : onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 9.h),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(13.r),
+          color: colors.first.withOpacity(.12),
+          border: Border.all(color: colors.first.withOpacity(.4)),
+        ),
+        child: isBusy
+            ? SizedBox(
+                width: 14.w,
+                height: 14.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: colors.first,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: colors.first, size: 14.sp),
+                  SizedBox(width: 5.w),
+                  Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      color: colors.first,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ===============================================================
+//                         Video Player
+// ===============================================================
 class _LuxuryVideoPlayer extends StatefulWidget {
   final String videoUrl;
   final String? title;
@@ -1741,12 +1920,44 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
     }
   }
 
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    final hours = d.inHours;
-    return hours > 0 ? "$hours:$minutes:$seconds" : "$minutes:$seconds";
+  /// Pushes a fullscreen page reusing the SAME controller (no reinitialization),
+  /// rotates to landscape, hides system UI, and restores everything on return.
+  Future<void> _openFullscreen() async {
+    final controller = _controller;
+    if (controller == null) return;
+    _cancelHideTimer();
+
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        transitionDuration: const Duration(milliseconds: 260),
+        pageBuilder: (_, animation, __) => FadeTransition(
+          opacity: animation,
+          child: _FullscreenVideoPage(
+            controller: controller,
+            title: widget.title,
+            initialMuted: _isMuted,
+          ),
+        ),
+      ),
+    );
+
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    if (!mounted) return;
+    setState(() => _showControls = true);
+    if (controller.value.isPlaying) _scheduleHideControls();
   }
+
+  String _formatDurationLocal(Duration d) => _formatDuration(d);
 
   @override
   void dispose() {
@@ -1798,7 +2009,21 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                                   duration: 220.ms,
                                   child: IgnorePointer(
                                     ignoring: !_showControls,
-                                    child: _buildControlsOverlay(),
+                                    child: _VideoControlsOverlay(
+                                      controller: _controller!,
+                                      title: widget.title,
+                                      isMuted: _isMuted,
+                                      isFullscreen: false,
+                                      onToggleMute: _toggleMute,
+                                      onTogglePlayPause: _togglePlayPause,
+                                      onToggleFullscreen: _openFullscreen,
+                                      onSeekStart: _cancelHideTimer,
+                                      onSeekEnd: () {
+                                        if (_controller!.value.isPlaying) {
+                                          _scheduleHideControls();
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1864,9 +2089,175 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
       ),
     );
   }
+}
 
-  Widget _buildControlsOverlay() {
-    final controller = _controller!;
+/// Full-page player used when the user taps the fullscreen button.
+/// Reuses the SAME [VideoPlayerController] instance — no reinitialization,
+/// no lost playback position, no flicker.
+class _FullscreenVideoPage extends StatefulWidget {
+  final VideoPlayerController controller;
+  final String? title;
+  final bool initialMuted;
+
+  const _FullscreenVideoPage({
+    required this.controller,
+    this.title,
+    this.initialMuted = false,
+  });
+
+  @override
+  State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  bool _showControls = true;
+  late bool _isMuted;
+  Timer? _hideTimer;
+  bool _isExiting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isMuted = widget.initialMuted;
+    widget.controller.addListener(_onUpdate);
+    _scheduleHide();
+  }
+
+  void _onUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && widget.controller.value.isPlaying) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _cancelHide() => _hideTimer?.cancel();
+
+  void _togglePlayPause() {
+    HapticFeedback.lightImpact();
+    if (widget.controller.value.isPlaying) {
+      widget.controller.pause();
+      _cancelHide();
+      setState(() => _showControls = true);
+    } else {
+      widget.controller.play();
+      _scheduleHide();
+    }
+  }
+
+  void _toggleMute() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _isMuted = !_isMuted;
+      widget.controller.setVolume(_isMuted ? 0 : 1);
+    });
+  }
+
+  Future<void> _exitFullscreen() async {
+    if (_isExiting) return;
+    _isExiting = true;
+    HapticFeedback.selectionClick();
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    widget.controller.removeListener(_onUpdate);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        await _exitFullscreen();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: GestureDetector(
+          onTap: () {
+            setState(() => _showControls = !_showControls);
+            if (_showControls && widget.controller.value.isPlaying) {
+              _scheduleHide();
+            }
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: AspectRatio(
+                  aspectRatio: widget.controller.value.aspectRatio,
+                  child: VideoPlayer(widget.controller),
+                ),
+              ),
+              AnimatedOpacity(
+                opacity: _showControls ? 1 : 0,
+                duration: 220.ms,
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: SafeArea(
+                    child: _VideoControlsOverlay(
+                      controller: widget.controller,
+                      title: widget.title,
+                      isMuted: _isMuted,
+                      isFullscreen: true,
+                      onToggleMute: _toggleMute,
+                      onTogglePlayPause: _togglePlayPause,
+                      onToggleFullscreen: _exitFullscreen,
+                      onSeekStart: _cancelHide,
+                      onSeekEnd: () {
+                        if (widget.controller.value.isPlaying) {
+                          _scheduleHide();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shared control overlay (play/pause, mute, fullscreen toggle, scrubber)
+/// reused by both the inline and the fullscreen video players.
+class _VideoControlsOverlay extends StatelessWidget {
+  final VideoPlayerController controller;
+  final String? title;
+  final bool isMuted;
+  final bool isFullscreen;
+  final VoidCallback onToggleMute;
+  final VoidCallback onTogglePlayPause;
+  final VoidCallback onToggleFullscreen;
+  final VoidCallback onSeekStart;
+  final VoidCallback onSeekEnd;
+
+  const _VideoControlsOverlay({
+    required this.controller,
+    required this.title,
+    required this.isMuted,
+    required this.isFullscreen,
+    required this.onToggleMute,
+    required this.onTogglePlayPause,
+    required this.onToggleFullscreen,
+    required this.onSeekStart,
+    required this.onSeekEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final value = controller.value;
     final position = value.position;
     final duration = value.duration;
@@ -1893,10 +2284,10 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
             padding: EdgeInsets.fromLTRB(12.w, 10.h, 10.w, 0),
             child: Row(
               children: [
-                if (widget.title != null && widget.title!.isNotEmpty)
+                if (title != null && title!.isNotEmpty)
                   Expanded(
                     child: Text(
-                      widget.title!,
+                      title!,
                       style: GoogleFonts.poppins(
                         color: Colors.white.withOpacity(.92),
                         fontSize: 11.5.sp,
@@ -1905,7 +2296,7 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                     ),
                   ),
                 GestureDetector(
-                  onTap: _toggleMute,
+                  onTap: onToggleMute,
                   child: Container(
                     padding: EdgeInsets.all(7.r),
                     decoration: BoxDecoration(
@@ -1914,11 +2305,28 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                       border: Border.all(color: Colors.white.withOpacity(.2)),
                     ),
                     child: Icon(
-                      _isMuted
-                          ? Icons.volume_off_rounded
-                          : Icons.volume_up_rounded,
+                      isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                       color: Colors.white,
                       size: 15.sp,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                GestureDetector(
+                  onTap: onToggleFullscreen,
+                  child: Container(
+                    padding: EdgeInsets.all(7.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(.4),
+                      border: Border.all(color: Colors.white.withOpacity(.2)),
+                    ),
+                    child: Icon(
+                      isFullscreen
+                          ? Icons.fullscreen_exit_rounded
+                          : Icons.fullscreen_rounded,
+                      color: Colors.white,
+                      size: 16.sp,
                     ),
                   ),
                 ),
@@ -1927,7 +2335,7 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
           ),
           const Spacer(),
           GestureDetector(
-            onTap: _togglePlayPause,
+            onTap: onTogglePlayPause,
             child: Container(
               width: 60.w,
               height: 60.w,
@@ -1945,9 +2353,7 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                 ],
               ),
               child: Icon(
-                value.isPlaying
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
+                value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 color: Colors.black,
                 size: 32.sp,
               ),
@@ -1990,10 +2396,8 @@ class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
                         );
                         controller.seekTo(newPosition);
                       },
-                      onChangeStart: (_) => _cancelHideTimer(),
-                      onChangeEnd: (_) {
-                        if (value.isPlaying) _scheduleHideControls();
-                      },
+                      onChangeStart: (_) => onSeekStart(),
+                      onChangeEnd: (_) => onSeekEnd(),
                     ),
                   ),
                 ),

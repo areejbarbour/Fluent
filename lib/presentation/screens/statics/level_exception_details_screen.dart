@@ -642,6 +642,7 @@ class _DetailsBody extends StatelessWidget {
     );
   }
 
+
   Future<void> _confirmDeleteAttachment(
     BuildContext context,
     int exceptionId,
@@ -829,9 +830,6 @@ class _DetailsBody extends StatelessWidget {
   }
 }
 
-// ===============================================================
-//                     Edit Bottom Sheet
-// ===============================================================
 class _EditExceptionSheet extends StatefulWidget {
   final LevelExceptionModel details;
   final Function(LevelExceptionModel?) onSuccess;
@@ -1008,7 +1006,6 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
             child: Container(
               padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 28.h),
               decoration: BoxDecoration(
-                // نفس تدرج واجهة الإنشاء
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1635,7 +1632,6 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
     );
   }
 }
-
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});

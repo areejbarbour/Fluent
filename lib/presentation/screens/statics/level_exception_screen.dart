@@ -1,6 +1,6 @@
+
 import 'dart:math' as math;
 import 'dart:ui';
-
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
@@ -15,7 +15,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Visual tokens aligned with teacher [StatusUI] / Status Board.
 class _ExceptionStatusStyle {
   final String status;
   final String label;
@@ -33,28 +32,25 @@ class _ExceptionStatusStyle {
     _ExceptionStatusStyle(
       status: LevelExceptionStatuses.pending,
       label: 'Pending',
-      // StatusUI.pending → lightOrange
       color: AppColors.lightOrange,
       icon: Icons.hourglass_top_rounded,
     ),
     _ExceptionStatusStyle(
       status: LevelExceptionStatuses.inReview,
       label: 'In Review',
-      // StatusUI.inReview → sky
       color: AppColors.sky,
       icon: Icons.rate_review_outlined,
     ),
     _ExceptionStatusStyle(
       status: LevelExceptionStatuses.approved,
       label: 'Approved',
-      // StatusUI.approved → greenAccent
-      color: Color(0xFF69F0AE),
+      color: Color(0xFF00E676),
       icon: Icons.verified_outlined,
     ),
     _ExceptionStatusStyle(
       status: LevelExceptionStatuses.rejected,
       label: 'Rejected',
-      color: Colors.redAccent,
+      color: Color(0xFFFF5252),
       icon: Icons.cancel_outlined,
     ),
   ];
@@ -65,6 +61,12 @@ class _ExceptionStatusStyle {
       orElse: () => all.first,
     );
   }
+
+  static List<_ExceptionStatusStyle> get tabbed => [
+        all.firstWhere((s) => s.status == LevelExceptionStatuses.pending),
+        all.firstWhere((s) => s.status == LevelExceptionStatuses.approved),
+        all.firstWhere((s) => s.status == LevelExceptionStatuses.rejected),
+      ];
 }
 
 class LevelExceptionsScreen extends StatefulWidget {
@@ -75,8 +77,9 @@ class LevelExceptionsScreen extends StatefulWidget {
 }
 
 class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
-  /// Same expand/collapse pattern as teacher Status Board.
-  final Set<String> _expanded = {LevelExceptionStatuses.pending};
+  late final List<_ExceptionStatusStyle> _tabs = _ExceptionStatusStyle.tabbed;
+  late final PageController _pageController = PageController();
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -84,6 +87,29 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LevelExceptionCubit>().loadBoard();
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    if (index == _selectedIndex) return;
+    HapticFeedback.selectionClick();
+    setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    if (index == _selectedIndex) return;
+    HapticFeedback.selectionClick();
+    setState(() => _selectedIndex = index);
   }
 
   @override
@@ -98,17 +124,22 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 20.w,
-                    vertical: 10.h,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                   child: _buildTopBar(),
+                ),
+                BlocBuilder<LevelExceptionCubit, LevelExceptionState>(
+                  builder: (context, state) {
+                    final success = state is LevelExceptionSuccess ? state : null;
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 14.h),
+                      child: _buildTabGates(success),
+                    ).animate().fadeIn(duration: 350.ms).moveY(begin: 8, end: 0);
+                  },
                 ),
                 Expanded(
                   child: BlocBuilder<LevelExceptionCubit, LevelExceptionState>(
                     builder: (context, state) {
-                      if (state is LevelExceptionLoading ||
-                          state is LevelExceptionInitial) {
+                      if (state is LevelExceptionLoading || state is LevelExceptionInitial) {
                         return Center(
                           child: CircularProgressIndicator(
                             color: AppColors.yellow,
@@ -116,40 +147,21 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
                           ),
                         );
                       }
-
                       if (state is LevelExceptionFailure) {
                         return _buildError(state.message);
                       }
-
                       if (state is LevelExceptionSuccess) {
-                        return RefreshIndicator(
-                          color: AppColors.yellow,
-                          backgroundColor: AppColors.dark,
-                          onRefresh: () =>
-                              context.read<LevelExceptionCubit>().loadBoard(),
-                          child: ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 28.h),
-                            itemCount: _ExceptionStatusStyle.all.length,
-                            separatorBuilder: (_, __) => SizedBox(height: 12.h),
-                            itemBuilder: (context, index) {
-                              final style = _ExceptionStatusStyle.all[index];
-                              final items = state.itemsFor(style.status);
-                              return _buildStatusSection(
-                                    style: style,
-                                    items: items,
-                                    boardState: state,
-                                  )
-                                  .animate(delay: (60 * index).ms)
-                                  .fadeIn(duration: 400.ms)
-                                  .moveY(begin: 10, end: 0);
-                            },
-                          ),
+                        return PageView.builder(
+                          controller: _pageController,
+                          physics: const BouncingScrollPhysics(),
+                          onPageChanged: _onPageChanged,
+                          itemCount: _tabs.length,
+                          itemBuilder: (context, index) {
+                            final style = _tabs[index];
+                            return _buildGateContent(style: style, state: state);
+                          },
                         );
                       }
-
                       return const SizedBox.shrink();
                     },
                   ),
@@ -162,162 +174,189 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
     );
   }
 
-  // ── Status Board section (mirrors teacher board glass header) ──
-  Widget _buildStatusSection({
-    required _ExceptionStatusStyle style,
-    required List<LevelExceptionModel> items,
-    required LevelExceptionSuccess boardState,
-  }) {
-    final isOpen = _expanded.contains(style.status);
-    final color = style.color;
-    final total = boardState.countFor(style.status);
-    final hasMore = boardState.hasMore(style.status);
-    final loadingMore = boardState.isLoadingMore(style.status);
+  Widget _buildTabGates(LevelExceptionSuccess? state) {
+    return Container(
+      height: 48.h,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14.r),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: List.generate(_tabs.length, (i) {
+          final style = _tabs[i];
+          final count = state?.countFor(style.status) ?? 0;
+          final selected = i == _selectedIndex;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(.10),
-                Colors.white.withOpacity(.04),
-              ],
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _onTabTap(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: selected ? style.color : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 2.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          style.icon,
+                          size: 14.sp,
+                          color: selected
+                              ? style.color
+                              : style.color.withOpacity(0.55),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            style.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              color: selected
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.65),
+                              fontSize: 12.sp,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 4.w),
+                        // Count badge - smaller & tighter
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 5.w,
+                            vertical: 1.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? style.color.withOpacity(0.22)
+                                : Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: GoogleFonts.poppins(
+                              color: selected
+                                  ? style.color
+                                  : Colors.white.withOpacity(0.6),
+                              fontSize: 9.5.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(12.r),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    if (isOpen) {
-                      _expanded.remove(style.status);
-                    } else {
-                      _expanded.add(style.status);
-                    }
-                  });
-                },
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36.w,
-                      height: 36.w,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(
-                          color: color.withOpacity(0.6),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Icon(style.icon, color: color, size: 18.sp),
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Text(
-                        style.label,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 3.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(18.r),
-                        border: Border.all(color: color.withOpacity(0.45)),
-                      ),
-                      child: Text(
-                        '$total',
-                        style: GoogleFonts.poppins(
-                          color: color,
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 6.w),
-                    Icon(
-                      isOpen
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white.withOpacity(0.6),
-                      size: 20.sp,
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 220),
-                crossFadeState: isOpen
-                    ? CrossFadeState.showFirst
-                    : CrossFadeState.showSecond,
-                firstChild: Padding(
-                  padding: EdgeInsets.only(top: 10.h),
-                  child: items.isEmpty
-                      ? _sectionEmpty(style)
-                      : Column(
-                          children: [
-                            for (int i = 0; i < items.length; i++) ...[
-                              if (i != 0) SizedBox(height: 8.h),
-                              _ExceptionCard(
-                                item: items[i],
-                                status: style.status,
-                                index: i,
-                              ),
-                            ],
-                            if (hasMore) ...[
-                              SizedBox(height: 10.h),
-                              _LoadMoreButton(
-                                loading: loadingMore,
-                                loaded: items.length,
-                                total: total,
-                                onTap: () {
-                                  context.read<LevelExceptionCubit>().loadMore(
-                                    style.status,
-                                  );
-                                },
-                              ),
-                            ],
-                          ],
-                        ),
-                ),
-                secondChild: const SizedBox(width: double.infinity),
-              ),
-            ],
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
 
-  Widget _sectionEmpty(_ExceptionStatusStyle style) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Text(
-        'Nothing in this status',
-        style: GoogleFonts.poppins(
-          color: Colors.white.withOpacity(0.5),
-          fontSize: 11.sp,
-        ),
-      ),
+  Widget _buildGateContent({
+    required _ExceptionStatusStyle style,
+    required LevelExceptionSuccess state,
+  }) {
+    final items = state.itemsFor(style.status);
+    final total = state.countFor(style.status);
+    final hasMore = state.hasMore(style.status);
+    final loadingMore = state.isLoadingMore(style.status);
+
+    return RefreshIndicator(
+      color: AppColors.yellow,
+      backgroundColor: AppColors.dark,
+      onRefresh: () => context.read<LevelExceptionCubit>().loadBoard(),
+      child: items.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              children: [
+                SizedBox(height: 0.28.sh),
+                _buildGateEmpty(style),
+              ],
+            )
+          : ListView.separated(
+              key: PageStorageKey(style.status),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 28.h),
+              itemCount: items.length + (hasMore ? 1 : 0),
+              separatorBuilder: (_, __) => SizedBox(height: 12.h),
+              itemBuilder: (context, index) {
+                if (index >= items.length) {
+                  return _LoadMoreButton(
+                    loading: loadingMore,
+                    loaded: items.length,
+                    total: total,
+                    onTap: () {
+                      context.read<LevelExceptionCubit>().loadMore(style.status);
+                    },
+                  );
+                }
+                return _ExceptionCard(
+                  item: items[index],
+                  status: style.status,
+                  index: index,
+                )
+                    .animate(delay: (40 * index).ms)
+                    .fadeIn(duration: 320.ms)
+                    .moveY(begin: 10, end: 0);
+              },
+            ),
     );
+  }
+
+  Widget _buildGateEmpty(_ExceptionStatusStyle style) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 68.w,
+            height: 68.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: style.color.withOpacity(.12),
+              border: Border.all(color: style.color.withOpacity(.35), width: 1.5),
+            ),
+            child: Icon(style.icon, color: style.color.withOpacity(.75), size: 28.sp),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Nothing here yet',
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'No ${style.label.toLowerCase()} requests to show',
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(0.45),
+              fontSize: 12.sp,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildError(String message) {
@@ -327,21 +366,14 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: Colors.redAccent,
-              size: 40.sp,
-            ),
-            SizedBox(height: 12.h),
+            Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 42.sp),
+            SizedBox(height: 14.h),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                color: Colors.white70,
-                fontSize: 13.sp,
-              ),
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 18.h),
             TextButton(
               onPressed: () => context.read<LevelExceptionCubit>().loadBoard(),
               child: Text(
@@ -464,9 +496,6 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
   }
 }
 
-// ===============================================================
-//                         Exception Card
-// ===============================================================
 class _ExceptionCard extends StatelessWidget {
   final LevelExceptionModel item;
   final String status;
@@ -483,9 +512,7 @@ class _ExceptionCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.dark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           'Delete request?',
           style: GoogleFonts.poppins(
@@ -501,10 +528,7 @@ class _ExceptionCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(color: Colors.white54),
-            ),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -519,7 +543,6 @@ class _ExceptionCard extends StatelessWidget {
         ],
       ),
     );
-
     if (confirmed == true && context.mounted) {
       context.read<LevelExceptionDeleteCubit>().delete(item.id);
     }
@@ -531,40 +554,30 @@ class _ExceptionCard extends StatelessWidget {
     final statusColor = style.color;
     final statusLabel = style.label;
     final statusIcon = style.icon;
-
     final levelName = item.requestedLevelName ?? 'Level exception request';
+
+    final isRejected = status.toLowerCase() == LevelExceptionStatuses.rejected;
 
     return BlocListener<LevelExceptionDeleteCubit, LevelExceptionDeleteState>(
       listener: (context, state) {
         if (state is LevelExceptionDeleteSuccess && state.id == item.id) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
-              ),
+              content: Text(state.message, style: GoogleFonts.poppins(fontSize: 13.sp)),
               backgroundColor: AppColors.sky,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           );
-          // Optimistic local remove + soft refresh
           context.read<LevelExceptionCubit>().removeLocally(item.id);
           context.read<LevelExceptionCubit>().loadBoard();
         } else if (state is LevelExceptionDeleteFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
-              ),
+              content: Text(state.message, style: GoogleFonts.poppins(fontSize: 13.sp)),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           );
         }
@@ -577,9 +590,6 @@ class _ExceptionCard extends StatelessWidget {
             levelExceptionDetailsRoute,
             arguments: {
               'id': item.id,
-              // List endpoint eager-loads requested_level; details view does not.
-              // Pass the model so the details screen can show the level name
-              // without any backend change.
               'seed': item,
             },
           ).then((_) {
@@ -588,31 +598,43 @@ class _ExceptionCard extends StatelessWidget {
             }
           });
         },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.05),
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: Colors.white.withOpacity(.10)),
+            color: Colors.white.withOpacity(.055),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: statusColor.withOpacity(isRejected ? 0.55 : 0.45),
+              width: isRejected ? 1.6 : 1.35,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: statusColor.withOpacity(isRejected ? 0.18 : 0.12),
+                blurRadius: isRejected ? 14 : 10,
+                spreadRadius: 0.4,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 40.w,
-                height: 40.w,
+                width: 42.w,
+                height: 42.w,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      statusColor.withOpacity(.28),
-                      statusColor.withOpacity(.08),
+                      statusColor.withOpacity(.32),
+                      statusColor.withOpacity(.10),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: statusColor.withOpacity(.35)),
+                  borderRadius: BorderRadius.circular(13.r),
+                  border: Border.all(color: statusColor.withOpacity(.40)),
                 ),
-                child: Icon(statusIcon, color: statusColor, size: 18.sp),
+                child: Icon(statusIcon, color: statusColor, size: 19.sp),
               ),
-              SizedBox(width: 12.w),
+              SizedBox(width: 13.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,43 +643,33 @@ class _ExceptionCard extends StatelessWidget {
                       levelName,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 13.sp,
+                        fontSize: 13.5.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        // Status chip — same language as Status Board badges
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 3.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(.14),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              color: statusColor.withOpacity(.35),
+                    SizedBox(height: 5.h),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 3.5.h),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(color: statusColor.withOpacity(.40)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 12.sp),
+                          SizedBox(width: 4.w),
+                          Text(
+                            statusLabel,
+                            style: GoogleFonts.poppins(
+                              color: statusColor,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(statusIcon, color: statusColor, size: 11.sp),
-                              SizedBox(width: 3.w),
-                              Text(
-                                statusLabel,
-                                style: GoogleFonts.poppins(
-                                  color: statusColor,
-                                  fontSize: 9.5.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -674,9 +686,7 @@ class _ExceptionCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.redAccent.withOpacity(.12),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: Colors.redAccent.withOpacity(.28),
-                      ),
+                      border: Border.all(color: Colors.redAccent.withOpacity(.30)),
                     ),
                     child: Icon(
                       Icons.delete_outline_rounded,
@@ -688,7 +698,29 @@ class _ExceptionCard extends StatelessWidget {
               ],
             ],
           ),
-        ),
+        )
+            .animate(
+              onPlay: isRejected ? (c) => c.repeat(reverse: true) : null,
+            )
+            .custom(
+              duration: 1800.ms,
+              builder: (context, value, child) {
+                if (!isRejected) return child;
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(0.12 + (value * 0.18)),
+                        blurRadius: 10 + (value * 8),
+                        spreadRadius: 0.5,
+                      ),
+                    ],
+                  ),
+                  child: child,
+                );
+              },
+            ),
       ),
     );
   }
@@ -710,26 +742,24 @@ class _TwinklingStars extends StatelessWidget {
           final delay = rng.nextInt(3000);
           final duration = 1500 + rng.nextInt(2500);
           final maxOpacity = rng.nextDouble() * 0.6 + 0.3;
-
           return Positioned(
             left: left * MediaQuery.sizeOf(context).width,
             top: top * MediaQuery.sizeOf(context).height,
-            child:
-                Container(
-                      width: size,
-                      height: size,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                    )
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(
-                      begin: 0.15,
-                      end: maxOpacity,
-                      duration: Duration(milliseconds: duration),
-                      delay: Duration(milliseconds: delay),
-                    ),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .fade(
+                  begin: 0.15,
+                  end: maxOpacity,
+                  duration: Duration(milliseconds: duration),
+                  delay: Duration(milliseconds: delay),
+                ),
           );
         }),
       ),
@@ -759,7 +789,7 @@ class _LoadMoreButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.r),
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 10.h),
+          padding: EdgeInsets.symmetric(vertical: 11.h),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.white.withOpacity(0.12)),

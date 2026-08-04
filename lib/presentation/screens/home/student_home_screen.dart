@@ -847,18 +847,254 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Widget _buildDailyChallengeAndLeaders() {
-    return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 6, child: _dailyChallengeCard()),
-            SizedBox(width: 10.w),
-            Expanded(flex: 5, child: _topLearnersCard()),
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // ===== Daily Challenge =====
+      Expanded(
+        flex: 11,
+        child: _glassContainer(
+          padding: EdgeInsets.all(12.w),
+          radius: 20.r,
+          gradientColors: [
+            Colors.white.withOpacity(.10),
+            Colors.white.withOpacity(.04),
           ],
-        )
-        .animate()
-        .fadeIn(delay: 250.ms, duration: 500.ms)
-        .moveY(begin: 10, end: 0);
-  }
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.orange.withOpacity(.4),
+                          AppColors.orange.withOpacity(.08),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.local_fire_department_rounded,
+                      color: AppColors.orange,
+                      size: 14.sp,
+                    ),
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    "Daily Challenge",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                "Complete 10 new words",
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.7),
+                  fontSize: 10.5.sp,
+                ),
+              ),
+              SizedBox(height: 10.h),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8.r),
+                child: LinearProgressIndicator(
+                  value: 0.7,
+                  minHeight: 6.h,
+                  backgroundColor: Colors.white.withOpacity(.12),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "7/10",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(.75),
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    "70%",
+                    style: GoogleFonts.poppins(
+                      color: AppColors.yellow,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Row(
+                children: [
+                  Icon(Icons.card_giftcard_rounded,
+                      color: AppColors.yellow, size: 12.sp),
+                  SizedBox(width: 4.w),
+                  Text(
+                    "Reward: ★ 250 XP",
+                    style: GoogleFonts.poppins(
+                      color: AppColors.yellow,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      SizedBox(width: 10.w),
+
+      // ===== Top Leaders =====
+      Expanded(
+        flex: 10,
+        child: _glassContainer(
+          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
+          radius: 20.r,
+          gradientColors: [
+            Colors.white.withOpacity(.10),
+            Colors.white.withOpacity(.04),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(5.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.yellow.withOpacity(.4),
+                          AppColors.yellow.withOpacity(.08),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.emoji_events_rounded,
+                      color: AppColors.yellow,
+                      size: 13.sp,
+                    ),
+                  ),
+                  SizedBox(width: 5.w),
+                  Expanded(
+                    child: Text(
+                      "Top Leaders",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      // TODO: navigate to full leaderboard
+                    },
+                    child: Text(
+                      "View all",
+                      style: GoogleFonts.poppins(
+                        color: AppColors.sky,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 9.5.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 10.h),
+
+              // Leaders list
+              _leaderRow(rank: 1, name: "Omar", xp: "18,200", color: AppColors.yellow),
+              SizedBox(height: 7.h),
+              _leaderRow(rank: 2, name: "Lina", xp: "16,400", color: const Color(0xFFC0C0C0)),
+              SizedBox(height: 7.h),
+              _leaderRow(rank: 3, name: "Ziad", xp: "15,100", color: const Color(0xFFCD7F32)),
+            ],
+          ),
+        ),
+      ),
+    ],
+  ).animate().fadeIn(delay: 150.ms, duration: 450.ms);
+}
+
+Widget _leaderRow({
+  required int rank,
+  required String name,
+  required String xp,
+  required Color color,
+}) {
+  return Row(
+    children: [
+      Container(
+        width: 20.w,
+        height: 20.w,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [
+              color.withOpacity(.9),
+              color.withOpacity(.55),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(.35),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Text(
+          "$rank",
+          style: GoogleFonts.poppins(
+            color: Colors.black,
+            fontWeight: FontWeight.w800,
+            fontSize: 9.sp,
+          ),
+        ),
+      ),
+      SizedBox(width: 7.w),
+      Expanded(
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 11.sp,
+          ),
+        ),
+      ),
+      Text(
+        "$xp XP",
+        style: GoogleFonts.poppins(
+          color: Colors.white.withOpacity(.65),
+          fontWeight: FontWeight.w600,
+          fontSize: 9.5.sp,
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _dailyChallengeRingIcon() {
     return SizedBox(
