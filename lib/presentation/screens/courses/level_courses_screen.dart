@@ -22,6 +22,9 @@ import 'package:fluent/data/repository/student_lesson_repository.dart';
 
 class LevelCoursesScreen extends StatefulWidget {
   final int? levelId;
+
+  /// Published level final test (LevelResource.test_id).
+  final int? testId;
   final String userName;
   final int xp;
   final int streakDays;
@@ -33,6 +36,7 @@ class LevelCoursesScreen extends StatefulWidget {
   const LevelCoursesScreen({
     super.key,
     this.levelId,
+    this.testId,
     this.userName = "Rasha",
     this.xp = 12540,
     this.streakDays = 15,
@@ -91,6 +95,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
       accentColor: _courseAccentColors[colorIndex % _courseAccentColors.length],
       isLocked: isLocked,
       isCurrent: isCurrent,
+      testId: course.testId,
     );
   }
 
@@ -346,7 +351,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: 20.w),
-      itemCount: _courses.length + 1,
+      itemCount: _courses.length + 1 + (widget.testId != null ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
@@ -364,6 +369,18 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
         }
 
         final courseIndex = index - 1;
+
+        // Footer: level final test (same pattern as course final test)
+        if (widget.testId != null && courseIndex >= _courses.length) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: 28.h, top: 8.h),
+            child: _LevelFinalTestCard(
+              locked: !_allCoursesComplete,
+              levelTitle: widget.levelTitle,
+              onStart: _startLevelTest,
+            ),
+          );
+        }
 
         return Padding(
           padding: EdgeInsets.only(bottom: 14.h),
@@ -384,7 +401,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                     _openRateSheet(_courses[courseIndex]);
                   }
                 : null,
-            onTap: () {
+            onTap: () async {
               if (_courses[courseIndex].isLocked) {
                 HapticFeedback.mediumImpact();
 
@@ -432,7 +449,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
 
                 final course = _courses[courseIndex];
 
-                Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => BlocProvider(
@@ -441,6 +458,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                       ),
                       child: LessonsScreen(
                         courseId: course.id,
+                        testId: course.testId,
                         courseTitle: course.title,
                         courseSubtitle:
                             "${widget.levelTitle} · ${course.teacher}",
@@ -454,6 +472,11 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                     ),
                   ),
                 );
+                if (mounted && widget.levelId != null) {
+                  context.read<StudentCoursesCubit>().fetchStudentCourses(
+                    widget.levelId!,
+                  );
+                }
               }
             },
             borderAnimation: _borderFlowController,
@@ -461,6 +484,36 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
         );
       },
     );
+  }
+
+  bool get _allCoursesComplete {
+    if (_courses.isEmpty) return false;
+    return _courses.every((c) => c.isCompleted);
+  }
+
+  Future<void> _startLevelTest() async {
+    final testId = widget.testId;
+    if (testId == null) return;
+    HapticFeedback.lightImpact();
+    final result = await Navigator.pushNamed(
+      context,
+      studentTestRoute,
+      arguments: {
+        'testId': testId,
+        'title': '${widget.levelTitle} · Level test',
+        'xpPoints': 0,
+        'source': 'level',
+      },
+    );
+    if (!mounted) return;
+    if (widget.levelId != null) {
+      context.read<StudentCoursesCubit>().fetchStudentCourses(widget.levelId!);
+    }
+    if (result is Map &&
+        result['passed'] == true &&
+        result['goToLevels'] == true) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   Widget _buildBackground() {
@@ -843,7 +896,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 500.ms);
   }
 
-    Widget _buildBottomNav() {
+  Widget _buildBottomNav() {
     final items = [
       (Icons.home_rounded, "HOME", Icons.refresh_rounded),
       (Icons.menu_book_rounded, "WORD BANK", null),
@@ -949,7 +1002,9 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                                     clipBehavior: Clip.none,
                                     children: [
                                       AnimatedContainer(
-                                        duration: const Duration(milliseconds: 250),
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
                                         width: selected ? 42.w : 36.w,
                                         height: selected ? 42.w : 36.w,
                                         decoration: BoxDecoration(
@@ -1031,7 +1086,9 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                                         color: selected
                                             ? AppColors.yellow
                                             : Colors.white.withOpacity(.7),
-                                        fontSize: selected ? 8.5.sp : 8.sp, // ↓ صغّرت الخط
+                                        fontSize: selected
+                                            ? 8.5.sp
+                                            : 8.sp, // ↓ صغّرت الخط
                                         fontWeight: selected
                                             ? FontWeight.w800
                                             : FontWeight.w500,
@@ -1053,19 +1110,20 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                       Positioned(
                         right: 10,
                         top: 8,
-                        child: Icon(
-                              Icons.auto_awesome_rounded,
-                              color: AppColors.sky.withOpacity(.55),
-                              size: 9.sp,
-                            )
-                            .animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(
-                              begin: const Offset(1, 1),
-                              end: const Offset(1.6, 1.6),
-                              duration: 1500.ms,
-                              curve: Curves.easeInOut,
-                            )
-                            .fade(begin: .3, end: .8, duration: 1500.ms),
+                        child:
+                            Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: AppColors.sky.withOpacity(.55),
+                                  size: 9.sp,
+                                )
+                                .animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.6, 1.6),
+                                  duration: 1500.ms,
+                                  curve: Curves.easeInOut,
+                                )
+                                .fade(begin: .3, end: .8, duration: 1500.ms),
                       ),
                     ],
                   ),
@@ -1243,6 +1301,7 @@ class CourseData {
   final Color accentColor;
   final bool isLocked;
   final bool isCurrent;
+  final int? testId;
 
   const CourseData({
     this.id,
@@ -1258,6 +1317,7 @@ class CourseData {
     this.isCompleted = false,
     this.isLocked = false,
     this.isCurrent = false,
+    this.testId,
   });
 }
 
@@ -2040,4 +2100,138 @@ class _AnimatedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) =>
       oldDelegate.animationValue != animationValue;
+}
+
+/// Compact level checkpoint — matches course final-test card language.
+class _LevelFinalTestCard extends StatelessWidget {
+  final bool locked;
+  final String levelTitle;
+  final VoidCallback onStart;
+
+  const _LevelFinalTestCard({
+    required this.locked,
+    required this.levelTitle,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: locked ? null : onStart,
+        borderRadius: BorderRadius.circular(18.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            color: Colors.white.withOpacity(0.05),
+            border: Border.all(
+              color: locked
+                  ? Colors.white.withOpacity(0.08)
+                  : AppColors.yellow.withOpacity(0.35),
+            ),
+            boxShadow: locked
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44.w,
+                height: 44.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14.r),
+                  gradient: locked
+                      ? null
+                      : LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.yellow.withOpacity(0.95),
+                            AppColors.orange.withOpacity(0.85),
+                          ],
+                        ),
+                  color: locked ? Colors.white.withOpacity(0.08) : null,
+                  border: locked
+                      ? Border.all(color: Colors.white.withOpacity(0.12))
+                      : null,
+                ),
+                child: Icon(
+                  locked ? Icons.lock_rounded : Icons.military_tech_rounded,
+                  color: locked ? Colors.white38 : AppColors.dark,
+                  size: 22.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      locked ? 'Level test locked' : 'Level final test',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      locked
+                          ? 'Complete every course to unlock'
+                          : 'Pass to complete $levelTitle',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 11.sp,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12.r),
+                  color: locked
+                      ? Colors.white.withOpacity(0.06)
+                      : AppColors.yellow,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!locked) ...[
+                      Icon(
+                        Icons.play_arrow_rounded,
+                        size: 16.sp,
+                        color: AppColors.dark,
+                      ),
+                      SizedBox(width: 2.w),
+                    ],
+                    Text(
+                      locked ? 'Locked' : 'Start',
+                      style: GoogleFonts.poppins(
+                        color: locked ? Colors.white38 : AppColors.dark,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

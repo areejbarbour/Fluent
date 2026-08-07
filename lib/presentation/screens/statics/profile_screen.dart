@@ -1,35 +1,27 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/auth/logout/logout_cubit.dart';
 import 'package:fluent/cubit/auth/logout/logout_state.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
+import 'package:fluent/cubit/auth/reset_password/reset_password_state.dart';
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
+import 'package:fluent/cubit/auth/forgot_password/forgot_password_state.dart';
+import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
+import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
+import 'package:fluent/cubit/profile/profile_cubit.dart';
+import 'package:fluent/cubit/profile/profile_state.dart';
+import 'package:fluent/data/models/profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-enum ProgressPeriod { daily, weekly, monthly }
-
-class _ChartData {
-  final List<String> labels;
-  final List<double> values;
-  final double maxValue;
-  final String totalLabel;
-
-  const _ChartData({
-    required this.labels,
-    required this.values,
-    required this.maxValue,
-    required this.totalLabel,
-  });
-
-  double get total => values.fold(0, (a, b) => a + b);
-  double get average => values.isEmpty ? 0 : total / values.length;
-}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -39,147 +31,207 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _name = "Rasha Ahmad";
-  String _email = "rasha.ahmad@example.com";
-  String _phone = "+970 59 123 4567";
-  String? _avatarUrl;
-  final int _level = 8;
-  final int _streakDays = 15;
-  final int _xpPoints = 2480;
-  final int _nextLevelXp = 3000;
-
-  ProgressPeriod _selectedPeriod = ProgressPeriod.weekly;
-
-  late final Map<ProgressPeriod, _ChartData> _progressData = {
-    ProgressPeriod.daily: const _ChartData(
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      values: [3, 5, 2, 6, 4, 7, 5],
-      maxValue: 8,
-      totalLabel: "lessons this week",
-    ),
-    ProgressPeriod.weekly: const _ChartData(
-      labels: ["W1", "W2", "W3", "W4"],
-      values: [18, 22, 15, 26],
-      maxValue: 30,
-      totalLabel: "lessons this month",
-    ),
-    ProgressPeriod.monthly: const _ChartData(
-      labels: ["Feb", "Mar", "Apr", "May", "Jun", "Jul"],
-      values: [40, 55, 38, 60, 72, 65],
-      maxValue: 80,
-      totalLabel: "lessons this year",
-    ),
-  };
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<LogoutCubit>().reset();
+      if (!mounted) return;
+      context.read<LogoutCubit>().reset();
+      context.read<ProfileCubit>().loadProfile();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = _progressData[_selectedPeriod]!;
-
     return Scaffold(
       backgroundColor: AppColors.dark,
-      body: BlocListener<LogoutCubit, LogoutState>(
-        listener: (context, state) {
-          if (state is LogoutSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  state.message.isNotEmpty
-                      ? state.message
-                      : "Logged out successfully",
-                  style: GoogleFonts.poppins(fontSize: 13.sp),
-                ),
-                backgroundColor: AppColors.sky,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-              ),
-            );
-
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              loginRoute,
-              (route) => false,
-            );
-          } else if (state is LogoutFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  state.error.isNotEmpty
-                      ? state.error
-                      : "Failed to log out. Please try again.",
-                  style: GoogleFonts.poppins(fontSize: 13.sp),
-                ),
-                backgroundColor: Colors.redAccent,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-              ),
-            );
-          }
-        },
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<LogoutCubit, LogoutState>(
+            listener: (context, state) {
+              if (state is LogoutSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message.isNotEmpty
+                          ? state.message
+                          : 'Logged out successfully',
+                      style: GoogleFonts.poppins(fontSize: 13.sp),
+                    ),
+                    backgroundColor: AppColors.sky,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  loginRoute,
+                  (route) => false,
+                );
+              } else if (state is LogoutFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.error.isNotEmpty
+                          ? state.error
+                          : 'Failed to log out. Please try again.',
+                      style: GoogleFonts.poppins(fontSize: 13.sp),
+                    ),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          BlocListener<ProfileCubit, ProfileState>(
+            listener: (context, state) {
+              if (state is ProfileUpdateSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message,
+                      style: GoogleFonts.poppins(fontSize: 13.sp),
+                    ),
+                    backgroundColor: Colors.greenAccent.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+              } else if (state is ProfileFailure && state.profile == null) {
+                // Hard failure on first load — soft failures keep previous data
+              } else if (state is ProfileFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message,
+                      style: GoogleFonts.poppins(fontSize: 13.sp),
+                    ),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          // Success/error feedback for password change is shown inside
+          // the Change Password sheet Scaffold so it stays visible there.
+          BlocListener<ResetPasswordCubit, ResetPasswordState>(
+            listener: (context, state) {
+              if (state is ResetPasswordSuccess) {
+                context.read<ResetPasswordCubit>().reset();
+              }
+            },
+          ),
+        ],
         child: Stack(
           children: [
             _buildBackground(),
-            _TwinklingStars(count: 32),
+            const _TwinklingStars(count: 32),
             SafeArea(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 10.h,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate.fixed([
-                        _buildTopBar(),
-                        SizedBox(height: 24.h),
-                        _buildHeroProfile(),
-                        SizedBox(height: 22.h),
-                        _buildStatsRow(),
-                        SizedBox(height: 26.h),
-                        _buildSectionHeader(
-                          title: "Account",
-                          icon: Icons.person_rounded,
-                          color: AppColors.sky,
+              child: BlocBuilder<ProfileCubit, ProfileState>(
+                builder: (context, state) {
+                  if (state is ProfileLoading || state is ProfileInitial) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: AppColors.yellow),
+                    );
+                  }
+
+                  if (state is ProfileFailure && state.profile == null) {
+                    return _buildErrorState(state.message);
+                  }
+
+                  final ProfileViewData profile;
+                  final bool isUpdating;
+                  if (state is ProfileLoaded) {
+                    profile = state.profile;
+                    isUpdating = false;
+                  } else if (state is ProfileUpdating) {
+                    profile = state.profile;
+                    isUpdating = true;
+                  } else if (state is ProfileUpdateSuccess) {
+                    profile = state.profile;
+                    isUpdating = false;
+                  } else if (state is ProfileFailure && state.profile != null) {
+                    profile = state.profile!;
+                    isUpdating = false;
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Stack(
+                    children: [
+                      CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          SliverPadding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 10.h,
+                            ),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate.fixed([
+                                _buildTopBar(),
+                                SizedBox(height: 24.h),
+                                _buildHeroProfile(profile),
+                                SizedBox(height: 22.h),
+                                if (!profile.isTeacher) ...[
+                                  _buildStudentStatsRow(profile),
+                                  SizedBox(height: 26.h),
+                                ] else ...[
+                                  _buildTeacherBadgeRow(profile),
+                                  SizedBox(height: 26.h),
+                                ],
+                                _buildSectionHeader(
+                                  title: 'Account',
+                                  icon: Icons.person_rounded,
+                                  color: AppColors.sky,
+                                ),
+                                SizedBox(height: 12.h),
+                                _buildAccountInfoCard(profile),
+                                SizedBox(height: 14.h),
+                                _buildChangePasswordCard(profile),
+                                SizedBox(height: 14.h),
+                                // Exception requests — students only
+                                if (!profile.isTeacher) ...[
+                                  _buildLevelExceptionsCard(),
+                                  SizedBox(height: 14.h),
+                                ],
+                                SizedBox(height: 12.h),
+                                // Logout — same mechanism for student & teacher
+                                _buildLogoutButton(),
+                                SizedBox(height: 16.h),
+                                _buildFooter(),
+                                SizedBox(height: 24.h),
+                              ]),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isUpdating)
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.black45,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.yellow,
+                              ),
+                            ),
+                          ),
                         ),
-                        SizedBox(height: 12.h),
-                        _buildAccountInfoCard(),
-                        SizedBox(height: 14.h),
-                        _buildSecurityCard(),
-                        SizedBox(height: 14.h),
-                        // _buildPreferencesCard(),
-                        // SizedBox(height: 26.h),
-                        _buildPreferencesCard(),
-                        SizedBox(height: 14.h), // ← مسافة صغيرة
-                        _buildLevelExceptionsCard(), // ← الزر الجديد
-                        SizedBox(height: 26.h),
-                        _buildSectionHeader(
-                          title: "Activity",
-                          icon: Icons.insights_rounded,
-                          color: AppColors.yellow,
-                        ),
-                        SizedBox(height: 12.h),
-                        _buildProgressCard(data),
-                        SizedBox(height: 26.h),
-                        _buildLogoutButton(),
-                        SizedBox(height: 16.h),
-                        _buildFooter(),
-                        SizedBox(height: 24.h),
-                      ]),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -188,169 +240,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBackground() {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xff011826),
-                AppColors.dark,
-                AppColors.primary,
-                Color(0xff01466A),
-                AppColors.dark,
-              ],
-              stops: [0.0, 0.2, 0.55, 0.8, 1.0],
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 28.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded, color: AppColors.sky, size: 42.sp),
+            SizedBox(height: 14.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+                fontSize: 13.sp,
+              ),
             ),
-          ),
-        ),
-        Positioned(
-          top: -120.h,
-          right: -80.w,
-          child: _glowCircle(AppColors.yellow, 300.w, 160, 40)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(-15, 10),
-                duration: 5500.ms,
-                curve: Curves.easeInOut,
+            SizedBox(height: 18.h),
+            GestureDetector(
+              onTap: () => context.read<ProfileCubit>().loadProfile(),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.yellow, AppColors.orange],
+                  ),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.dark,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.sp,
+                  ),
+                ),
               ),
+            ),
+            SizedBox(height: 28.h),
+            _buildLogoutButton(),
+          ],
         ),
-        Positioned(
-          top: 500.h,
-          left: -100.w,
-          child: _glowCircle(AppColors.sky, 260.w, 150, 30)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(20, 15),
-                duration: 6500.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-        Positioned(
-          top: 950.h,
-          right: -60.w,
-          child: _glowCircle(const Color(0xffB861F5), 220.w, 140, 25)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(-10, -8),
-                duration: 7000.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _glowCircle(Color color, double size, double blur, double spread) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.10),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.30),
-            blurRadius: blur,
-            spreadRadius: spread,
-          ),
-        ],
       ),
     );
   }
+
+  // ── Background ─────────────────────────────────────────────
+
+  Widget _buildBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xff020B18),
+            Color(0xff072238),
+            AppColors.primary,
+            Color(0xff01344F),
+            Color(0xff020B18),
+          ],
+          stops: [0.0, 0.22, 0.55, 0.8, 1.0],
+        ),
+      ),
+    );
+  }
+
+  // ── Top bar ────────────────────────────────────────────────
 
   Widget _buildTopBar() {
     return Row(
       children: [
         _circleIconButton(
           icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () => Navigator.pop(context),
+          onTap: () => Navigator.maybePop(context),
         ),
         Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "My Profile",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.only(top: 2.h),
-                  width: 22.w,
-                  height: 2.h,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.orange, AppColors.yellow],
-                    ),
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
-                ),
-              ],
+          child: Text(
+            'My Profile',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzelDecorative(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
         _circleIconButton(
-          icon: Icons.settings_rounded,
+          icon: Icons.edit_rounded,
           onTap: () {
-            HapticFeedback.selectionClick();
-            // TODO: إعدادات
+            final state = context.read<ProfileCubit>().state;
+            ProfileViewData? data;
+            if (state is ProfileLoaded) data = state.profile;
+            if (state is ProfileUpdateSuccess) data = state.profile;
+            if (state is ProfileUpdating) data = state.profile;
+            if (data != null) _showEditProfileSheet(data);
           },
         ),
       ],
-    ).animate().fadeIn(duration: 400.ms);
+    );
   }
 
   Widget _circleIconButton({
     required IconData icon,
     required VoidCallback onTap,
-    int badgeCount = 0,
   }) {
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+      onTap: onTap,
       child: Container(
-        width: 44.w,
-        height: 44.w,
+        width: 40.w,
+        height: 40.w,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(.14),
-              Colors.white.withOpacity(.04),
-            ],
-          ),
-          border: Border.all(color: Colors.white.withOpacity(.20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.20),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
         ),
         child: Icon(icon, color: Colors.white, size: 18.sp),
       ),
     );
   }
 
-  Widget _buildHeroProfile() {
-    final xpProgress = (_xpPoints / _nextLevelXp).clamp(0.0, 1.0);
+  // ── Hero ───────────────────────────────────────────────────
+
+  Widget _buildHeroProfile(ProfileViewData profile) {
+    final hasImage =
+        profile.imageUrl != null && profile.imageUrl!.trim().isNotEmpty;
+    final progress = profile.isTeacher
+        ? 1.0
+        : (profile.points <= 0 ? 0.15 : (profile.points % 1000) / 1000.0).clamp(
+            0.12,
+            1.0,
+          );
 
     return Container(
       width: double.infinity,
@@ -383,7 +404,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
-                // هالة خارجية ناعمة
                 Container(
                   width: 130.w,
                   height: 130.w,
@@ -403,7 +423,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child:
                       CustomPaint(
                             painter: _GradientRingPainter(
-                              progress: xpProgress,
+                              progress: progress,
                               colors: const [
                                 AppColors.yellow,
                                 AppColors.orange,
@@ -416,101 +436,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .animate(onPlay: (c) => c.repeat())
                           .rotate(duration: 14.seconds, curve: Curves.linear),
                 ),
-                Container(
-                  width: 100.w,
-                  height: 100.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.sky.withOpacity(.25),
-                    image: _avatarUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(_avatarUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.35),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: _avatarUrl == null
-                      ? Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: 48.sp,
-                        )
-                      : null,
-                ),
-                Positioned(
-                  bottom: 4.h,
+                GestureDetector(
+                  onTap: () => _showEditProfileSheet(profile),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 4.h,
-                    ),
+                    width: 100.w,
+                    height: 100.w,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.yellow],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.sky.withOpacity(0.45),
+                        width: 2,
                       ),
-                      borderRadius: BorderRadius.circular(20.r),
-                      border: Border.all(color: AppColors.dark, width: 2.5),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.yellow.withOpacity(.5),
-                          blurRadius: 10,
+                          color: AppColors.yellow.withOpacity(0.25),
+                          blurRadius: 18,
                         ),
                       ],
+                      image: hasImage
+                          ? DecorationImage(
+                              image: NetworkImage(profile.imageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      color: hasImage ? null : AppColors.primary,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.star_rounded,
-                          color: Colors.black,
-                          size: 12.sp,
-                        ),
-                        SizedBox(width: 3.w),
-                        Text(
-                          "LV $_level",
-                          style: GoogleFonts.poppins(
-                            color: Colors.black,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.3,
+                    child: hasImage
+                        ? null
+                        : Icon(
+                            Icons.person_rounded,
+                            color: Colors.white70,
+                            size: 42.sp,
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 Positioned(
-                  top: 0,
-                  right: 0,
+                  bottom: 4,
+                  right: 8,
                   child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.mediumImpact();
-                      _showAvatarOptionsSheet();
-                    },
+                    onTap: () => _showEditProfileSheet(profile),
                     child: Container(
                       padding: EdgeInsets.all(7.r),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.sky,
-                        border: Border.all(color: AppColors.dark, width: 2.5),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.yellow, AppColors.orange],
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.sky.withOpacity(.6),
+                            color: AppColors.yellow.withOpacity(0.4),
                             blurRadius: 8,
                           ),
                         ],
                       ),
                       child: Icon(
                         Icons.camera_alt_rounded,
-                        color: Colors.white,
-                        size: 13.sp,
+                        color: AppColors.dark,
+                        size: 14.sp,
                       ),
                     ),
                   ),
@@ -518,147 +500,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          SizedBox(height: 16.h),
+          Text(
+            profile.name,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            profile.email,
+            style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12.sp),
+            textAlign: TextAlign.center,
+          ),
+          if (profile.bio != null && profile.bio!.trim().isNotEmpty) ...[
+            SizedBox(height: 12.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Text(
+                profile.bio!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 12.sp,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-          SizedBox(height: 18.h),
+  // ── Student stats (points + streak from API) ───────────────
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  _name,
-                  textAlign: TextAlign.center,
+  Widget _buildStudentStatsRow(ProfileViewData profile) {
+    return Row(
+      children: [
+        Expanded(
+          child: _statCard(
+            icon: Icons.stars_rounded,
+            value: '${profile.points}',
+            label: 'XP Points',
+            gradient: const [AppColors.yellow, AppColors.orange],
+          ),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: _statCard(
+            icon: Icons.local_fire_department_rounded,
+            value: '${profile.streak}',
+            label: 'Day Streak',
+            gradient: const [Color(0xFFFF6B6B), AppColors.orange],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeacherBadgeRow(ProfileViewData profile) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18.r),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.sky.withOpacity(0.18),
+            AppColors.primary.withOpacity(0.25),
+          ],
+        ),
+        border: Border.all(color: AppColors.sky.withOpacity(0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10.r),
+            decoration: BoxDecoration(
+              color: AppColors.sky.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(
+              Icons.school_rounded,
+              color: AppColors.sky,
+              size: 22.sp,
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Teacher Account',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              SizedBox(width: 8.w),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xffB388FF), Color(0xff7C4DFF)],
-                  ),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.verified_rounded,
-                      color: Colors.white,
-                      size: 11.sp,
-                    ),
-                    SizedBox(width: 3.w),
-                    Text(
-                      "PRO",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 8.5.sp,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 6.h),
-
-          Text(
-            _email,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.55),
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          SizedBox(height: 18.h),
-
-          Container(
-            padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.06),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: Colors.white.withOpacity(.08)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.bolt_rounded,
-                          color: AppColors.yellow,
-                          size: 14.sp,
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          "Experience",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(.7),
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      "$_xpPoints / $_nextLevelXp XP",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
-                Stack(
-                  children: [
-                    Container(
-                      height: 6.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.08),
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                    ),
-                    FractionallySizedBox(
-                      widthFactor: xpProgress,
-                      child: Container(
-                        height: 6.h,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.orange, AppColors.yellow],
-                          ),
-                          borderRadius: BorderRadius.circular(10.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.yellow.withOpacity(.4),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
+                SizedBox(height: 2.h),
                 Text(
-                  "${(_nextLevelXp - _xpPoints)} XP to Level ${_level + 1}",
+                  'Manage courses, lessons & tests',
                   style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.5),
-                    fontSize: 9.5.sp,
+                    color: Colors.white60,
+                    fontSize: 11.sp,
                   ),
                 ),
               ],
@@ -666,120 +622,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms).moveY(begin: 12, end: 0);
-  }
-
-  Widget _buildStatsRow() {
-    final stats = [
-      _StatItem(
-        icon: Icons.local_fire_department_rounded,
-        value: "$_streakDays",
-        label: "Day Streak",
-        gradient: const [AppColors.orange, Color(0xFFFF6B35)],
-      ),
-      _StatItem(
-        icon: Icons.emoji_events_rounded,
-        value: "12",
-        label: "Achievements",
-        gradient: const [AppColors.yellow, Color(0xFFFFC107)],
-      ),
-      _StatItem(
-        icon: Icons.menu_book_rounded,
-        value: "84",
-        label: "Lessons",
-        gradient: const [AppColors.sky, Color(0xff4FC3F7)],
-      ),
-      _StatItem(
-        icon: Icons.timer_rounded,
-        value: "47h",
-        label: "Study Time",
-        gradient: const [Color(0xffB388FF), Color(0xff7C4DFF)],
-      ),
-    ];
-
-    return Row(
-      children: List.generate(stats.length, (i) {
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i == stats.length - 1 ? 0 : 10.w),
-            child: _statCard(stats[i])
-                .animate(delay: (120 * i).ms)
-                .fadeIn(duration: 500.ms)
-                .moveY(begin: 16, end: 0),
-          ),
-        );
-      }),
     );
   }
 
-  Widget _statCard(_StatItem stat) {
+  Widget _statCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required List<Color> gradient,
+  }) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 6.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(.08),
-            Colors.white.withOpacity(.03),
+            Colors.white.withOpacity(0.10),
+            Colors.white.withOpacity(0.04),
           ],
         ),
-        border: Border.all(color: Colors.white.withOpacity(.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
-      child: Column(
+      child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(7.r),
+            padding: EdgeInsets.all(10.r),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: stat.gradient,
-              ),
-              borderRadius: BorderRadius.circular(10.r),
-              boxShadow: [
-                BoxShadow(
-                  color: stat.gradient.first.withOpacity(.4),
-                  blurRadius: 8,
+              gradient: LinearGradient(colors: gradient),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(icon, color: AppColors.dark, size: 18.sp),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white60,
+                    fontSize: 11.sp,
+                  ),
                 ),
               ],
-            ),
-            child: Icon(stat.icon, color: Colors.white, size: 16.sp),
-          ),
-          SizedBox(height: 8.h),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              stat.value,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16.sp,
-              ),
-            ),
-          ),
-          SizedBox(height: 1.h),
-          Text(
-            stat.label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.55),
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
       ),
     );
   }
+
+  // ── Section header ─────────────────────────────────────────
 
   Widget _buildSectionHeader({
     required String title,
@@ -788,109 +692,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return Row(
       children: [
-        Container(
-          padding: EdgeInsets.all(6.r),
-          decoration: BoxDecoration(
-            color: color.withOpacity(.15),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: Icon(icon, color: color, size: 14.sp),
-        ),
-        SizedBox(width: 10.w),
+        Icon(icon, color: color, size: 18.sp),
+        SizedBox(width: 8.w),
         Text(
           title,
           style: GoogleFonts.poppins(
             color: Colors.white,
-            fontWeight: FontWeight.w700,
             fontSize: 14.sp,
-            letterSpacing: 0.3,
-          ),
-        ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(.15),
-                  Colors.white.withOpacity(0),
-                ],
-              ),
-            ),
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAccountInfoCard() {
+  // ── Account card ───────────────────────────────────────────
+
+  Widget _buildAccountInfoCard(ProfileViewData profile) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.10),
-            Colors.white.withOpacity(.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
       ),
       child: Column(
         children: [
           _infoTile(
             icon: Icons.person_outline_rounded,
             iconColor: AppColors.sky,
-            label: "Full Name",
-            value: _name,
-            onTap: () => _showEditProfileSheet(),
+            label: 'Full Name',
+            value: profile.name,
+            onTap: () => _showEditProfileSheet(profile),
           ),
           _tileDivider(),
           _infoTile(
             icon: Icons.alternate_email_rounded,
             iconColor: AppColors.yellow,
-            label: "Email Address",
-            value: _email,
-            onTap: () => _showEditProfileSheet(),
+            label: 'Email',
+            value: profile.email,
+            onTap: () {},
           ),
           _tileDivider(),
           _infoTile(
-            icon: Icons.phone_iphone_rounded,
+            icon: Icons.notes_rounded,
             iconColor: const Color(0xffB388FF),
-            label: "Phone Number",
-            value: _phone,
+            label: 'Bio',
+            value: (profile.bio == null || profile.bio!.trim().isEmpty)
+                ? 'Add a short bio'
+                : profile.bio!,
+            onTap: () => _showEditProfileSheet(profile),
             isLast: true,
-            onTap: () => _showEditProfileSheet(),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms).moveY(begin: 12, end: 0);
+    );
   }
 
   Widget _tileDivider() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Container(
-        height: 1,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0),
-              Colors.white.withOpacity(.10),
-              Colors.white.withOpacity(0),
-            ],
-          ),
-        ),
-      ),
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white.withOpacity(0.06),
+      indent: 16.w,
+      endIndent: 16.w,
     );
   }
 
@@ -943,12 +807,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.white.withOpacity(.55),
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
                       ),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       value,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 13.sp,
@@ -958,18 +823,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.all(6.r),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.06),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(.5),
-                  size: 16.sp,
-                ),
-              ),
             ],
           ),
         ),
@@ -977,721 +830,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSecurityCard() {
-    return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(.10),
-                Colors.white.withOpacity(.04),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _securityTile(
-                icon: Icons.lock_outline_rounded,
-                iconColor: AppColors.sky,
-                title: "Password",
-                subtitle: "Last changed 30 days ago",
-                trailing: "Update",
-                onTap: _showChangePasswordSheet,
-              ),
-              _tileDivider(),
-              _securityTile(
-                icon: Icons.fingerprint_rounded,
-                iconColor: AppColors.yellow,
-                title: "Biometric Login",
-                subtitle: "Use fingerprint to sign in",
-                trailing: "Off",
-                isSwitch: true,
-                switchValue: false,
-                onTap: () {},
-              ),
-              _tileDivider(),
-              _securityTile(
-                icon: Icons.devices_rounded,
-                iconColor: const Color(0xffB388FF),
-                title: "Active Sessions",
-                subtitle: "2 devices logged in",
-                isLast: true,
-                onTap: () {},
-              ),
-            ],
-          ),
-        )
-        .animate()
-        .fadeIn(delay: 100.ms, duration: 500.ms)
-        .moveY(begin: 12, end: 0);
-  }
+  // ── Change password (uses existing ResetPasswordCubit + API) ──
 
-  Widget _securityTile({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    String? trailing,
-    bool isSwitch = false,
-    bool switchValue = false,
-    bool isLast = false,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isSwitch
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onTap();
-              },
-        borderRadius: BorderRadius.circular(isLast ? 22.r : 0),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-          child: Row(
-            children: [
-              Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.r),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      iconColor.withOpacity(.25),
-                      iconColor.withOpacity(.08),
-                    ],
-                  ),
-                  border: Border.all(color: iconColor.withOpacity(.30)),
-                ),
-                child: Icon(icon, color: iconColor, size: 18.sp),
-              ),
-              SizedBox(width: 14.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.55),
-                        fontSize: 10.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isSwitch)
-                _miniSwitch(value: switchValue, onChanged: (_) => onTap())
-              else if (trailing != null)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 6.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: iconColor.withOpacity(.15),
-                    borderRadius: BorderRadius.circular(10.r),
-                    border: Border.all(color: iconColor.withOpacity(.30)),
-                  ),
-                  child: Text(
-                    trailing,
-                    style: GoogleFonts.poppins(
-                      color: iconColor,
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(.5),
-                  size: 18.sp,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _miniSwitch({
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
+  Widget _buildChangePasswordCard(ProfileViewData profile) {
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onChanged(!value);
-      },
-      child: AnimatedContainer(
-        duration: 200.ms,
-        width: 38.w,
-        height: 22.h,
-        padding: EdgeInsets.all(2.r),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.r),
-          gradient: value
-              ? const LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                )
-              : null,
-          color: value ? null : Colors.white.withOpacity(.10),
-        ),
-        child: AnimatedAlign(
-          duration: 200.ms,
-          curve: Curves.easeOut,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 18.w,
-            height: 18.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? Colors.black : Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(.3), blurRadius: 4),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPreferencesCard() {
-    return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(.10),
-                Colors.white.withOpacity(.04),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-          ),
-          child: Column(
-            children: [
-              _securityTile(
-                icon: Icons.notifications_active_rounded,
-                iconColor: AppColors.orange,
-                title: "Notifications",
-                subtitle: "Daily reminders & updates",
-                isSwitch: true,
-                switchValue: true,
-                onTap: () {},
-              ),
-              _tileDivider(),
-              _securityTile(
-                icon: Icons.language_rounded,
-                iconColor: AppColors.sky,
-                title: "Language",
-                subtitle: "English (US)",
-                trailing: "Change",
-                onTap: () {},
-              ),
-              _tileDivider(),
-              _securityTile(
-                icon: Icons.dark_mode_rounded,
-                iconColor: const Color(0xffB388FF),
-                title: "Appearance",
-                subtitle: "Dark mode",
-                isLast: true,
-                isSwitch: true,
-                switchValue: true,
-                onTap: () {},
-              ),
-            ],
-          ),
-        )
-        .animate()
-        .fadeIn(delay: 150.ms, duration: 500.ms)
-        .moveY(begin: 12, end: 0);
-  }
-
-  Widget _buildLevelExceptionsCard() {
-    return GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            Navigator.pushNamed(context, levelExceptionsRoute);
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22.r),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(.10),
-                  Colors.white.withOpacity(.04),
-                ],
-              ),
-              border: Border.all(color: Colors.white.withOpacity(.12)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44.w,
-                  height: 44.w,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12.r),
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.yellow.withOpacity(.25),
-                        AppColors.orange.withOpacity(.15),
-                      ],
-                    ),
-                    border: Border.all(
-                      color: AppColors.yellow.withOpacity(.35),
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.assignment_turned_in_rounded,
-                    color: AppColors.yellow,
-                    size: 20.sp,
-                  ),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Exception Request ',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 13.5.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        'Display requests by status',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white.withOpacity(.55),
-                          fontSize: 10.5.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(.5),
-                  size: 20.sp,
-                ),
-              ],
-            ),
-          ),
-        )
-        .animate()
-        .fadeIn(delay: 180.ms, duration: 500.ms)
-        .moveY(begin: 12, end: 0);
-  }
-
-  Widget _buildProgressCard(_ChartData data) {
-    return Container(
-          padding: EdgeInsets.all(18.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(.10),
-                Colors.white.withOpacity(.04),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _periodTabs(),
-              SizedBox(height: 18.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: _miniStat(
-                      icon: Icons.menu_book_rounded,
-                      value: data.total.toStringAsFixed(0),
-                      label: data.totalLabel,
-                      color: AppColors.sky,
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: _miniStat(
-                      icon: Icons.trending_up_rounded,
-                      value: data.average.toStringAsFixed(1),
-                      label: "average",
-                      color: AppColors.yellow,
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: _miniStat(
-                      icon: Icons.local_fire_department_rounded,
-                      value: "$_streakDays",
-                      label: "day streak",
-                      color: AppColors.orange,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20.h),
-              _BarChart(key: ValueKey(_selectedPeriod), data: data),
-            ],
-          ),
-        )
-        .animate()
-        .fadeIn(delay: 200.ms, duration: 500.ms)
-        .moveY(begin: 12, end: 0);
-  }
-
-  Widget _miniStat({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withOpacity(.18), color.withOpacity(.05)],
-        ),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withOpacity(.30)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16.sp),
-          SizedBox(height: 5.h),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.60),
-              fontSize: 8.sp,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _periodTabs() {
-    final tabs = [
-      (ProgressPeriod.daily, "Daily"),
-      (ProgressPeriod.weekly, "Weekly"),
-      (ProgressPeriod.monthly, "Monthly"),
-    ];
-
-    return Container(
-      padding: EdgeInsets.all(4.r),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withOpacity(.06)),
-      ),
-      child: Row(
-        children: tabs.map((t) {
-          final selected = _selectedPeriod == t.$1;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedPeriod = t.$1);
-              },
-              child: AnimatedContainer(
-                duration: 250.ms,
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  gradient: selected
-                      ? const LinearGradient(
-                          colors: [AppColors.orange, AppColors.yellow],
-                        )
-                      : null,
-                  borderRadius: BorderRadius.circular(11.r),
-                  boxShadow: selected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.yellow.withOpacity(.4),
-                            blurRadius: 10,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  t.$2,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: selected
-                        ? Colors.black
-                        : Colors.white.withOpacity(.65),
-                    fontSize: 11.5.sp,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    return BlocBuilder<LogoutCubit, LogoutState>(
-      builder: (context, state) {
-        final isLoading = state is LogoutLoading;
-
-        return GestureDetector(
-              onTap: isLoading
-                  ? null
-                  : () {
-                      HapticFeedback.mediumImpact();
-                      _showLogoutConfirmDialog();
-                    },
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 16.h),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18.r),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.redAccent.withOpacity(isLoading ? .10 : .18),
-                      Colors.redAccent.withOpacity(isLoading ? .06 : .10),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.redAccent.withOpacity(.40)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.redAccent.withOpacity(.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isLoading)
-                      SizedBox(
-                        width: 16.sp,
-                        height: 16.sp,
-                        child: const CircularProgressIndicator(
-                          color: Colors.redAccent,
-                          strokeWidth: 2.2,
-                        ),
-                      )
-                    else
-                      Icon(
-                        Icons.logout_rounded,
-                        color: Colors.redAccent,
-                        size: 18.sp,
-                      ),
-                    SizedBox(width: 10.w),
-                    Text(
-                      isLoading ? "Logging Out..." : "Log Out",
-                      style: GoogleFonts.poppins(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.sp,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .animate()
-            .fadeIn(delay: 250.ms, duration: 500.ms)
-            .moveY(begin: 12, end: 0);
-      },
-    );
-  }
-
-  Widget _buildFooter() {
-    return Center(
-      child: Column(
-        children: [
-          Container(
-            width: 40.w,
-            height: 1.h,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0),
-                  Colors.white.withOpacity(.15),
-                  Colors.white.withOpacity(0),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            "Fluent",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.4),
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
-            ),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            "Version 1.0.0",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.25),
-              fontSize: 9.sp,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAvatarOptionsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return _BottomSheetShell(
-          title: "Profile Photo",
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _sheetOptionTile(
-                icon: Icons.photo_camera_rounded,
-                label: "Take a Photo",
-                color: AppColors.sky,
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              SizedBox(height: 10.h),
-              _sheetOptionTile(
-                icon: Icons.photo_library_rounded,
-                label: "Choose from Gallery",
-                color: AppColors.yellow,
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              if (_avatarUrl != null) ...[
-                SizedBox(height: 10.h),
-                _sheetOptionTile(
-                  icon: Icons.delete_outline_rounded,
-                  label: "Remove Photo",
-                  color: Colors.redAccent,
-                  onTap: () {
-                    setState(() => _avatarUrl = null);
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _sheetOptionTile({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+      onTap: () => _showChangePasswordSheet(profile),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.06),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: Colors.white.withOpacity(.1)),
+          borderRadius: BorderRadius.circular(18.r),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.08),
+              Colors.white.withOpacity(0.03),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
         ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8.r),
+              padding: EdgeInsets.all(10.r),
               decoration: BoxDecoration(
-                color: color.withOpacity(.15),
-                borderRadius: BorderRadius.circular(10.r),
+                color: AppColors.orange.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.orange.withOpacity(0.35)),
               ),
-              child: Icon(icon, color: color, size: 18.sp),
+              child: Icon(
+                Icons.lock_reset_rounded,
+                color: AppColors.orange,
+                size: 20.sp,
+              ),
             ),
             SizedBox(width: 12.w),
             Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Change Password',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Update your account password securely',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
               ),
             ),
             Icon(
               Icons.chevron_right_rounded,
-              color: Colors.white38,
-              size: 18.sp,
+              color: Colors.white54,
+              size: 20.sp,
             ),
           ],
         ),
@@ -1699,84 +898,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showEditProfileSheet() {
-    final nameCtrl = TextEditingController(text: _name);
-    final emailCtrl = TextEditingController(text: _email);
-    final phoneCtrl = TextEditingController(text: _phone);
-    final formKey = GlobalKey<FormState>();
-
-    showModalBottomSheet(
+  Future<void> _showChangePasswordSheet(ProfileViewData profile) async {
+    context.read<ResetPasswordCubit>().reset();
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+      builder: (_) => _ChangePasswordSheet(email: profile.email),
+    );
+  }
+
+  // ── Level exception (kept for student + teacher profiles) ──
+
+  Widget _buildLevelExceptionsCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, levelExceptionsRoute),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18.r),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.yellow.withOpacity(0.14),
+              AppColors.orange.withOpacity(0.08),
+            ],
           ),
-          child: _BottomSheetShell(
-            title: "Edit Profile",
-            child: Form(
-              key: formKey,
+          border: Border.all(color: AppColors.yellow.withOpacity(0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.r),
+              decoration: BoxDecoration(
+                color: AppColors.yellow.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(
+                Icons.assignment_late_rounded,
+                color: AppColors.yellow,
+                size: 20.sp,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sheetTextField(
-                    controller: nameCtrl,
-                    label: "Full Name",
-                    icon: Icons.person_outline_rounded,
-                    iconColor: AppColors.sky,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? "Please enter your name"
-                        : null,
+                  Text(
+                    'Exception Request',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  SizedBox(height: 14.h),
-                  _sheetTextField(
-                    controller: emailCtrl,
-                    label: "Email Address",
-                    icon: Icons.alternate_email_rounded,
-                    iconColor: AppColors.yellow,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return "Please enter your email";
-                      }
-                      final regex = RegExp(
-                        r'^[\w\.\-]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                      );
-                      if (!regex.hasMatch(v.trim()))
-                        return "Enter a valid email";
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 14.h),
-                  _sheetTextField(
-                    controller: phoneCtrl,
-                    label: "Phone Number",
-                    icon: Icons.phone_iphone_rounded,
-                    iconColor: const Color(0xffB388FF),
-                    keyboardType: TextInputType.phone,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? "Please enter your phone number"
-                        : null,
-                  ),
-                  SizedBox(height: 22.h),
-                  _sheetSubmitButton(
-                    label: "Save Changes",
-                    onTap: () {
-                      if (formKey.currentState?.validate() ?? false) {
-                        setState(() {
-                          _name = nameCtrl.text.trim();
-                          _email = emailCtrl.text.trim();
-                          _phone = phoneCtrl.text.trim();
-                        });
-                        Navigator.pop(context);
-                      }
-                    },
+                  SizedBox(height: 2.h),
+                  Text(
+                    'View or manage level exception requests',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 11.sp,
+                    ),
                   ),
                 ],
               ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+              size: 20.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Logout (same for student & teacher) ────────────────────
+
+  Widget _buildLogoutButton() {
+    return BlocBuilder<LogoutCubit, LogoutState>(
+      builder: (context, state) {
+        final isLoading = state is LogoutLoading;
+        return GestureDetector(
+          onTap: isLoading ? null : _showLogoutConfirmDialog,
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: 14.h),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+              color: Colors.redAccent.withOpacity(0.12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.redAccent,
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.logout_rounded,
+                    color: Colors.redAccent,
+                    size: 18.sp,
+                  ),
+                SizedBox(width: 10.w),
+                Text(
+                  isLoading ? 'Logging out...' : 'Log Out',
+                  style: GoogleFonts.poppins(
+                    color: Colors.redAccent,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1784,285 +1026,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showChangePasswordSheet() {
-    final currentCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool obscureCurrent = true, obscureNew = true, obscureConfirm = true;
+  Widget _buildFooter() {
+    return Text(
+      'Fluent · Learn with confidence',
+      textAlign: TextAlign.center,
+      style: GoogleFonts.poppins(color: Colors.white30, fontSize: 11.sp),
+    );
+  }
 
-    showModalBottomSheet(
+  // ── Edit profile sheet (bio + image → backend) ─────────────
+
+  Future<void> _showEditProfileSheet(ProfileViewData profile) async {
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: _BottomSheetShell(
-                title: "Change Password",
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _strengthIndicator(newCtrl),
-                      SizedBox(height: 14.h),
-                      _sheetTextField(
-                        controller: currentCtrl,
-                        label: "Current Password",
-                        icon: Icons.lock_outline_rounded,
-                        iconColor: AppColors.sky,
-                        obscureText: obscureCurrent,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureCurrent
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: Colors.white54,
-                            size: 18.sp,
-                          ),
-                          onPressed: () => setSheetState(
-                            () => obscureCurrent = !obscureCurrent,
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.isEmpty)
-                            ? "Please enter your current password"
-                            : null,
-                      ),
-                      SizedBox(height: 14.h),
-                      _sheetTextField(
-                        controller: newCtrl,
-                        label: "New Password",
-                        icon: Icons.lock_rounded,
-                        iconColor: AppColors.yellow,
-                        obscureText: obscureNew,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureNew
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: Colors.white54,
-                            size: 18.sp,
-                          ),
-                          onPressed: () =>
-                              setSheetState(() => obscureNew = !obscureNew),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return "Please enter a new password";
-                          }
-                          if (v.length < 8) return "At least 8 characters";
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 14.h),
-                      _sheetTextField(
-                        controller: confirmCtrl,
-                        label: "Confirm New Password",
-                        icon: Icons.lock_rounded,
-                        iconColor: const Color(0xffB388FF),
-                        obscureText: obscureConfirm,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureConfirm
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: Colors.white54,
-                            size: 18.sp,
-                          ),
-                          onPressed: () => setSheetState(
-                            () => obscureConfirm = !obscureConfirm,
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return "Please confirm your password";
-                          }
-                          if (v != newCtrl.text)
-                            return "Passwords do not match";
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 22.h),
-                      _sheetSubmitButton(
-                        label: "Update Password",
-                        onTap: () {
-                          if (formKey.currentState?.validate() ?? false) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                  "Password updated successfully ✅",
-                                ),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => _EditProfileSheet(
+        profile: profile,
+        onSave: (bio, imagePath) {
+          context.read<ProfileCubit>().updateProfile(
+            bio: bio,
+            imagePath: imagePath,
+          );
+        },
+      ),
     );
-  }
-
-  Widget _strengthIndicator(TextEditingController ctrl) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: ctrl,
-      builder: (context, value, _) {
-        final strength = _passwordStrength(value.text);
-        final labels = ["Weak", "Fair", "Good", "Strong"];
-        final colors = [
-          Colors.redAccent,
-          Colors.orange,
-          AppColors.yellow,
-          Colors.greenAccent,
-        ];
-        final percent = (strength + 1) / 4;
-
-        return Container(
-          padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.05),
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: Colors.white.withOpacity(.08)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Password Strength",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.6),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    value.text.isEmpty ? "—" : labels[strength],
-                    style: GoogleFonts.poppins(
-                      color: value.text.isEmpty
-                          ? Colors.white.withOpacity(.4)
-                          : colors[strength],
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 6.h),
-              Row(
-                children: List.generate(4, (i) {
-                  return Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(right: i == 3 ? 0 : 4.w),
-                      height: 4.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.08),
-                        borderRadius: BorderRadius.circular(4.r),
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: i <= strength ? 1 : 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [colors[strength], colors[strength]],
-                            ),
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  int _passwordStrength(String pwd) {
-    if (pwd.isEmpty) return -1;
-    int score = 0;
-    if (pwd.length >= 8) score++;
-    if (RegExp(r'[A-Z]').hasMatch(pwd)) score++;
-    if (RegExp(r'[0-9]').hasMatch(pwd)) score++;
-    if (RegExp(r'[^A-Za-z0-9]').hasMatch(pwd)) score++;
-    return (score - 1).clamp(0, 3);
   }
 
   Widget _sheetTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    Color? iconColor,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
+    required Color iconColor,
+    int maxLines = 1,
+    int? maxLength,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.5.sp),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white.withOpacity(.06),
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(
-          color: Colors.white.withOpacity(.55),
-          fontSize: 12.sp,
-        ),
-        prefixIcon: Container(
-          margin: EdgeInsets.all(10.r),
-          padding: EdgeInsets.all(7.r),
-          decoration: BoxDecoration(
-            color: (iconColor ?? AppColors.sky).withOpacity(.15),
-            borderRadius: BorderRadius.circular(8.r),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
+        decoration: InputDecoration(
+          counterStyle: GoogleFonts.poppins(
+            color: Colors.white38,
+            fontSize: 10.sp,
           ),
-          child: Icon(icon, color: iconColor ?? AppColors.sky, size: 16.sp),
+          prefixIcon: Icon(icon, color: iconColor, size: 18.sp),
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(
+            color: Colors.white54,
+            fontSize: 12.sp,
+          ),
+          border: InputBorder.none,
         ),
-        suffixIcon: suffixIcon,
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: Colors.white.withOpacity(.10)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: AppColors.sky, width: 1.6),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 1.4),
-        ),
-        errorStyle: GoogleFonts.poppins(fontSize: 10.sp),
       ),
     );
   }
@@ -2072,111 +1095,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
+      onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 15.h),
+        padding: EdgeInsets.symmetric(vertical: 14.h),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [AppColors.orange, AppColors.yellow],
+            colors: [AppColors.yellow, AppColors.orange],
           ),
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(14.r),
           boxShadow: [
-            BoxShadow(color: AppColors.yellow.withOpacity(.5), blurRadius: 16),
+            BoxShadow(
+              color: AppColors.yellow.withOpacity(0.35),
+              blurRadius: 12,
+            ),
           ],
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
-            color: Colors.black,
-            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
             fontSize: 14.sp,
-            letterSpacing: 0.3,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
     );
   }
 
+  // ── Logout confirm ─────────────────────────────────────────
+
   void _showLogoutConfirmDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (ctx) {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(24.r),
+            borderRadius: BorderRadius.circular(22.r),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
-                padding: EdgeInsets.all(22.w),
+                padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 18.h),
                 decoration: BoxDecoration(
-                  color: AppColors.dark.withOpacity(.85),
-                  borderRadius: BorderRadius.circular(24.r),
-                  border: Border.all(color: Colors.white.withOpacity(.15)),
+                  color: const Color(0xFF0B2A3A).withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(22.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(14.r),
+                      padding: EdgeInsets.all(12.r),
                       decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.15),
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.redAccent.withOpacity(.25),
-                            Colors.redAccent.withOpacity(.08),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Colors.redAccent.withOpacity(.30),
-                        ),
                       ),
                       child: Icon(
                         Icons.logout_rounded,
                         color: Colors.redAccent,
-                        size: 26.sp,
+                        size: 28.sp,
                       ),
                     ),
                     SizedBox(height: 14.h),
                     Text(
-                      "Log Out?",
+                      'Log Out?',
                       style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
                         fontSize: 17.sp,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 6.h),
+                    SizedBox(height: 8.h),
                     Text(
-                      "Are you sure you want to log out of your account?",
+                      'You will need to sign in again to continue.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.65),
+                        color: Colors.white60,
                         fontSize: 12.sp,
                       ),
                     ),
-                    SizedBox(height: 22.h),
+                    SizedBox(height: 20.h),
                     Row(
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () => Navigator.pop(ctx),
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 13.h),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.08),
+                                color: Colors.white.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(.15),
+                                  color: Colors.white.withOpacity(0.12),
                                 ),
                               ),
                               child: Text(
-                                "Cancel",
+                                'Cancel',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
@@ -2191,7 +1207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.pop(context);
+                              Navigator.pop(ctx);
                               context.read<LogoutCubit>().logout();
                             },
                             child: Container(
@@ -2209,7 +1225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                               child: Text(
-                                "Log Out",
+                                'Log Out',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
@@ -2233,18 +1249,878 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _StatItem {
-  final IconData icon;
-  final String value;
-  final String label;
-  final List<Color> gradient;
-  const _StatItem({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.gradient,
-  });
+// ── Change Password bottom sheet (OTP → verify → reset) ──
+// Backend requires password_reset_verified cache after OTP.
+// Flow: forgotPassword → verifyOtp(forgot_password) → resetPassword
+
+class _ChangePasswordSheet extends StatefulWidget {
+  final String email;
+  const _ChangePasswordSheet({required this.email});
+
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
 }
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  /// 0 = send OTP, 1 = enter OTP, 2 = new password
+  int _step = 0;
+
+  final _otpCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _obscurePass = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void dispose() {
+    _otpCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Please enter a new password';
+    if (value.length < 8) return 'Password must be at least 8 characters';
+    if (value.length > 50) return 'Password must be at most 50 characters';
+    if (!RegExp(r'[A-Z]').hasMatch(value) ||
+        !RegExp(r'[a-z]').hasMatch(value)) {
+      return 'Use upper and lower case letters';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Include at least one number';
+    }
+    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
+      return 'Include at least one symbol';
+    }
+    return null;
+  }
+
+  String? _validateConfirm(String? value) {
+    if (value == null || value.isEmpty) return 'Please confirm your password';
+    if (value != _passwordCtrl.text) return 'Passwords do not match';
+    return null;
+  }
+
+  void _sendOtp() {
+    final email = widget.email.trim();
+    if (email.isEmpty || email == '—') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Email not available. Please re-login.',
+            style: GoogleFonts.poppins(fontSize: 13.sp),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    context.read<ForgotPasswordCubit>().forgotPassword(email: email);
+  }
+
+  void _verifyOtp() {
+    final otp = _otpCtrl.text.trim();
+    if (otp.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter the OTP code',
+            style: GoogleFonts.poppins(fontSize: 13.sp),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    context.read<VerifyOtpCubit>().verifyOtp(
+      email: widget.email.trim(),
+      otp: otp,
+      type: OtpType.forgotPassword,
+    );
+  }
+
+  void _submitPassword() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    context.read<ResetPasswordCubit>().resetPassword(
+      email: widget.email.trim(),
+      password: _passwordCtrl.text,
+      passwordConfirmation: _confirmCtrl.text,
+    );
+  }
+
+  Widget _stepIndicator() {
+    Widget dot(int i, String label) {
+      final active = _step == i;
+      final done = _step > i;
+      return Expanded(
+        child: Column(
+          children: [
+            Container(
+              width: 28.w,
+              height: 28.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: (active || done)
+                    ? const LinearGradient(
+                        colors: [AppColors.yellow, AppColors.orange],
+                      )
+                    : null,
+                color: (active || done) ? null : Colors.white12,
+                border: Border.all(
+                  color: (active || done) ? Colors.transparent : Colors.white24,
+                ),
+              ),
+              child: done
+                  ? Icon(
+                      Icons.check_rounded,
+                      size: 16.sp,
+                      color: AppColors.dark,
+                    )
+                  : Text(
+                      '${i + 1}',
+                      style: GoogleFonts.poppins(
+                        color: active ? AppColors.dark : Colors.white60,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: active ? Colors.white : Colors.white54,
+                fontSize: 10.sp,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        dot(0, 'OTP'),
+        Expanded(
+          child: Container(
+            height: 2,
+            margin: EdgeInsets.only(bottom: 18.h),
+            color: _step > 0 ? AppColors.orange : Colors.white12,
+          ),
+        ),
+        dot(1, 'Verify'),
+        Expanded(
+          child: Container(
+            height: 2,
+            margin: EdgeInsets.only(bottom: 18.h),
+            color: _step > 1 ? AppColors.orange : Colors.white12,
+          ),
+        ),
+        dot(2, 'Password'),
+      ],
+    );
+  }
+
+  Widget _primaryButton({
+    required String label,
+    required VoidCallback? onTap,
+    required bool loading,
+  }) {
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.yellow, AppColors.orange],
+          ),
+          borderRadius: BorderRadius.circular(14.r),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.yellow.withOpacity(0.35),
+              blurRadius: 12,
+            ),
+          ],
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 22.w,
+                  height: 22.w,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: AppColors.dark,
+                  ),
+                )
+              : Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.dark,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback onToggle,
+    required String? Function(String?) validator,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscure,
+        validator: validator,
+        style: GoogleFonts.poppins(color: Colors.white, fontSize: 13.sp),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(
+            color: Colors.white54,
+            fontSize: 12.sp,
+          ),
+          border: InputBorder.none,
+          prefixIcon: Icon(
+            Icons.lock_outline_rounded,
+            color: AppColors.orange,
+            size: 18.sp,
+          ),
+          suffixIcon: IconButton(
+            onPressed: onToggle,
+            icon: Icon(
+              obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+              color: Colors.white54,
+              size: 18.sp,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _step0SendOtp(bool loading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'We will send a verification code to',
+          style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12.sp),
+        ),
+        SizedBox(height: 6.h),
+        Text(
+          widget.email,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Text(
+          'This protects your account before changing the password.',
+          style: GoogleFonts.poppins(color: Colors.white38, fontSize: 11.sp),
+        ),
+        SizedBox(height: 22.h),
+        _primaryButton(label: 'Send OTP', onTap: _sendOtp, loading: loading),
+      ],
+    );
+  }
+
+  Widget _step1VerifyOtp(bool loading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Enter the OTP sent to your email',
+          style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12.sp),
+        ),
+        SizedBox(height: 14.h),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: Colors.white.withOpacity(0.12)),
+          ),
+          child: TextField(
+            controller: _otpCtrl,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 18.sp,
+              letterSpacing: 8,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: '••••••',
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.white24,
+                letterSpacing: 8,
+              ),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+        SizedBox(height: 12.h),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: loading ? null : _sendOtp,
+            child: Text(
+              'Resend OTP',
+              style: GoogleFonts.poppins(
+                color: AppColors.yellow,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 18.h),
+        _primaryButton(
+          label: 'Verify OTP',
+          onTap: _verifyOtp,
+          loading: loading,
+        ),
+      ],
+    );
+  }
+
+  Widget _step2NewPassword(bool loading) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Choose a strong new password',
+            style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12.sp),
+          ),
+          SizedBox(height: 14.h),
+          _field(
+            controller: _passwordCtrl,
+            label: 'New Password',
+            obscure: _obscurePass,
+            onToggle: () => setState(() => _obscurePass = !_obscurePass),
+            validator: _validatePassword,
+          ),
+          _field(
+            controller: _confirmCtrl,
+            label: 'Confirm Password',
+            obscure: _obscureConfirm,
+            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+            validator: _validateConfirm,
+          ),
+          Text(
+            'Min 8 chars · upper & lower · number · symbol',
+            style: GoogleFonts.poppins(color: Colors.white38, fontSize: 10.sp),
+          ),
+          SizedBox(height: 18.h),
+          _primaryButton(
+            label: 'Update Password',
+            onTap: _submitPassword,
+            loading: loading,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSheetSnack(
+    BuildContext context, {
+    required String message,
+    required Color background,
+  }) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: background,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<ForgotPasswordCubit, ForgotPasswordState>(
+            listener: (context, state) {
+              if (state is ForgotPasswordSuccess) {
+                setState(() => _step = 1);
+                _showSheetSnack(
+                  context,
+                  message: state.message.isNotEmpty
+                      ? state.message
+                      : 'OTP sent to your email',
+                  background: const Color(0xFF1B8A5A),
+                );
+              } else if (state is ForgotPasswordFailure) {
+                _showSheetSnack(
+                  context,
+                  message: state.error,
+                  background: Colors.redAccent,
+                );
+              }
+            },
+          ),
+          BlocListener<VerifyOtpCubit, VerifyOtpState>(
+            listener: (context, state) {
+              if (state is VerifyOtpSuccess) {
+                setState(() => _step = 2);
+                _showSheetSnack(
+                  context,
+                  message: state.message.isNotEmpty
+                      ? state.message
+                      : 'OTP verified. Set your new password.',
+                  background: const Color(0xFF1B8A5A),
+                );
+              } else if (state is VerifyOtpFailure) {
+                _showSheetSnack(
+                  context,
+                  message: state.error,
+                  background: Colors.redAccent,
+                );
+              }
+            },
+          ),
+          BlocListener<ResetPasswordCubit, ResetPasswordState>(
+            listener: (context, state) {
+              if (state is ResetPasswordSuccess) {
+                _showSheetSnack(
+                  context,
+                  message: state.message.isNotEmpty
+                      ? state.message
+                      : 'Password reset successfully',
+                  background: const Color(0xFF1B8A5A),
+                );
+                Future.delayed(const Duration(milliseconds: 1400), () {
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                });
+              } else if (state is ResetPasswordFailure) {
+                final details = state.errors;
+                String msg = state.error;
+                if (details != null && details.isNotEmpty) {
+                  final first = details.values.first;
+                  if (first is List && first.isNotEmpty) {
+                    msg = first.first.toString();
+                  } else if (first is String && first.isNotEmpty) {
+                    msg = first;
+                  }
+                }
+                _showSheetSnack(
+                  context,
+                  message: msg,
+                  background: Colors.redAccent,
+                );
+              }
+            },
+          ),
+        ],
+        child: Padding(
+          // Push sheet above keyboard without shrinking past content
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: DraggableScrollableSheet(
+            expand: true,
+            initialChildSize: bottomInset > 0 ? 0.78 : 0.58,
+            minChildSize: 0.40,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              final forgotLoading =
+                  context.watch<ForgotPasswordCubit>().state
+                      is ForgotPasswordLoading;
+              final otpLoading =
+                  context.watch<VerifyOtpCubit>().state is VerifyOtpLoading;
+              final resetLoading =
+                  context.watch<ResetPasswordCubit>().state
+                      is ResetPasswordLoading;
+
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF0B2A3A), Color(0xFF013C58)],
+                  ),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(24.r),
+                  ),
+                  border: Border.all(color: AppColors.sky.withOpacity(0.25)),
+                ),
+                child: Column(
+                  children: [
+                    // Drag handle
+                    Padding(
+                      padding: EdgeInsets.only(top: 10.h, bottom: 6.h),
+                      child: Container(
+                        width: 40.w,
+                        height: 4.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2.r),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Change Password',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    Expanded(
+                      child: ListView(
+                        controller: scrollController,
+                        padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 20.h),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        children: [
+                          _stepIndicator(),
+                          SizedBox(height: 14.h),
+                          if (_step == 0) _step0SendOtp(forgotLoading),
+                          if (_step == 1)
+                            _step1VerifyOtp(otpLoading || forgotLoading),
+                          if (_step == 2) _step2NewPassword(resetLoading),
+                          SizedBox(height: 12.h),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Edit Profile bottom sheet (owns TextEditingController) ──
+
+class _EditProfileSheet extends StatefulWidget {
+  final ProfileViewData profile;
+  final void Function(String bio, String? imagePath) onSave;
+
+  const _EditProfileSheet({required this.profile, required this.onSave});
+
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  late final TextEditingController _bioCtrl;
+  String? _pickedImagePath;
+  String? _previewUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _bioCtrl = TextEditingController(text: widget.profile.bio ?? '');
+    _previewUrl = widget.profile.imageUrl;
+  }
+
+  @override
+  void dispose() {
+    _bioCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      if (result != null &&
+          result.files.isNotEmpty &&
+          result.files.first.path != null) {
+        setState(() {
+          _pickedImagePath = result.files.first.path;
+          _previewUrl = null;
+        });
+      }
+    } catch (e) {
+      debugPrint('Image pick error: $e');
+    }
+  }
+
+  Widget _avatar() {
+    final path = _pickedImagePath;
+    final url = _previewUrl;
+    Widget child;
+    if (path != null) {
+      child = Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    } else if (url != null && url.isNotEmpty) {
+      child = Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    } else {
+      child = _placeholder();
+    }
+    return ClipOval(
+      child: SizedBox(width: 96.w, height: 96.w, child: child),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: AppColors.primary,
+      child: Icon(Icons.person_rounded, color: Colors.white70, size: 40.sp),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final bottomInset = media.viewInsets.bottom;
+    final maxHeight = (media.size.height - media.viewInsets.bottom) * 0.92;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Material(
+            color: Colors.transparent,
+            child: _BottomSheetShell(
+              title: 'Edit Profile',
+              bottomPadding: bottomInset > 0 ? 12.h : 24.h,
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.only(bottom: 8.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _avatar(),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(6.r),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [AppColors.yellow, AppColors.orange],
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                color: AppColors.dark,
+                                size: 14.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Tap to change photo',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 11.sp,
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
+                        ),
+                      ),
+                      child: TextField(
+                        controller: _bioCtrl,
+                        maxLines: 4,
+                        maxLength: 500,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                        ),
+                        decoration: InputDecoration(
+                          counterStyle: GoogleFonts.poppins(
+                            color: Colors.white38,
+                            fontSize: 10.sp,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.notes_rounded,
+                            color: const Color(0xffB388FF),
+                            size: 18.sp,
+                          ),
+                          labelText: 'Bio',
+                          labelStyle: GoogleFonts.poppins(
+                            color: Colors.white54,
+                            fontSize: 12.sp,
+                          ),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    GestureDetector(
+                      onTap: () {
+                        final bio = _bioCtrl.text.trim();
+                        final imagePath = _pickedImagePath;
+                        Navigator.pop(context);
+                        widget.onSave(bio, imagePath);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.yellow, AppColors.orange],
+                          ),
+                          borderRadius: BorderRadius.circular(14.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.yellow.withOpacity(0.35),
+                              blurRadius: 12,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'Save Changes',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            color: AppColors.dark,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom sheet shell ───────────────────────────────────────
+
+class _BottomSheetShell extends StatelessWidget {
+  final String title;
+  final Widget child;
+  final double? bottomPadding;
+  const _BottomSheetShell({
+    required this.title,
+    required this.child,
+    this.bottomPadding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0B2A3A), Color(0xFF013C58)],
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        border: Border.all(color: AppColors.sky.withOpacity(0.25)),
+      ),
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, bottomPadding ?? 24.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40.w,
+            height: 4.h,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ── Gradient ring painter ────────────────────────────────────
 
 class _GradientRingPainter extends CustomPainter {
   final double progress;
@@ -2260,323 +2136,44 @@ class _GradientRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
+    final radius = (size.shortestSide - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
 
     final bgPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..color = Colors.white.withOpacity(.08);
+      ..color = Colors.white.withOpacity(0.08);
     canvas.drawCircle(center, radius, bgPaint);
 
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final gradient = SweepGradient(
-      colors: colors,
-      startAngle: 0,
-      endAngle: 2 * math.pi,
-    ).createShader(rect);
-
+    final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
     final fgPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
-      ..shader = gradient;
+      ..shader = SweepGradient(
+        colors: colors,
+        startAngle: -math.pi / 2,
+        endAngle: -math.pi / 2 + sweep,
+      ).createShader(rect);
 
-    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress, false, fgPaint);
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, fgPaint);
   }
 
   @override
-  bool shouldRepaint(covariant _GradientRingPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.colors != colors;
-}
-
-class _BottomSheetShell extends StatelessWidget {
-  final String title;
-  final Widget child;
-  const _BottomSheetShell({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-          decoration: BoxDecoration(
-            color: AppColors.dark.withOpacity(.92),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-            border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(.12)),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.25),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16.sp,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              SizedBox(height: 18.h),
-              child,
-            ],
-          ),
-        ),
-      ),
-    );
+  bool shouldRepaint(covariant _GradientRingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
-class _BarChart extends StatelessWidget {
-  final _ChartData data;
-  const _BarChart({super.key, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final double chartAreaHeight = 132.h;
-    final double labelHeadroom = 26.h;
-    final double usableBarHeight = chartAreaHeight - labelHeadroom;
-    final double peakValue = data.values.reduce(math.max);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: chartAreaHeight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: Column(
-                  children: List.generate(4, (i) {
-                    return Expanded(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: Container(
-                          height: 1,
-                          color: Colors.white.withOpacity(i == 0 ? .10 : .05),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  height: 1.4,
-                  color: Colors.white.withOpacity(.18),
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(data.values.length, (i) {
-                  final value = data.values[i];
-                  final fraction = (value / data.maxValue).clamp(0.0, 1.0);
-                  final barHeight = usableBarHeight * fraction;
-                  final isPeak = value == peakValue;
-
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 5.w),
-                      child: Stack(
-                        alignment: Alignment.bottomCenter,
-                        clipBehavior: Clip.none,
-                        children: [
-                          Positioned(
-                            bottom: barHeight + 6.h,
-                            child: Text(
-                              value.toStringAsFixed(0),
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                color: isPeak
-                                    ? AppColors.yellow
-                                    : Colors.white60,
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          if (isPeak)
-                            Positioned(
-                              bottom: barHeight + 22.h,
-                              child: _peakBadge(),
-                            ),
-                          Container(
-                                height: barHeight <= 0 ? 4 : barHeight,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                    colors: isPeak
-                                        ? [AppColors.orange, AppColors.yellow]
-                                        : [
-                                            AppColors.primary,
-                                            AppColors.sky.withOpacity(.9),
-                                          ],
-                                  ),
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(8.r),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          (isPeak
-                                                  ? AppColors.yellow
-                                                  : AppColors.sky)
-                                              .withOpacity(isPeak ? .55 : .25),
-                                      blurRadius: isPeak ? 14 : 8,
-                                      spreadRadius: isPeak ? 0.5 : 0,
-                                    ),
-                                  ],
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(8.r),
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.white.withOpacity(.35),
-                                        Colors.white.withOpacity(0),
-                                      ],
-                                      stops: const [0.0, 0.4],
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .animate(delay: (150 + i * 90).ms)
-                              .scaleY(
-                                begin: 0,
-                                end: 1,
-                                alignment: Alignment.bottomCenter,
-                                duration: 650.ms,
-                                curve: Curves.easeOutBack,
-                              ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 10.h),
-        Row(
-          children: List.generate(data.labels.length, (i) {
-            final isPeak = data.values[i] == peakValue;
-            return Expanded(
-              child: Text(
-                data.labels[i],
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color: isPeak
-                      ? AppColors.yellow
-                      : Colors.white.withOpacity(.6),
-                  fontSize: 9.5.sp,
-                  fontWeight: isPeak ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  Widget _peakBadge() {
-    return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                ),
-                borderRadius: BorderRadius.circular(20.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.6),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.star_rounded, color: Colors.black, size: 9.sp),
-                  SizedBox(width: 2.w),
-                  Text(
-                    "Best",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontSize: 8.sp,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ClipPath(
-              clipper: _TriangleClipper(),
-              child: Container(
-                width: 8.w,
-                height: 5.h,
-                color: AppColors.yellow,
-              ),
-            ),
-          ],
-        )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(begin: 0, end: -3, duration: 1000.ms, curve: Curves.easeInOut);
-  }
-}
-
-class _TriangleClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width / 2, size.height);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}
+// ── Twinkling stars ──────────────────────────────────────────
 
 class _TwinklingStars extends StatelessWidget {
   final int count;
-  const _TwinklingStars({this.count = 40});
+  const _TwinklingStars({this.count = 32});
 
   @override
   Widget build(BuildContext context) {
-    final rng = math.Random(7);
+    final rng = math.Random(11);
     return IgnorePointer(
       child: Stack(
         children: List.generate(count, (i) {
@@ -2586,7 +2183,6 @@ class _TwinklingStars extends StatelessWidget {
           final delay = rng.nextInt(3000);
           final duration = 1500 + rng.nextInt(2500);
           final maxOpacity = rng.nextDouble() * 0.6 + 0.3;
-          final hasGlow = rng.nextBool();
 
           return Positioned(
             left: left * 1.sw,
@@ -2595,18 +2191,9 @@ class _TwinklingStars extends StatelessWidget {
                 Container(
                       width: size.w,
                       height: size.w,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white,
-                        boxShadow: hasGlow
-                            ? [
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.7),
-                                  blurRadius: 4,
-                                  spreadRadius: 0.5,
-                                ),
-                              ]
-                            : null,
                       ),
                     )
                     .animate(onPlay: (c) => c.repeat(reverse: true))

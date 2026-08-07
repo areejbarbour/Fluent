@@ -7,12 +7,16 @@ class LessonVideoModel {
   /// حالة الدرس من الباك (published / archived / closed ...) إن وُجدت
   final String? status;
 
+  /// Published lesson test id from StudentDetailLessonResource.test_id
+  final int? testId;
+
   LessonVideoModel({
     required this.id,
     required this.title,
     required this.xpPoints,
     required this.video,
     this.status,
+    this.testId,
   });
 
   bool get isPublished =>
@@ -24,12 +28,16 @@ class LessonVideoModel {
   }
 
   factory LessonVideoModel.fromJson(Map<String, dynamic> json) {
+    final testRaw = json['test_id'];
     return LessonVideoModel(
       id: json['id'] ?? 0,
       title: json['title']?.toString() ?? '',
       xpPoints: json['xp_points'] ?? 0,
       video: json['video']?.toString() ?? '',
       status: json['status']?.toString(),
+      testId: testRaw == null
+          ? null
+          : (testRaw is int ? testRaw : int.tryParse(testRaw.toString())),
     );
   }
 }

@@ -42,6 +42,7 @@ import 'package:fluent/presentation/screens/placementTestDialog.dart';
 import 'package:fluent/presentation/screens/teacher/questions/questions_list_screen.dart';
 import 'package:fluent/presentation/screens/teacher/tests/test_detail_view_screen.dart';
 import 'package:fluent/presentation/screens/teacher/tests/test_form_screen.dart';
+import 'package:fluent/presentation/screens/test/student_test_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -56,6 +57,8 @@ import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/onboarding/onboarding_screen.dart';
 import 'presentation/screens/courses/level_courses_screen.dart';
 import 'package:fluent/presentation/screens/statics/profile_screen.dart';
+import 'package:fluent/cubit/profile/profile_cubit.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
 import 'package:fluent/presentation/screens/statics/word_bank_screen.dart';
 import 'package:fluent/presentation/screens/statics/podcasts_screen.dart';
 import 'package:fluent/presentation/screens/statics/ai_conversation_screen.dart';
@@ -157,6 +160,22 @@ class AppRouter {
           builder: (_) => const PlacementTestScreen(showIntro: true),
         );
 
+      case studentTestRoute:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        final testId = args['testId'] as int? ?? 0;
+        final title = args['title'] as String?;
+        final xpRaw = args['xpPoints'];
+        final xpPoints = xpRaw is int
+            ? xpRaw
+            : int.tryParse(xpRaw?.toString() ?? '') ?? 0;
+        return MaterialPageRoute(
+          builder: (_) => StudentTestScreen(
+            testId: testId,
+            title: title,
+            xpPoints: xpPoints,
+          ),
+        );
+
       case placementTestDialogRoute:
         return MaterialPageRoute(builder: (_) => const PlacementTestDialog());
 
@@ -174,7 +193,15 @@ class AppRouter {
         );
 
       case profileRoute:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => ProfileCubit(
+              profileRepository: ctx.read<ProfileRepository>(),
+              authRepository: ctx.read<AuthRepository>(),
+            )..loadProfile(),
+            child: const ProfileScreen(),
+          ),
+        );
 
       case wordBankRoute:
         return MaterialPageRoute(
@@ -218,6 +245,7 @@ class AppRouter {
                   ..fetchStudentCourses(levelId ?? 0),
             child: LevelCoursesScreen(
               levelId: levelId,
+              testId: args['testId'] as int?,
               userName: args['userName'] as String? ?? "Rasha",
               xp: args['xp'] as int? ?? 12540,
               streakDays: args['streakDays'] as int? ?? 15,

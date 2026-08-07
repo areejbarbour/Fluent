@@ -8,7 +8,11 @@ import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
+import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/data/services/attempt_service.dart';
+import 'package:fluent/data/services/profile_service.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
@@ -35,7 +39,6 @@ import 'package:fluent/data/services/word_service.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/data/services/level_exception_service.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
-import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
 import 'package:fluent/data/services/words_bank_service.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'package:fluent/data/services/lesson_word_service.dart';
@@ -102,6 +105,12 @@ void main() async {
   final wordQuizService = WordQuizService(dioInstance);
   final wordQuizRepository = WordQuizRepository(wordQuizService);
 
+  final profileService = ProfileService(dioInstance);
+  final profileRepository = ProfileRepository(profileService);
+
+  final attemptService = AttemptService(dioInstance);
+  final attemptRepository = AttemptRepository(attemptService);
+
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
@@ -127,6 +136,8 @@ void main() async {
       lessonWordRepository: lessonWordRepository,
       rateRepository: rateRepository,
       wordQuizRepository: wordQuizRepository,
+      profileRepository: profileRepository,
+      attemptRepository: attemptRepository,
       initialRoute: initialRoute,
     ),
   );
@@ -148,6 +159,8 @@ class MyApp extends StatefulWidget {
   final LessonWordRepository lessonWordRepository;
   final RateRepository rateRepository;
   final WordQuizRepository wordQuizRepository;
+  final ProfileRepository profileRepository;
+  final AttemptRepository attemptRepository;
   late final AppRouter appRouter;
 
   MyApp({
@@ -167,6 +180,8 @@ class MyApp extends StatefulWidget {
     required this.lessonWordRepository,
     required this.rateRepository,
     required this.wordQuizRepository,
+    required this.profileRepository,
+    required this.attemptRepository,
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -229,6 +244,12 @@ class _MyAppState extends State<MyApp> {
             ),
             RepositoryProvider<WordQuizRepository>.value(
               value: widget.wordQuizRepository,
+            ),
+            RepositoryProvider<ProfileRepository>.value(
+              value: widget.profileRepository,
+            ),
+            RepositoryProvider<AttemptRepository>.value(
+              value: widget.attemptRepository,
             ),
           ],
           child: MultiBlocProvider(

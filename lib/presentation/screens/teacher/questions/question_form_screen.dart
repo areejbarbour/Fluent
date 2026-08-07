@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/helper/questions/fill_question_helper.dart';
 import 'package:fluent/cubit/teacher/questions/create/question_create_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/create/question_create_state.dart';
 import 'package:fluent/cubit/teacher/questions/detail/question_detail_cubit.dart';
@@ -102,10 +103,10 @@ class _FormViewState extends State<_FormView> {
         );
         break;
       case QuestionType.fill:
-        _answers = List.generate(
-          2,
-          (_) => _AnswerDraft(text: '', blankOrder: 0),
-        );
+        _answers = [
+          _AnswerDraft(text: '', blankOrder: 1),
+          _AnswerDraft(text: '', blankOrder: 2),
+        ];
         break;
       case QuestionType.arrange:
         _answers = List.generate(
@@ -623,25 +624,18 @@ class _FormViewState extends State<_FormView> {
                 return 'Question text is required for Fill type';
               }
 
-              final regex = RegExp(r'\{(\d+)\}');
-              final matches = regex.allMatches(v);
+              // Placeholders sequential {1},{2},...
+              final phErr = FillQuestionHelper.validatePlaceholders(v.trim());
+              if (phErr != null) return phErr;
 
-              if (matches.isEmpty) {
-                return 'Must contain at least one placeholder like {1}';
-              }
-
-              final placeholders =
-                  matches.map((m) => int.parse(m.group(1)!)).toList()..sort();
-
-              for (int i = 0; i < placeholders.length; i++) {
-                if (placeholders[i] != i + 1) {
-                  return 'Placeholders must be sequential starting from {1} (e.g., {1}, {2})';
-                }
-              }
-
-              if (placeholders.length != _answers.length) {
-                return 'Number of placeholders (${placeholders.length}) must equal number of answers (${_answers.length})';
-              }
+              // Every blank must have ≥1 answer; extras = alternatives (OK)
+              final coverErr = FillQuestionHelper.validateAnswersCoverBlanks(
+                textQuestion: v.trim(),
+                blankOrdersFromAnswers: _answers
+                    .map((a) => a.blankOrder)
+                    .toList(),
+              );
+              if (coverErr != null) return coverErr;
 
               return null;
             },
@@ -750,12 +744,14 @@ class _FormViewState extends State<_FormView> {
     int lastEnd = 0;
 
     String? answerFor(int blankNumber) {
+      final alts = <String>[];
       for (final a in _answers) {
         if (a.text.trim().isEmpty) continue;
-        final n = a.blankOrder > 0 ? a.blankOrder : 1;
-        if (n == blankNumber) return a.text;
+        final n = a.blankOrder > 0 ? a.blankOrder : 0;
+        if (n == blankNumber) alts.add(a.text.trim());
       }
-      return null;
+      if (alts.isEmpty) return null;
+      return alts.join(' / ');
     }
 
     for (final m in regex.allMatches(text)) {
@@ -1254,7 +1250,13 @@ class _FormViewState extends State<_FormView> {
                 ),
               ),
               const Spacer(),
-              if (_type != QuestionType.fill)
+              if (_type == QuestionType.fill) ...[
+                _fillChipButton(
+                  label: 'Add answer',
+                  icon: Icons.add_rounded,
+                  onTap: _addFillAnswerRow,
+                ),
+              ] else
                 GestureDetector(
                   onTap: () =>
                       setState(() => _answers.add(_AnswerDraft.forType(_type))),
@@ -1289,6 +1291,17 @@ class _FormViewState extends State<_FormView> {
                 ),
             ],
           ),
+          if (_type == QuestionType.fill) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Same blank # = alternative accepted answers (e.g. goes & walks for {1})',
+              style: GoogleFonts.poppins(
+                color: Colors.white54,
+                fontSize: 10.sp,
+                height: 1.35,
+              ),
+            ),
+          ],
           SizedBox(height: 10.h),
           ..._answers.asMap().entries.map((e) {
             final idx = e.key;
@@ -1299,6 +1312,86 @@ class _FormViewState extends State<_FormView> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  /// Blank numbers available from text_question + any already used on answers.
+  List<int> get _fillBlankChoices {
+    final fromText = FillQuestionHelper.parseBlankOrders(
+      _textQuestion.text.trim(),
+    );
+    final fromAnswers = _answers
+        .map((a) => a.blankOrder)
+        .where((o) => o > 0)
+        .toSet();
+    final set = {...fromText, ...fromAnswers};
+    if (set.isEmpty) set.add(1);
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  void _addFillAnswerRow() {
+    final blanks = FillQuestionHelper.parseBlankOrders(
+      _textQuestion.text.trim(),
+    );
+    int target;
+    if (blanks.isEmpty) {
+      target = _answers.isEmpty
+          ? 1
+          : (_answers
+                    .map((a) => a.blankOrder)
+                    .fold<int>(0, (m, o) => o > m ? o : m) +
+                1);
+    } else {
+      // Prefer a blank that has no answer yet; else first blank (for alternative)
+      final covered = _answers
+          .map((a) => a.blankOrder)
+          .where((o) => o > 0)
+          .toSet();
+      final missing = blanks.where((b) => !covered.contains(b)).toList();
+      target = missing.isNotEmpty ? missing.first : blanks.first;
+    }
+    setState(() {
+      _answers.add(_AnswerDraft(text: '', blankOrder: target));
+    });
+  }
+
+  void _addFillAlternative(int blankOrder) {
+    setState(() {
+      _answers.add(_AnswerDraft(text: '', blankOrder: blankOrder));
+    });
+  }
+
+  Widget _fillChipButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: AppColors.orange.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: AppColors.orange.withOpacity(0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.orange, size: 14.sp),
+            SizedBox(width: 3.w),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: AppColors.orange,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1354,50 +1447,105 @@ class _FormViewState extends State<_FormView> {
               ),
             ],
           ),
-          onRemove: () => setState(() => _answers.removeAt(idx)),
+          onRemove: () => setState(() {
+            _answers.removeAt(idx);
+            if (_type == QuestionType.fill) {
+              for (int i = 0; i < _answers.length; i++) {
+                _answers[i].blankOrder = i + 1;
+              }
+            }
+          }),
         );
 
       case QuestionType.fill:
+        final blankChoices = _fillBlankChoices;
+        final currentBlank = a.blankOrder > 0
+            ? a.blankOrder
+            : blankChoices.first;
+        if (a.blankOrder <= 0) a.blankOrder = currentBlank;
+        final altCount = _answers
+            .where((x) => x.blankOrder == a.blankOrder)
+            .length;
         return _answerShell(
           idx,
-          row: Row(
+          row: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 32.w,
-                padding: EdgeInsets.symmetric(vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Center(
+              Row(
+                children: [
+                  // Blank selector (same # = accepted alternatives)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: AppColors.orange.withOpacity(0.45),
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: blankChoices.contains(a.blankOrder)
+                            ? a.blankOrder
+                            : blankChoices.first,
+                        dropdownColor: const Color(0xFF0B2A3A),
+                        iconEnabledColor: AppColors.orange,
+                        style: GoogleFonts.poppins(
+                          color: AppColors.orange,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        items: [
+                          for (final b in blankChoices)
+                            DropdownMenuItem(value: b, child: Text('{${b}}')),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) return;
+                          setState(() => a.blankOrder = v);
+                        },
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: TextFormField(
+                      key: ValueKey('fill_ans_${idx}_${a.blankOrder}'),
+                      initialValue: a.text,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                      ),
+                      decoration: _inputDecoration(
+                        altCount > 1
+                            ? 'Alternative for blank ${a.blankOrder}'
+                            : 'Answer for blank ${a.blankOrder}',
+                      ),
+                      onChanged: (v) => a.text = v,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 6.h),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: () => _addFillAlternative(a.blankOrder),
                   child: Text(
-                    "#${idx + 1}",
+                    '+ Add alternative for {${a.blankOrder}}',
                     style: GoogleFonts.poppins(
-                      color: AppColors.orange,
+                      color: AppColors.yellow.withOpacity(0.9),
                       fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: TextFormField(
-                  initialValue: a.text,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 13.sp,
-                  ),
-                  decoration: _inputDecoration("Blank answer"),
-                  onChanged: (v) {
-                    a.text = v;
-                    a.blankOrder =
-                        idx + 1; // ✅ يضمن تطابق blank_order مع رقم الفراغ
-                  },
-                ),
-              ),
             ],
           ),
+          onRemove: () => setState(() {
+            // Do NOT reindex blank_order — alternatives must keep their blank #
+            _answers.removeAt(idx);
+          }),
         );
 
       case QuestionType.arrange:
@@ -1466,7 +1614,14 @@ class _FormViewState extends State<_FormView> {
               ],
             ],
           ),
-          onRemove: () => setState(() => _answers.removeAt(idx)),
+          onRemove: () => setState(() {
+            _answers.removeAt(idx);
+            if (_type == QuestionType.fill) {
+              for (int i = 0; i < _answers.length; i++) {
+                _answers[i].blankOrder = i + 1;
+              }
+            }
+          }),
         );
 
       case QuestionType.pair:
@@ -1506,7 +1661,14 @@ class _FormViewState extends State<_FormView> {
               ),
             ],
           ),
-          onRemove: () => setState(() => _answers.removeAt(idx)),
+          onRemove: () => setState(() {
+            _answers.removeAt(idx);
+            if (_type == QuestionType.fill) {
+              for (int i = 0; i < _answers.length; i++) {
+                _answers[i].blankOrder = i + 1;
+              }
+            }
+          }),
         );
     }
   }
@@ -1637,33 +1799,30 @@ class _FormViewState extends State<_FormView> {
       }
     }
 
-    // 3. التحقق من FILL
+    // 3. FILL — must match backend ValidFillQuestion + blank_order rules
     if (_type == QuestionType.fill) {
-      final regex = RegExp(r'\{(\d+)\}');
-      final matches = regex.allMatches(_textQuestion.text.trim());
-      if (matches.isEmpty) {
+      // Ensure every row has a valid blank_order (do not force 1..n by row)
+      final blanks = FillQuestionHelper.parseBlankOrders(
+        _textQuestion.text.trim(),
+      );
+      for (int i = 0; i < _answers.length; i++) {
+        if (_answers[i].blankOrder <= 0) {
+          _answers[i].blankOrder = blanks.isNotEmpty ? blanks.first : (i + 1);
+        }
+      }
+      final err = FillQuestionHelper.validateAnswersCoverBlanks(
+        textQuestion: _textQuestion.text.trim(),
+        blankOrdersFromAnswers: _answers.map((a) => a.blankOrder).toList(),
+      );
+      if (err != null) {
         _showError(context, 'Validation Error', {
-          'text_question': ['Must contain at least one placeholder like {1}.'],
+          'text_question': [err],
         });
         return;
       }
-      final placeholders = matches.map((m) => int.parse(m.group(1)!)).toList()
-        ..sort();
-      for (int i = 0; i < placeholders.length; i++) {
-        if (placeholders[i] != i + 1) {
-          _showError(context, 'Validation Error', {
-            'text_question': [
-              'Placeholders must be sequential starting from {1}.',
-            ],
-          });
-          return;
-        }
-      }
-      if (placeholders.length != _answers.length) {
+      if (_answers.any((a) => a.text.trim().isEmpty)) {
         _showError(context, 'Validation Error', {
-          'text_question': [
-            'Number of placeholders must equal the number of answers.',
-          ],
+          'answers': ['Each blank answer must be filled.'],
         });
         return;
       }

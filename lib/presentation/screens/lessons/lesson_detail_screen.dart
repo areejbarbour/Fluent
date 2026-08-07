@@ -1,9 +1,14 @@
-
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
+import 'package:fluent/cubit/student/lesson_words/lesson_words_state.dart';
+import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart';
+import 'package:fluent/cubit/student/lessons/lesson_detail_state.dart';
+import 'package:fluent/data/models/lesson_detail_model.dart';
+import 'package:fluent/data/models/lesson_word_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,21 +17,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 
-import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart';
-import 'package:fluent/cubit/student/lessons/lesson_detail_state.dart';
-import 'package:fluent/data/models/lesson_detail_model.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:fluent/constants/strings.dart';
-import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
-import 'package:fluent/cubit/student/lesson_words/lesson_words_state.dart';
-import 'package:fluent/data/models/lesson_word_model.dart';
+/// Student lesson flow: Video → Words → Test
+/// Comments available on every step via chat icon.
+enum _LessonStep { video, words, test }
 
-/// Shared time formatter used by both the inline and fullscreen video players.
 String _formatDuration(Duration d) {
   final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   final hours = d.inHours;
-  return hours > 0 ? "$hours:$minutes:$seconds" : "$minutes:$seconds";
+  return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
 }
 
 class LessonDetailScreen extends StatefulWidget {
@@ -40,179 +39,220 @@ class LessonDetailScreen extends StatefulWidget {
 }
 
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
+  _LessonStep _step = _LessonStep.video;
   bool _isSendingComment = false;
   int? _busyCommentId;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _wordsRequested = false;
 
   @override
   void dispose() {
     _audioPlayer.dispose();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   Future<void> _playWordAudio(String? audioUrl) async {
     if (audioUrl == null || audioUrl.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No audio for this word'),
+        SnackBar(
+          content: Text(
+            'No audio for this word',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
     try {
-      String url = audioUrl;
-      if (!url.startsWith('http')) {
-        url = '$baseUrl$audioUrl';
-      }
+      var url = audioUrl;
+      if (!url.startsWith('http')) url = '$baseUrl$audioUrl';
       await _audioPlayer.stop();
       await _audioPlayer.play(UrlSource(url));
-    } catch (e) {
-      debugPrint('Audio error: $e');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to play audio',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  void _showLessonWordsDialog() {
-    final lessonId = widget.lessonId ?? 0;
+  void _goNext() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_step == _LessonStep.video) {
+        _step = _LessonStep.words;
+        _ensureWordsLoaded();
+      } else if (_step == _LessonStep.words) {
+        _step = _LessonStep.test;
+      }
+    });
+  }
 
-    // ناخد الـ Cubit من الـ context الحالي قبل ما نفتح الـ Dialog
-    final cubit = context.read<LessonWordsCubit>();
-    cubit.fetchLessonWords(lessonId);
+  void _goBackStep() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_step == _LessonStep.test) {
+        _step = _LessonStep.words;
+      } else if (_step == _LessonStep.words) {
+        _step = _LessonStep.video;
+      } else {
+        Navigator.of(context).maybePop();
+      }
+    });
+  }
 
-    showDialog(
+  void _ensureWordsLoaded() {
+    final id = widget.lessonId;
+    if (id == null || _wordsRequested) return;
+    _wordsRequested = true;
+    context.read<LessonWordsCubit>().fetchLessonWords(id);
+  }
+
+  void _openComments(LessonDetailModel data) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(.7),
-      builder: (dialogContext) {
-        // ✅ نمرّر نفس الـ Cubit للـ Dialog
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
         return BlocProvider.value(
-          value: cubit,
-          child: _LessonWordsDialog(
-            lessonId: lessonId,
-            onPlayAudio: _playWordAudio,
+          value: context.read<LessonDetailCubit>(),
+          child: _CommentsSheet(
+            data: data,
+            isSending: _isSendingComment,
+            busyCommentId: _busyCommentId,
+            onAdd: _handleAddComment,
+            onEdit: _handleEditComment,
+            onDelete: _handleDeleteComment,
+            onLoadMore: () =>
+                context.read<LessonDetailCubit>().loadMoreComments(),
+            onShowActions: (comment, {required bool canEdit}) {
+              _showCommentActions(comment, canEdit: canEdit);
+            },
           ),
         );
       },
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cubit = context.read<LessonDetailCubit>();
-      if (cubit.state is LessonDetailInitial) {
-        cubit.fetchLessonDetail(widget.lessonId ?? 0);
-      }
-    });
-  }
-
-  Future<void> _handleAddComment(String text) async {
+  Future<String?> _handleAddComment(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty) return 'Comment cannot be empty';
     if (trimmed.length > LessonDetailCubit.maxCommentLength) {
-      _showErrorSnack(
-        'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
-      );
-      return;
+      return 'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters';
     }
+    final lessonId = widget.lessonId;
+    if (lessonId == null) return 'Invalid lesson';
     setState(() => _isSendingComment = true);
     final error = await context.read<LessonDetailCubit>().submitComment(
-      widget.lessonId ?? 0,
+      lessonId,
       trimmed,
     );
-    if (!mounted) return;
-    setState(() => _isSendingComment = false);
+    if (mounted) setState(() => _isSendingComment = false);
+    return error;
+  }
 
-    if (error != null) _showErrorSnack(error);
+  Future<String?> _handleEditComment(int commentId, String newText) async {
+    setState(() => _busyCommentId = commentId);
+    final error = await context.read<LessonDetailCubit>().editComment(
+      commentId,
+      newText,
+    );
+    if (mounted) setState(() => _busyCommentId = null);
+    return error;
+  }
+
+  Future<String?> _handleDeleteComment(int commentId) async {
+    setState(() => _busyCommentId = commentId);
+    final error = await context.read<LessonDetailCubit>().removeComment(
+      commentId,
+    );
+    if (mounted) setState(() => _busyCommentId = null);
+    return error;
   }
 
   void _showErrorSnack(String message) {
-    HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
-            SizedBox(width: 8.w),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
+        content: Text(message, style: GoogleFonts.poppins(fontSize: 13)),
+        backgroundColor: Colors.redAccent,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        duration: const Duration(seconds: 3),
       ),
     );
   }
 
   void _showCommentActions(LessonCommentModel comment, {bool canEdit = true}) {
-    HapticFeedback.selectionClick();
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return ClipRRect(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26.r)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 28.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.dark.withOpacity(.97),
-                    AppColors.primary.withOpacity(.9),
-                  ],
-                ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(26.r)),
-                border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(.14)),
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40.w,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.25),
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
+      backgroundColor: const Color(0xFF0B2A3A),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
-                  SizedBox(height: 18.h),
-                  // ✅ تعديل فقط إن لم يكن الدرس archived/closed (منطق الباك)
-                  if (canEdit) ...[
-                    _actionTile(
-                      icon: Icons.edit_rounded,
-                      label: "Edit comment",
-                      iconColors: const [AppColors.sky, Color(0xFFB388FF)],
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        _openEditDialog(comment);
-                      },
+                ),
+                SizedBox(height: 16.h),
+                if (canEdit)
+                  ListTile(
+                    leading: Icon(
+                      Icons.edit_rounded,
+                      color: AppColors.sky,
+                      size: 22.sp,
                     ),
-                    SizedBox(height: 10.h),
-                  ],
-                  _actionTile(
-                    icon: Icons.delete_outline_rounded,
-                    label: "Delete comment",
-                    iconColors: const [Color(0xFFFF6B6B), Color(0xFFE53935)],
+                    title: Text(
+                      'Edit comment',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     onTap: () {
-                      Navigator.pop(sheetContext);
-                      _confirmDelete(comment);
+                      Navigator.pop(ctx);
+                      _openEditDialog(comment);
                     },
                   ),
-                ],
-              ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.redAccent,
+                    size: 22.sp,
+                  ),
+                  title: Text(
+                    'Delete comment',
+                    style: GoogleFonts.poppins(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _confirmDelete(comment);
+                  },
+                ),
+              ],
             ),
           ),
         );
@@ -220,451 +260,216 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _actionTile({
-    required IconData icon,
-    required String label,
-    required List<Color> iconColors,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.06),
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: Colors.white.withOpacity(.10)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34.w,
-              height: 34.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: iconColors),
-              ),
-              child: Icon(icon, color: Colors.white, size: 17.sp),
-            ),
-            SizedBox(width: 12.w),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _openEditDialog(LessonCommentModel comment) {
     final controller = TextEditingController(text: comment.comment);
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(.6),
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24.r),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                padding: EdgeInsets.all(20.w),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24.r),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.dark.withOpacity(.95),
-                      AppColors.primary.withOpacity(.85),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withOpacity(.16)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 34.w,
-                          height: 34.w,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [AppColors.sky, Color(0xFFB388FF)],
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.edit_rounded,
-                            color: Colors.white,
-                            size: 16.sp,
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Text(
-                          "Edit Comment",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 4.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.06),
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(.14),
-                        ),
-                      ),
-                      child: TextField(
-                        controller: controller,
-                        autofocus: true,
-                        minLines: 1,
-                        maxLines: 5,
-                        maxLength: LessonDetailCubit.maxCommentLength,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 12.5.sp,
-                        ),
-                        cursorColor: AppColors.yellow,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          counterStyle: GoogleFonts.poppins(
-                            color: Colors.white38,
-                            fontSize: 10.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 18.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => Navigator.pop(dialogContext),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: EdgeInsets.symmetric(vertical: 11.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.08),
-                                borderRadius: BorderRadius.circular(16.r),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(.14),
-                                ),
-                              ),
-                              child: Text(
-                                "Cancel",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.8),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12.5.sp,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              final newText = controller.text.trim();
-                              if (newText.length >
-                                  LessonDetailCubit.maxCommentLength) {
-                                return;
-                              }
-                              Navigator.pop(dialogContext);
-                              if (newText.isNotEmpty &&
-                                  newText != comment.comment) {
-                                _handleEditComment(comment.id, newText);
-                              }
-                            },
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: EdgeInsets.symmetric(vertical: 11.h),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.orange, AppColors.yellow],
-                                ),
-                                borderRadius: BorderRadius.circular(16.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.yellow.withOpacity(.4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                "Save",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12.5.sp,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.dark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18.r),
+          ),
+          title: Text(
+            'Edit Comment',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16.sp,
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            maxLength: LessonDetailCubit.maxCommentLength,
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 14.sp),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.06),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide.none,
               ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.white54),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final text = controller.text.trim();
+                if (text.isEmpty) return;
+                Navigator.pop(ctx);
+                final err = await _handleEditComment(comment.id, text);
+                if (err != null && mounted) _showErrorSnack(err);
+              },
+              child: Text(
+                'Save',
+                style: GoogleFonts.poppins(
+                  color: AppColors.yellow,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
   void _confirmDelete(LessonCommentModel comment) {
-    showDialog(
+    showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withOpacity(.6),
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24.r),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                padding: EdgeInsets.all(20.w),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24.r),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.dark.withOpacity(.95),
-                      AppColors.primary.withOpacity(.85),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withOpacity(.16)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 46.w,
-                      height: 46.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFFF6B6B).withOpacity(.15),
-                        border: Border.all(
-                          color: const Color(0xFFFF6B6B).withOpacity(.4),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.delete_outline_rounded,
-                        color: const Color(0xFFFF6B6B),
-                        size: 22.sp,
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    Text(
-                      "Delete this comment?",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 14.5.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      "This can't be undone.",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.6),
-                        fontSize: 11.5.sp,
-                      ),
-                    ),
-                    SizedBox(height: 18.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => Navigator.pop(dialogContext),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: EdgeInsets.symmetric(vertical: 11.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.08),
-                                borderRadius: BorderRadius.circular(16.r),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(.14),
-                                ),
-                              ),
-                              child: Text(
-                                "Cancel",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.8),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12.5.sp,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.pop(dialogContext);
-                              _handleDeleteComment(comment.id);
-                            },
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: EdgeInsets.symmetric(vertical: 11.h),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFF6B6B),
-                                    Color(0xFFE53935),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(16.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFFFF6B6B,
-                                    ).withOpacity(.4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                "Delete",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12.5.sp,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.dark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18.r),
+          ),
+          title: Text(
+            'Delete comment?',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16.sp,
+            ),
+          ),
+          content: Text(
+            'This action cannot be undone.',
+            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.white54),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                'Delete',
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-          ),
+          ],
         );
       },
-    );
-  }
-
-  Future<void> _handleEditComment(int commentId, String newText) async {
-    setState(() => _busyCommentId = commentId);
-    final error = await context.read<LessonDetailCubit>().editComment(
-      commentId,
-      newText,
-    );
-    if (!mounted) return;
-    setState(() => _busyCommentId = null);
-    if (error != null) _showErrorSnack(error);
-  }
-
-  Future<void> _handleDeleteComment(int commentId) async {
-    setState(() => _busyCommentId = commentId);
-    final error = await context.read<LessonDetailCubit>().removeComment(
-      commentId,
-    );
-    if (!mounted) return;
-    setState(() => _busyCommentId = null);
-    if (error != null) _showErrorSnack(error);
+    ).then((ok) async {
+      if (ok == true) {
+        final err = await _handleDeleteComment(comment.id);
+        if (err != null && mounted) _showErrorSnack(err);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.dark,
-      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          _buildBackground(),
-          _TwinklingStars(count: 35),
+          const _LessonBackdrop(),
           SafeArea(
             child: Column(
               children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 20.w,
-                    vertical: 12.h,
-                  ),
-                  child: _buildTopBar(),
+                BlocBuilder<LessonDetailCubit, LessonDetailState>(
+                  builder: (context, state) {
+                    final data = state is LessonDetailSuccess
+                        ? state.data
+                        : null;
+                    final commentsCount = data?.commentsTotal ?? 0;
+                    return _TopBar(
+                      step: _step,
+                      title: widget.lessonTitle.isNotEmpty
+                          ? widget.lessonTitle
+                          : (data?.lesson?.title ?? 'Lesson'),
+                      commentsCount: commentsCount,
+                      onBack: _goBackStep,
+                      onComments: data == null
+                          ? null
+                          : () => _openComments(data),
+                    );
+                  },
                 ),
                 Expanded(
                   child: BlocBuilder<LessonDetailCubit, LessonDetailState>(
                     builder: (context, state) {
                       if (state is LessonDetailLoading ||
                           state is LessonDetailInitial) {
-                        return _loadingCard();
+                        return const _CenteredLoader();
                       }
-
                       if (state is LessonDetailFailure) {
-                        return _errorCard(state.message);
-                      }
-
-                      if (state is LessonDetailSuccess) {
-                        return _buildContent(
-                          state.data,
-                          isLoadingMore: state.isLoadingMore,
+                        return _ErrorView(
+                          message: state.message,
+                          onRetry: () {
+                            if (widget.lessonId != null) {
+                              context
+                                  .read<LessonDetailCubit>()
+                                  .fetchLessonDetail(widget.lessonId!);
+                            }
+                          },
                         );
                       }
+                      if (state is LessonDetailSuccess) {
+                        return _StepBody(
+                          step: _step,
+                          data: state.data,
+                          onNext: _goNext,
+                          onPlayAudio: _playWordAudio,
+                          onStartTest: () async {
+                            final testId = state.data.lesson?.testId;
+                            if (testId == null) return;
+                            final result = await Navigator.pushNamed(
+                              context,
+                              studentTestRoute,
+                              arguments: {
+                                'testId': testId,
+                                'title':
+                                    state.data.lesson?.title ??
+                                    widget.lessonTitle,
+                                'xpPoints': state.data.lesson?.xpPoints ?? 0,
+                              },
+                            );
+                            if (!context.mounted) return;
 
+                            if (result is Map) {
+                              final completed = result['completed'] == true;
+                              final passed = result['passed'] == true;
+                              final goToLessons = result['goToLessons'] == true;
+
+                              // Success + Continue learning → back to course lessons list
+                              if (completed && passed && goToLessons) {
+                                Navigator.of(context).pop(true);
+                                return;
+                              }
+
+                              // Failed or closed result → stay, refresh, guide to video
+                              if (widget.lessonId != null) {
+                                context
+                                    .read<LessonDetailCubit>()
+                                    .fetchLessonDetail(widget.lessonId!);
+                              }
+                              if (completed && !passed) {
+                                setState(() => _step = _LessonStep.video);
+                              }
+                            }
+                          },
+                        );
+                      }
                       return const SizedBox.shrink();
                     },
                   ),
                 ),
-                BlocBuilder<LessonDetailCubit, LessonDetailState>(
-                  builder: (context, state) {
-                    if (state is! LessonDetailSuccess) {
-                      return const SizedBox.shrink();
-                    }
-                    // مطابق للباك: لا إنشاء تعليق إلا إذا الدرس published
-                    if (!state.data.canCreateComment) {
-                      return SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 12.h),
-                          child: Text(
-                            'Comments are disabled for this lesson.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white54,
-                              fontSize: 12.sp,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    return _CommentComposer(
-                      isSending: _isSendingComment,
-                      onSubmit: _handleAddComment,
-                    );
-                  },
-                ),
               ],
             ),
           ),
@@ -672,394 +477,1111 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       ),
     );
   }
+}
 
-  Widget _loadingCard() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(color: AppColors.yellow),
-          SizedBox(height: 12.h),
-          Text(
-            "Loading lesson...",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.7),
-              fontSize: 12.sp,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _TopBar extends StatelessWidget {
+  final _LessonStep step;
+  final String title;
+  final int commentsCount;
+  final VoidCallback onBack;
+  final VoidCallback? onComments;
 
-  Widget _errorCard(String message) {
+  const _TopBar({
+    required this.step,
+    required this.title,
+    required this.commentsCount,
+    required this.onBack,
+    required this.onComments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              padding: EdgeInsets.all(18.w),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20.r),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(.10),
-                    Colors.white.withOpacity(.04),
-                  ],
-                ),
-                border: Border.all(color: Colors.white.withOpacity(.15)),
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 4.h),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _CircleIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: onBack,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.wifi_off_rounded,
-                    color: Colors.white.withOpacity(.7),
-                    size: 30.sp,
-                  ),
-                  SizedBox(height: 10.h),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(.85),
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  GestureDetector(
-                    onTap: () => context
-                        .read<LessonDetailCubit>()
-                        .fetchLessonDetail(widget.lessonId ?? 0),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18.w,
-                        vertical: 9.h,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.orange, AppColors.yellow],
-                        ),
-                        borderRadius: BorderRadius.circular(20.r),
-                      ),
-                      child: Text(
-                        "Retry",
-                        style: GoogleFonts.poppins(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.sp,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(LessonDetailModel data, {bool isLoadingMore = false}) {
-    final lesson = data.lesson;
-    final comments = data.comments;
-    final totalLabel = data.commentsTotal > comments.length
-        ? data.commentsTotal
-        : comments.length;
-
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      children: [
-        SizedBox(height: 4.h),
-        if (lesson != null && lesson.video.isNotEmpty)
-          _LuxuryVideoPlayer(videoUrl: lesson.video, title: lesson.title)
-        else
-          _noVideoCard(),
-        SizedBox(height: 16.h),
-        if (lesson != null) _buildLessonInfoCard(lesson),
-        SizedBox(height: 12.h),
-
-        // ===== زر Lesson Words =====
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            _showLessonWordsDialog();
-          },
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 14.w),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16.r),
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.sky.withOpacity(.18),
-                  AppColors.sky.withOpacity(.06),
-                ],
-              ),
-              border: Border.all(color: AppColors.sky.withOpacity(.35)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.translate_rounded,
-                  color: AppColors.sky,
-                  size: 18.sp,
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  'Lesson Words',
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w700,
-                    fontSize: 13.sp,
                   ),
                 ),
+              ),
+              _CommentIconButton(count: commentsCount, onTap: onComments),
+            ],
+          ),
+          SizedBox(height: 14.h),
+          _StepIndicator(step: step),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepIndicator extends StatelessWidget {
+  final _LessonStep step;
+  const _StepIndicator({required this.step});
+
+  int get _index {
+    switch (step) {
+      case _LessonStep.video:
+        return 0;
+      case _LessonStep.words:
+        return 1;
+      case _LessonStep.test:
+        return 2;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Video', 'Words', 'Test'];
+    return Row(
+      children: List.generate(3, (i) {
+        final active = i == _index;
+        final done = i < _index;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: 280.ms,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4.r),
+                    color: done || active
+                        ? (active ? AppColors.yellow : AppColors.sky)
+                        : Colors.white.withOpacity(0.12),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: AppColors.yellow.withOpacity(0.35),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  labels[i],
+                  style: GoogleFonts.poppins(
+                    color: active
+                        ? AppColors.yellow
+                        : done
+                        ? AppColors.sky
+                        : Colors.white38,
+                    fontSize: 10.sp,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _CircleIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.08),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 40.w,
+          height: 40.w,
+          child: Icon(icon, color: Colors.white, size: 18.sp),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentIconButton extends StatelessWidget {
+  final int count;
+  final VoidCallback? onTap;
+  const _CommentIconButton({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(14.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14.r),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: AppColors.sky,
+                size: 18.sp,
+              ),
+              if (count > 0) ...[
                 SizedBox(width: 6.w),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: Colors.white54,
-                  size: 12.sp,
+                Text(
+                  count > 99 ? '99+' : '$count',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepBody extends StatelessWidget {
+  final _LessonStep step;
+  final LessonDetailModel data;
+  final VoidCallback onNext;
+  final Future<void> Function(String?) onPlayAudio;
+  final VoidCallback onStartTest;
+
+  const _StepBody({
+    required this.step,
+    required this.data,
+    required this.onNext,
+    required this.onPlayAudio,
+    required this.onStartTest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (step) {
+      case _LessonStep.video:
+        return _VideoStep(data: data, onNext: onNext);
+      case _LessonStep.words:
+        return _WordsStep(onNext: onNext, onPlayAudio: onPlayAudio);
+      case _LessonStep.test:
+        return _TestStep(data: data, onStartTest: onStartTest);
+    }
+  }
+}
+
+class _VideoStep extends StatelessWidget {
+  final LessonDetailModel data;
+  final VoidCallback onNext;
+  const _VideoStep({required this.data, required this.onNext});
+
+  @override
+  Widget build(BuildContext context) {
+    final lesson = data.lesson;
+    final title = lesson?.title ?? 'Lesson';
+    final xp = lesson?.xpPoints ?? 0;
+    final videoUrl = lesson?.video ?? '';
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _LessonHeroCard(title: title, xp: xp)
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.08, end: 0, curve: Curves.easeOut),
+                SizedBox(height: 16.h),
+                if (videoUrl.trim().isEmpty)
+                  const _EmptyVideoCard()
+                else
+                  _LessonVideoPlayer(
+                    videoUrl: videoUrl,
+                    title: title,
+                  ).animate().fadeIn(delay: 80.ms, duration: 450.ms),
+                SizedBox(height: 12.h),
+                Text(
+                  'Watch the lesson, then continue to vocabulary and the quiz.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 12.sp,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-
-        SizedBox(height: 24.h),
-        _buildCommentsHeader(totalLabel),
-        SizedBox(height: 14.h),
-        if (comments.isEmpty && !isLoadingMore)
-          _emptyCommentsCard()
-        else
-          ...comments.asMap().entries.map(
-            (entry) => Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: _CommentCard(
-                comment: entry.value,
-                index: entry.key,
-                isBusy: _busyCommentId == entry.value.id,
-                // isOwn من مقارنة user_id المحفوظ مع comment.user.id
-                // التعديل يُخفى إذا الدرس archived/closed (منطق الباك)
-                onMoreTap: entry.value.isOwn
-                    ? () => _showCommentActions(
-                        entry.value,
-                        canEdit: data.canUpdateComments,
-                      )
-                    : null,
-              ),
-            ),
-          ),
-        if (isLoadingMore || data.hasMoreComments)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.h),
-            child: Center(
-              child: isLoadingMore
-                  ? SizedBox(
-                      width: 22.w,
-                      height: 22.w,
-                      child: const CircularProgressIndicator(
-                        color: AppColors.yellow,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : TextButton(
-                      onPressed: () =>
-                          context.read<LessonDetailCubit>().loadMoreComments(),
-                      child: Text(
-                        'Load more comments',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.sky,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-        SizedBox(height: 16.h),
+        _BottomCta(
+          label: 'Next · Words',
+          icon: Icons.arrow_forward_rounded,
+          onTap: onNext,
+        ),
       ],
     );
   }
+}
 
-  Widget _noVideoCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24.r),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(.08),
-                Colors.white.withOpacity(.03),
+class _LessonHeroCard extends StatelessWidget {
+  final String title;
+  final int xp;
+  const _LessonHeroCard({required this.title, required this.xp});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(18.w, 18.h, 18.w, 18.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.04),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.sky.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48.w,
+            height: 48.w,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14.r),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.yellow.withOpacity(0.9),
+                  AppColors.orange.withOpacity(0.85),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.yellow.withOpacity(0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
+            child: Icon(
+              Icons.play_lesson_rounded,
+              color: AppColors.dark,
+              size: 26.sp,
+            ),
           ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.videocam_off_rounded,
-            color: Colors.white.withOpacity(.4),
-            size: 34.sp,
+          SizedBox(width: 14.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.w800,
+                    height: 1.3,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 5.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.yellow.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(
+                      color: AppColors.yellow.withOpacity(0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.bolt_rounded,
+                        color: AppColors.yellow,
+                        size: 14.sp,
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        '+$xp XP',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.yellow,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyVideoCard extends StatelessWidget {
+  const _EmptyVideoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 200.h,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 36.sp),
+          SizedBox(height: 8.h),
+          Text(
+            'No video available',
+            style: GoogleFonts.poppins(color: Colors.white54, fontSize: 13.sp),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WordsStep extends StatelessWidget {
+  final VoidCallback onNext;
+  final Future<void> Function(String?) onPlayAudio;
+  const _WordsStep({required this.onNext, required this.onPlayAudio});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 8.h),
+          child: Row(
+            children: [
+              Icon(Icons.menu_book_rounded, color: AppColors.sky, size: 20.sp),
+              SizedBox(width: 8.w),
+              Text(
+                'Lesson vocabulary',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: BlocConsumer<LessonWordsCubit, LessonWordsState>(
+            listener: (context, state) {
+              if (state is LessonWordsActionSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                    ),
+                    backgroundColor: Colors.greenAccent.shade700,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if (state is LessonWordsFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                    ),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is LessonWordsLoading || state is LessonWordsInitial) {
+                return const _CenteredLoader();
+              }
+
+              List<LessonWordModel> words = const [];
+              int? busyId;
+              if (state is LessonWordsSuccess) {
+                words = state.words;
+                busyId = state.busyWordId;
+              } else if (state is LessonWordsActionSuccess) {
+                words = state.words;
+              } else if (state is LessonWordsFailure) {
+                return Center(
+                  child: Text(
+                    state.message,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white54,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                );
+              }
+
+              if (words.isEmpty) {
+                return Center(
+                  child: Text(
+                    'No words in this lesson yet.',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white54,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 16.h),
+                itemCount: words.length,
+                separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                itemBuilder: (context, i) {
+                  final w = words[i];
+                  return _WordCard(
+                    word: w,
+                    busy: busyId == w.id,
+                    onPlay: () => onPlayAudio(w.audio),
+                    onLearning: () =>
+                        context.read<LessonWordsCubit>().moveToLearning(w.id),
+                    onKnow: () =>
+                        context.read<LessonWordsCubit>().moveToKnow(w.id),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        _BottomCta(
+          label: 'Next · Lesson test',
+          icon: Icons.arrow_forward_rounded,
+          onTap: onNext,
+        ),
+      ],
+    );
+  }
+}
+
+class _WordCard extends StatelessWidget {
+  final LessonWordModel word;
+  final bool busy;
+  final VoidCallback onPlay;
+  final VoidCallback onLearning;
+  final VoidCallback onKnow;
+
+  const _WordCard({
+    required this.word,
+    required this.busy,
+    required this.onPlay,
+    required this.onLearning,
+    required this.onKnow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        color: Colors.white.withOpacity(0.06),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: word.hasAudio ? onPlay : null,
+            child: Container(
+              width: 42.w,
+              height: 42.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.orange.withOpacity(0.18),
+                border: Border.all(color: AppColors.orange.withOpacity(0.45)),
+              ),
+              child: Icon(
+                word.hasAudio
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_off_rounded,
+                color: AppColors.orange,
+                size: 20.sp,
+              ),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  word.wordEn,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (word.wordAr.isNotEmpty)
+                  Text(
+                    word.wordAr,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 12.sp,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+              ],
+            ),
+          ),
+          if (busy)
+            SizedBox(
+              width: 22.w,
+              height: 22.w,
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.yellow,
+              ),
+            )
+          else ...[
+            _MiniChip(label: 'Learn', color: AppColors.sky, onTap: onLearning),
+            SizedBox(width: 6.w),
+            _MiniChip(label: 'Know', color: AppColors.yellow, onTap: onKnow),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _MiniChip({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(10.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10.r),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildLessonInfoCard(LessonVideoModel lesson) {
+class _TestStep extends StatelessWidget {
+  final LessonDetailModel data;
+  final VoidCallback onStartTest;
+  const _TestStep({required this.data, required this.onStartTest});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasTest = data.lesson?.testId != null;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+      child: Column(
+        children: [
+          const Spacer(),
+          Container(
+            width: 88.w,
+            height: 88.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.yellow.withOpacity(0.25),
+                  AppColors.orange.withOpacity(0.15),
+                ],
+              ),
+              border: Border.all(color: AppColors.yellow.withOpacity(0.45)),
+            ),
+            child: Icon(
+              hasTest ? Icons.quiz_rounded : Icons.hourglass_empty_rounded,
+              color: AppColors.yellow,
+              size: 40.sp,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          Text(
+            hasTest ? 'Ready for the lesson test?' : 'No test available yet',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            hasTest
+                ? 'Answer the questions in order. Passing unlocks the next lesson and earns XP.'
+                : 'Your teacher has not published a test for this lesson yet. You can still review the video and words.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white60,
+              fontSize: 13.sp,
+              height: 1.5,
+            ),
+          ),
+          const Spacer(),
+          if (hasTest)
+            SizedBox(
+              width: double.infinity,
+              height: 54.h,
+              child: ElevatedButton(
+                onPressed: onStartTest,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.yellow,
+                  foregroundColor: AppColors.dark,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, size: 24.sp),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'Start lesson test',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 54.h,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                ),
+                child: Text(
+                  'Back to course',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonVideoPlayer extends StatefulWidget {
+  final String videoUrl;
+  final String? title;
+  const _LessonVideoPlayer({required this.videoUrl, this.title});
+
+  @override
+  State<_LessonVideoPlayer> createState() => _LessonVideoPlayerState();
+}
+
+class _LessonVideoPlayerState extends State<_LessonVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _initializing = true;
+  String? _error;
+  bool _isMuted = false;
+  double _speed = 1.0;
+  static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    setState(() {
+      _initializing = true;
+      _error = null;
+    });
+    try {
+      var url = widget.videoUrl;
+      if (!url.startsWith('http')) url = '$baseUrl$url';
+      final c = VideoPlayerController.networkUrl(Uri.parse(url));
+      await c.initialize();
+      c.setLooping(false);
+      c.addListener(() {
+        if (mounted) setState(() {});
+      });
+      if (!mounted) {
+        await c.dispose();
+        return;
+      }
+      setState(() {
+        _controller = c;
+        _initializing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to load video';
+        _initializing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openFullscreen() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    HapticFeedback.selectionClick();
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => _FullscreenVideoPage(
+          controller: c,
+          title: widget.title,
+          isMuted: _isMuted,
+          speed: _speed,
+          speeds: _speeds,
+          onMuteChanged: (m) {
+            _isMuted = m;
+            c.setVolume(m ? 0 : 1);
+          },
+          onSpeedChanged: (s) {
+            _speed = s;
+            c.setPlaybackSpeed(s);
+          },
+        ),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (mounted) setState(() {});
+  }
+
+  void _cycleSpeed() {
+    final i = _speeds.indexOf(_speed);
+    final next = _speeds[(i + 1) % _speeds.length];
+    setState(() {
+      _speed = next;
+      _controller?.setPlaybackSpeed(next);
+    });
+    HapticFeedback.selectionClick();
+  }
+
+  void _toggleMute() {
+    final c = _controller;
+    if (c == null) return;
+    setState(() {
+      _isMuted = !_isMuted;
+      c.setVolume(_isMuted ? 0 : 1);
+    });
+  }
+
+  void _togglePlay() {
+    final c = _controller;
+    if (c == null) return;
+    if (c.value.isPlaying) {
+      c.pause();
+    } else {
+      c.play();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_initializing) {
+      return Container(
+        height: 210.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: const CircularProgressIndicator(color: AppColors.yellow),
+      );
+    }
+    if (_error != null || _controller == null) {
+      return Container(
+        height: 210.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: Text(
+          _error ?? 'Video unavailable',
+          style: GoogleFonts.poppins(color: Colors.white70),
+        ),
+      );
+    }
+
+    final c = _controller!;
+    final ar = c.value.aspectRatio == 0 ? 16 / 9 : c.value.aspectRatio;
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22.r),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.sky.withOpacity(.14),
-                Colors.white.withOpacity(.04),
+      borderRadius: BorderRadius.circular(18.r),
+      child: AspectRatio(
+        aspectRatio: ar,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            GestureDetector(onTap: _togglePlay, child: VideoPlayer(c)),
+            _InlineControls(
+              controller: c,
+              isMuted: _isMuted,
+              speed: _speed,
+              onTogglePlay: _togglePlay,
+              onToggleMute: _toggleMute,
+              onCycleSpeed: _cycleSpeed,
+              onFullscreen: _openFullscreen,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineControls extends StatelessWidget {
+  final VideoPlayerController controller;
+  final bool isMuted;
+  final double speed;
+  final VoidCallback onTogglePlay;
+  final VoidCallback onToggleMute;
+  final VoidCallback onCycleSpeed;
+  final VoidCallback onFullscreen;
+
+  const _InlineControls({
+    required this.controller,
+    required this.isMuted,
+    required this.speed,
+    required this.onTogglePlay,
+    required this.onToggleMute,
+    required this.onCycleSpeed,
+    required this.onFullscreen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final v = controller.value;
+    final pos = v.position;
+    final dur = v.duration;
+    final progress = dur.inMilliseconds == 0
+        ? 0.0
+        : pos.inMilliseconds / dur.inMilliseconds;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.35),
+            Colors.transparent,
+            Colors.black.withOpacity(0.65),
+          ],
+          stops: const [0, 0.45, 1],
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+            child: Row(
+              children: [
+                const Spacer(),
+                _CtrlChip(label: '${speed}x', onTap: onCycleSpeed),
+                SizedBox(width: 6.w),
+                _CtrlIcon(
+                  icon: isMuted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  onTap: onToggleMute,
+                ),
+                SizedBox(width: 4.w),
+                _CtrlIcon(icon: Icons.fullscreen_rounded, onTap: onFullscreen),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(.16)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.sky.withOpacity(.14),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 46.w,
-                height: 46.w,
+          const Spacer(),
+          Center(
+            child: GestureDetector(
+              onTap: onTogglePlay,
+              child: Container(
+                width: 56.w,
+                height: 56.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [AppColors.sky, Color(0xFFB388FF)],
-                  ),
+                  color: AppColors.yellow,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.sky.withOpacity(.5),
-                      blurRadius: 14,
+                      color: AppColors.yellow.withOpacity(0.35),
+                      blurRadius: 18,
                     ),
                   ],
                 ),
                 child: Icon(
-                  Icons.play_circle_fill_rounded,
-                  color: Colors.white,
-                  size: 24.sp,
+                  v.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: AppColors.dark,
+                  size: 30.sp,
                 ),
               ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "VIDEO LESSON",
-                      style: GoogleFonts.poppins(
-                        color: AppColors.sky.withOpacity(.85),
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      lesson.title,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 15.5.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.orange, AppColors.yellow],
-                  ),
-                  borderRadius: BorderRadius.circular(20.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.yellow.withOpacity(.5),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.star_rounded, color: Colors.black, size: 13.sp),
-                    SizedBox(width: 3.w),
-                    Text(
-                      "${lesson.xpPoints} XP",
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).moveY(begin: 8, end: 0);
-  }
-
-  Widget _buildCommentsHeader(int count) {
-    return Row(
-      children: [
-        Container(
-          width: 30.w,
-          height: 30.w,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [AppColors.sky, Color(0xFFB388FF)],
             ),
           ),
-          child: Icon(Icons.forum_rounded, color: Colors.white, size: 15.sp),
-        ),
-        SizedBox(width: 10.w),
-        Text(
-          "Comments",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 15.5.sp,
-            fontWeight: FontWeight.w800,
+          const Spacer(),
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 0, 10.w, 8.h),
+            child: Row(
+              children: [
+                Text(
+                  _formatDuration(pos),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3.h,
+                      thumbShape: RoundSliderThumbShape(
+                        enabledThumbRadius: 6.r,
+                      ),
+                      overlayShape: RoundSliderOverlayShape(
+                        overlayRadius: 12.r,
+                      ),
+                      activeTrackColor: AppColors.yellow,
+                      inactiveTrackColor: Colors.white24,
+                      thumbColor: AppColors.yellow,
+                    ),
+                    child: Slider(
+                      value: progress.clamp(0.0, 1.0),
+                      onChanged: (x) {
+                        final ms = (dur.inMilliseconds * x).round();
+                        controller.seekTo(Duration(milliseconds: ms));
+                      },
+                    ),
+                  ),
+                ),
+                Text(
+                  _formatDuration(dur),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        SizedBox(width: 8.w),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.08),
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: Colors.white.withOpacity(.14)),
-          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CtrlChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CtrlChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black45,
+      borderRadius: BorderRadius.circular(8.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8.r),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
           child: Text(
-            "$count",
+            label,
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
               fontSize: 11.sp,
@@ -1067,1042 +1589,50 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             ),
           ),
         ),
-        const Spacer(),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.06),
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: Colors.white.withOpacity(.12)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.sort_rounded,
-                color: Colors.white.withOpacity(.6),
-                size: 13.sp,
-              ),
-              SizedBox(width: 4.w),
-              Text(
-                "Newest",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.6),
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _emptyCommentsCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 28.h),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18.r),
-            color: Colors.white.withOpacity(.05),
-            border: Border.all(color: Colors.white.withOpacity(.10)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 46.w,
-                height: 46.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(.06),
-                  border: Border.all(color: Colors.white.withOpacity(.12)),
-                ),
-                child: Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  color: Colors.white.withOpacity(.4),
-                  size: 22.sp,
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Text(
-                "No comments yet",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.65),
-                  fontSize: 12.5.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                "Be the first to share your thoughts",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.4),
-                  fontSize: 10.5.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Row(
-      children: [
-        _circleIconButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () => Navigator.pop(context),
-        ),
-        SizedBox(width: 12.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "LESSON",
-                style: GoogleFonts.poppins(
-                  color: AppColors.sky.withOpacity(.85),
-                  fontSize: 9.5.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              Text(
-                widget.lessonTitle.isNotEmpty ? widget.lessonTitle : "Lesson",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 17.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ).animate().fadeIn(duration: 500.ms).moveY(begin: -10, end: 0);
-  }
-
-  Widget _circleIconButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Container(
-        width: 42.w,
-        height: 42.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.12),
-          border: Border.all(color: Colors.white.withOpacity(.22)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: Colors.white, size: 18.sp),
-      ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xff011826),
-                AppColors.dark,
-                AppColors.primary,
-                AppColors.dark,
-              ],
-              stops: [0.0, 0.3, 0.65, 1.0],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -120.h,
-          right: -80.w,
-          child: _glowCircle(AppColors.yellow, 280.w)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(-15, 10),
-                duration: 5500.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-        Positioned(
-          bottom: -140.h,
-          left: -90.w,
-          child: _glowCircle(AppColors.sky, 300.w)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .move(
-                begin: Offset.zero,
-                end: const Offset(15, -10),
-                duration: 6500.ms,
-                curve: Curves.easeInOut,
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _glowCircle(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.10),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.28),
-            blurRadius: 140,
-            spreadRadius: 30,
-          ),
-        ],
       ),
     );
   }
 }
 
-// ===============================================================
-//                     Lesson Words — Premium Dialog
-// ===============================================================
-class _LessonWordsDialog extends StatefulWidget {
-  final int lessonId;
-  final Future<void> Function(String? audioUrl) onPlayAudio;
-
-  const _LessonWordsDialog({required this.lessonId, required this.onPlayAudio});
-
-  @override
-  State<_LessonWordsDialog> createState() => _LessonWordsDialogState();
-}
-
-class _LessonWordsDialogState extends State<_LessonWordsDialog>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _borderController;
-
-  @override
-  void initState() {
-    super.initState();
-    _borderController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _borderController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<LessonWordsCubit>();
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 36.h),
-      child: AnimatedBuilder(
-        animation: _borderController,
-        builder: (context, _) {
-          return CustomPaint(
-            foregroundPainter: _AnimatedBorderPainter(
-              animationValue: _borderController.value,
-              radius: 26.r,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(26.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  constraints: BoxConstraints(maxHeight: 0.74.sh),
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26.r),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.dark.withOpacity(.97),
-                        AppColors.primary.withOpacity(.9),
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(cubit),
-                      SizedBox(height: 14.h),
-                      Divider(color: Colors.white.withOpacity(.08), height: 1),
-                      SizedBox(height: 12.h),
-                      Flexible(child: _buildBody(cubit)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHeader(LessonWordsCubit cubit) {
-    return BlocBuilder<LessonWordsCubit, LessonWordsState>(
-      builder: (context, state) {
-        int? total;
-        if (state is LessonWordsSuccess) total = state.words.length;
-        if (state is LessonWordsActionSuccess) total = state.words.length;
-
-        return Row(
-          children: [
-            Container(
-              width: 42.w,
-              height: 42.w,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                ),
-              ),
-              child: Icon(
-                Icons.menu_book_rounded,
-                color: Colors.black,
-                size: 19.sp,
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Lesson Words',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15.5.sp,
-                    ),
-                  ),
-                  if (total != null) ...[
-                    SizedBox(height: 2.h),
-                    Text(
-                      '$total word${total == 1 ? '' : 's'} in this lesson',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.5),
-                        fontSize: 10.5.sp,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                Navigator.pop(context);
-              },
-              child: Container(
-                padding: EdgeInsets.all(7.r),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(.08),
-                  border: Border.all(color: Colors.white.withOpacity(.12)),
-                ),
-                child: Icon(
-                  Icons.close_rounded,
-                  color: Colors.white70,
-                  size: 17.sp,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBody(LessonWordsCubit cubit) {
-    return BlocConsumer<LessonWordsCubit, LessonWordsState>(
-      listener: (context, state) {
-        if (state is LessonWordsActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        } else if (state is LessonWordsFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
-        if (state is LessonWordsLoading || state is LessonWordsInitial) {
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 46.h),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.yellow),
-            ),
-          );
-        }
-
-        List<LessonWordModel> words = [];
-        int? busyId;
-
-        if (state is LessonWordsSuccess) {
-          words = state.words;
-          busyId = state.busyWordId;
-        } else if (state is LessonWordsActionSuccess) {
-          words = state.words;
-        } else if (state is LessonWordsFailure) {
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 34.h),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.white.withOpacity(.5),
-                  size: 26.sp,
-                ),
-                SizedBox(height: 10.h),
-                Text(
-                  state.message,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 12.sp,
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                GestureDetector(
-                  onTap: () => cubit.fetchLessonWords(widget.lessonId),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16.w,
-                      vertical: 8.h,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.yellow],
-                      ),
-                      borderRadius: BorderRadius.circular(18.r),
-                    ),
-                    child: Text(
-                      'Retry',
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11.5.sp,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (words.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 40.h),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.auto_stories_outlined,
-                  color: Colors.white.withOpacity(.35),
-                  size: 28.sp,
-                ),
-                SizedBox(height: 10.h),
-                Text(
-                  'No words for this lesson',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white54,
-                    fontSize: 13.sp,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.separated(
-          shrinkWrap: true,
-          padding: EdgeInsets.only(bottom: 8.h, top: 2.h),
-          itemCount: words.length,
-          separatorBuilder: (_, __) => SizedBox(height: 10.h),
-          itemBuilder: (context, index) {
-            final word = words[index];
-            return _LessonWordTile(
-                  word: word,
-                  isBusy: busyId == word.id,
-                  onPlay: () => widget.onPlayAudio(word.audio),
-                  onLearn: () {
-                    HapticFeedback.selectionClick();
-                    cubit.moveToLearning(word.id);
-                  },
-                  onKnow: () {
-                    HapticFeedback.selectionClick();
-                    cubit.moveToKnow(word.id);
-                  },
-                )
-                .animate(delay: (30 * index).ms)
-                .fadeIn(duration: 280.ms)
-                .moveX(begin: 8, end: 0, curve: Curves.easeOutCubic);
-          },
-        );
-      },
-    );
-  }
-}
-
-class _LessonWordTile extends StatelessWidget {
-  final LessonWordModel word;
-  final VoidCallback onPlay;
-  final VoidCallback onLearn;
-  final VoidCallback onKnow;
-  final bool isBusy;
-
-  const _LessonWordTile({
-    required this.word,
-    required this.onPlay,
-    required this.onLearn,
-    required this.onKnow,
-    this.isBusy = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasAudio = word.hasAudio;
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(.07),
-            Colors.white.withOpacity(.025),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // حرف الكلمة
-              Container(
-                width: 42.w,
-                height: 42.w,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13.r),
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.sky.withOpacity(.32),
-                      AppColors.sky.withOpacity(.10),
-                    ],
-                  ),
-                  border: Border.all(color: AppColors.sky.withOpacity(.35)),
-                ),
-                child: Center(
-                  child: Text(
-                    word.wordEn.isNotEmpty ? word.wordEn[0].toUpperCase() : '?',
-                    style: GoogleFonts.poppins(
-                      color: AppColors.sky,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12.w),
-
-              // الكلمة + الترجمة
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      word.wordEn,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                    SizedBox(height: 3.h),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.translate_rounded,
-                          size: 10.sp,
-                          color: Colors.white.withOpacity(.35),
-                        ),
-                        SizedBox(width: 4.w),
-                        Flexible(
-                          child: Text(
-                            word.wordAr,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white60,
-                              fontSize: 12.sp,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 8.w),
-
-              // زر الصوت — حالة واضحة: مفعّل (فيه صوت) / غير مفعّل (بدون صوت)
-              GestureDetector(
-                onTap: hasAudio && !isBusy ? onPlay : null,
-                child: AnimatedContainer(
-                  duration: 200.ms,
-                  padding: EdgeInsets.all(9.r),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: hasAudio
-                        ? const LinearGradient(
-                            colors: [AppColors.orange, AppColors.yellow],
-                          )
-                        : null,
-                    color: hasAudio ? null : Colors.white.withOpacity(.05),
-                    border: Border.all(
-                      color: hasAudio
-                          ? Colors.transparent
-                          : Colors.white.withOpacity(.12),
-                    ),
-                    boxShadow: hasAudio
-                        ? [
-                            BoxShadow(
-                              color: AppColors.yellow.withOpacity(.45),
-                              blurRadius: 10,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Icon(
-                    hasAudio
-                        ? Icons.volume_up_rounded
-                        : Icons.volume_off_rounded,
-                    color: hasAudio ? Colors.black : Colors.white24,
-                    size: 16.sp,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Container(height: 1, color: Colors.white.withOpacity(.06)),
-          SizedBox(height: 10.h),
-
-          // خياري: نقل إلى "قيد التعلم" أو "معروفة"
-          Row(
-            children: [
-              Expanded(
-                child: _WordActionButton(
-                  icon: Icons.school_rounded,
-                  label: 'Learning',
-                  colors: const [AppColors.orange, AppColors.yellow],
-                  isBusy: isBusy,
-                  onTap: onLearn,
-                ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: _WordActionButton(
-                  icon: Icons.check_circle_rounded,
-                  label: 'I Know it',
-                  colors: const [Color(0xFF4ADE80), Color(0xFF22C55E)],
-                  isBusy: isBusy,
-                  onTap: onKnow,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WordActionButton extends StatelessWidget {
+class _CtrlIcon extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final List<Color> colors;
-  final bool isBusy;
   final VoidCallback onTap;
-
-  const _WordActionButton({
-    required this.icon,
-    required this.label,
-    required this.colors,
-    required this.onTap,
-    this.isBusy = false,
-  });
+  const _CtrlIcon({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isBusy ? null : onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 9.h),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(13.r),
-          color: colors.first.withOpacity(.12),
-          border: Border.all(color: colors.first.withOpacity(.4)),
-        ),
-        child: isBusy
-            ? SizedBox(
-                width: 14.w,
-                height: 14.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.6,
-                  color: colors.first,
-                ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: colors.first, size: 14.sp),
-                  SizedBox(width: 5.w),
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      color: colors.first,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.sp,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-// ===============================================================
-//                         Video Player
-// ===============================================================
-class _LuxuryVideoPlayer extends StatefulWidget {
-  final String videoUrl;
-  final String? title;
-  const _LuxuryVideoPlayer({required this.videoUrl, this.title});
-
-  @override
-  State<_LuxuryVideoPlayer> createState() => _LuxuryVideoPlayerState();
-}
-
-class _LuxuryVideoPlayerState extends State<_LuxuryVideoPlayer>
-    with SingleTickerProviderStateMixin {
-  VideoPlayerController? _controller;
-  bool _isInitialized = false;
-  bool _hasError = false;
-  bool _showControls = true;
-  bool _isMuted = false;
-  Timer? _hideTimer;
-  late final AnimationController _borderController;
-
-  @override
-  void initState() {
-    super.initState();
-    _borderController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
-    _initializePlayer();
-  }
-
-  Future<void> _initializePlayer() async {
-    try {
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.videoUrl),
-      );
-      await controller.initialize();
-      controller.addListener(_onControllerUpdate);
-      if (!mounted) return;
-      setState(() {
-        _controller = controller;
-        _isInitialized = true;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _hasError = true);
-    }
-  }
-
-  void _onControllerUpdate() {
-    if (mounted) setState(() {});
-  }
-
-  void _togglePlayPause() {
-    final controller = _controller;
-    if (controller == null) return;
-    HapticFeedback.lightImpact();
-    if (controller.value.isPlaying) {
-      controller.pause();
-      _cancelHideTimer();
-      setState(() => _showControls = true);
-    } else {
-      controller.play();
-      _scheduleHideControls();
-    }
-  }
-
-  void _toggleMute() {
-    final controller = _controller;
-    if (controller == null) return;
-    HapticFeedback.selectionClick();
-    setState(() {
-      _isMuted = !_isMuted;
-      controller.setVolume(_isMuted ? 0 : 1);
-    });
-  }
-
-  void _scheduleHideControls() {
-    _cancelHideTimer();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && (_controller?.value.isPlaying ?? false)) {
-        setState(() => _showControls = false);
-      }
-    });
-  }
-
-  void _cancelHideTimer() {
-    _hideTimer?.cancel();
-    _hideTimer = null;
-  }
-
-  void _onTapVideo() {
-    setState(() => _showControls = !_showControls);
-    if (_showControls && (_controller?.value.isPlaying ?? false)) {
-      _scheduleHideControls();
-    }
-  }
-
-  /// Pushes a fullscreen page reusing the SAME controller (no reinitialization),
-  /// rotates to landscape, hides system UI, and restores everything on return.
-  Future<void> _openFullscreen() async {
-    final controller = _controller;
-    if (controller == null) return;
-    _cancelHideTimer();
-
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: true,
-        transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (_, animation, __) => FadeTransition(
-          opacity: animation,
-          child: _FullscreenVideoPage(
-            controller: controller,
-            title: widget.title,
-            initialMuted: _isMuted,
-          ),
+    return Material(
+      color: Colors.black45,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(6.w),
+          child: Icon(icon, color: Colors.white, size: 18.sp),
         ),
       ),
     );
-
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
-    if (!mounted) return;
-    setState(() => _showControls = true);
-    if (controller.value.isPlaying) _scheduleHideControls();
-  }
-
-  String _formatDurationLocal(Duration d) => _formatDuration(d);
-
-  @override
-  void dispose() {
-    _cancelHideTimer();
-    _borderController.dispose();
-    _controller?.removeListener(_onControllerUpdate);
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-          animation: _borderController,
-          builder: (context, _) {
-            return CustomPaint(
-              foregroundPainter: _AnimatedBorderPainter(
-                animationValue: _borderController.value,
-                radius: 24.r,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24.r),
-                child: Container(
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.sky.withOpacity(.18),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: AspectRatio(
-                    aspectRatio: _isInitialized
-                        ? _controller!.value.aspectRatio
-                        : 16 / 9,
-                    child: _hasError
-                        ? _buildErrorPlaceholder()
-                        : !_isInitialized
-                        ? _buildLoadingPlaceholder()
-                        : GestureDetector(
-                            onTap: _onTapVideo,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                VideoPlayer(_controller!),
-                                AnimatedOpacity(
-                                  opacity: _showControls ? 1 : 0,
-                                  duration: 220.ms,
-                                  child: IgnorePointer(
-                                    ignoring: !_showControls,
-                                    child: _VideoControlsOverlay(
-                                      controller: _controller!,
-                                      title: widget.title,
-                                      isMuted: _isMuted,
-                                      isFullscreen: false,
-                                      onToggleMute: _toggleMute,
-                                      onTogglePlayPause: _togglePlayPause,
-                                      onToggleFullscreen: _openFullscreen,
-                                      onSeekStart: _cancelHideTimer,
-                                      onSeekEnd: () {
-                                        if (_controller!.value.isPlaying) {
-                                          _scheduleHideControls();
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-            );
-          },
-        )
-        .animate()
-        .fadeIn(duration: 400.ms)
-        .scale(
-          begin: const Offset(.97, .97),
-          end: const Offset(1, 1),
-          curve: Curves.easeOutCubic,
-        );
-  }
-
-  Widget _buildLoadingPlaceholder() {
-    return Container(
-      color: Colors.black.withOpacity(.35),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(color: AppColors.yellow),
-          SizedBox(height: 10.h),
-          Text(
-            "Loading video...",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.7),
-              fontSize: 11.sp,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: Colors.black.withOpacity(.35),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: Colors.white.withOpacity(.6),
-            size: 30.sp,
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            "Couldn't load the video",
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(.75),
-              fontSize: 11.sp,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
-/// Full-page player used when the user taps the fullscreen button.
-/// Reuses the SAME [VideoPlayerController] instance — no reinitialization,
-/// no lost playback position, no flicker.
 class _FullscreenVideoPage extends StatefulWidget {
   final VideoPlayerController controller;
   final String? title;
-  final bool initialMuted;
+  final bool isMuted;
+  final double speed;
+  final List<double> speeds;
+  final ValueChanged<bool> onMuteChanged;
+  final ValueChanged<double> onSpeedChanged;
 
   const _FullscreenVideoPage({
     required this.controller,
-    this.title,
-    this.initialMuted = false,
+    required this.title,
+    required this.isMuted,
+    required this.speed,
+    required this.speeds,
+    required this.onMuteChanged,
+    required this.onSpeedChanged,
   });
 
   @override
@@ -2110,20 +1640,22 @@ class _FullscreenVideoPage extends StatefulWidget {
 }
 
 class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  late bool _muted;
+  late double _speed;
   bool _showControls = true;
-  late bool _isMuted;
   Timer? _hideTimer;
-  bool _isExiting = false;
+  bool _exiting = false;
 
   @override
   void initState() {
     super.initState();
-    _isMuted = widget.initialMuted;
-    widget.controller.addListener(_onUpdate);
+    _muted = widget.isMuted;
+    _speed = widget.speed;
+    widget.controller.addListener(_tick);
     _scheduleHide();
   }
 
-  void _onUpdate() {
+  void _tick() {
     if (mounted) setState(() {});
   }
 
@@ -2136,32 +1668,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
     });
   }
 
-  void _cancelHide() => _hideTimer?.cancel();
-
-  void _togglePlayPause() {
-    HapticFeedback.lightImpact();
-    if (widget.controller.value.isPlaying) {
-      widget.controller.pause();
-      _cancelHide();
-      setState(() => _showControls = true);
-    } else {
-      widget.controller.play();
-      _scheduleHide();
-    }
-  }
-
-  void _toggleMute() {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _isMuted = !_isMuted;
-      widget.controller.setVolume(_isMuted ? 0 : 1);
-    });
-  }
-
-  Future<void> _exitFullscreen() async {
-    if (_isExiting) return;
-    _isExiting = true;
-    HapticFeedback.selectionClick();
+  Future<void> _exit() async {
+    if (_exiting) return;
+    _exiting = true;
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     if (mounted) Navigator.of(context).pop();
@@ -2170,15 +1679,23 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    widget.controller.removeListener(_onUpdate);
+    widget.controller.removeListener(_tick);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = widget.controller;
+    final v = c.value;
+    final pos = v.position;
+    final dur = v.duration;
+    final progress = dur.inMilliseconds == 0
+        ? 0.0
+        : pos.inMilliseconds / dur.inMilliseconds;
+
     return WillPopScope(
       onWillPop: () async {
-        await _exitFullscreen();
+        await _exit();
         return false;
       },
       child: Scaffold(
@@ -2186,39 +1703,172 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
         body: GestureDetector(
           onTap: () {
             setState(() => _showControls = !_showControls);
-            if (_showControls && widget.controller.value.isPlaying) {
-              _scheduleHide();
-            }
+            if (_showControls) _scheduleHide();
           },
           child: Stack(
             fit: StackFit.expand,
             children: [
               Center(
                 child: AspectRatio(
-                  aspectRatio: widget.controller.value.aspectRatio,
-                  child: VideoPlayer(widget.controller),
+                  aspectRatio: v.aspectRatio == 0 ? 16 / 9 : v.aspectRatio,
+                  child: VideoPlayer(c),
                 ),
               ),
               AnimatedOpacity(
                 opacity: _showControls ? 1 : 0,
-                duration: 220.ms,
+                duration: 200.ms,
                 child: IgnorePointer(
                   ignoring: !_showControls,
                   child: SafeArea(
-                    child: _VideoControlsOverlay(
-                      controller: widget.controller,
-                      title: widget.title,
-                      isMuted: _isMuted,
-                      isFullscreen: true,
-                      onToggleMute: _toggleMute,
-                      onTogglePlayPause: _togglePlayPause,
-                      onToggleFullscreen: _exitFullscreen,
-                      onSeekStart: _cancelHide,
-                      onSeekEnd: () {
-                        if (widget.controller.value.isPlaying) {
-                          _scheduleHide();
-                        }
-                      },
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+                          child: Row(
+                            children: [
+                              _CtrlIcon(
+                                icon: Icons.close_rounded,
+                                onTap: _exit,
+                              ),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: Text(
+                                  widget.title ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.sp,
+                                  ),
+                                ),
+                              ),
+                              _CtrlChip(
+                                label: '${_speed}x',
+                                onTap: () {
+                                  final i = widget.speeds.indexOf(_speed);
+                                  final next = widget
+                                      .speeds[(i + 1) % widget.speeds.length];
+                                  setState(() => _speed = next);
+                                  widget.onSpeedChanged(next);
+                                  c.setPlaybackSpeed(next);
+                                  _scheduleHide();
+                                },
+                              ),
+                              SizedBox(width: 6.w),
+                              _CtrlIcon(
+                                icon: _muted
+                                    ? Icons.volume_off_rounded
+                                    : Icons.volume_up_rounded,
+                                onTap: () {
+                                  setState(() => _muted = !_muted);
+                                  widget.onMuteChanged(_muted);
+                                  c.setVolume(_muted ? 0 : 1);
+                                  _scheduleHide();
+                                },
+                              ),
+                              SizedBox(width: 4.w),
+                              _CtrlIcon(
+                                icon: Icons.screen_rotation_rounded,
+                                onTap: () async {
+                                  final orient = MediaQuery.of(
+                                    context,
+                                  ).orientation;
+                                  if (orient == Orientation.portrait) {
+                                    await SystemChrome.setPreferredOrientations(
+                                      [
+                                        DeviceOrientation.landscapeLeft,
+                                        DeviceOrientation.landscapeRight,
+                                      ],
+                                    );
+                                  } else {
+                                    await SystemChrome.setPreferredOrientations(
+                                      [
+                                        DeviceOrientation.portraitUp,
+                                        DeviceOrientation.portraitDown,
+                                      ],
+                                    );
+                                  }
+                                  _scheduleHide();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            if (c.value.isPlaying) {
+                              c.pause();
+                            } else {
+                              c.play();
+                              _scheduleHide();
+                            }
+                          },
+                          child: Container(
+                            width: 64.w,
+                            height: 64.w,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.yellow,
+                            ),
+                            child: Icon(
+                              v.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: AppColors.dark,
+                              size: 34.sp,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+                          child: Row(
+                            children: [
+                              Text(
+                                _formatDuration(pos),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 3.5.h,
+                                    thumbShape: RoundSliderThumbShape(
+                                      enabledThumbRadius: 7.r,
+                                    ),
+                                    activeTrackColor: AppColors.yellow,
+                                    inactiveTrackColor: Colors.white24,
+                                    thumbColor: AppColors.yellow,
+                                  ),
+                                  child: Slider(
+                                    value: progress.clamp(0.0, 1.0),
+                                    onChanged: (x) {
+                                      final ms = (dur.inMilliseconds * x)
+                                          .round();
+                                      c.seekTo(Duration(milliseconds: ms));
+                                    },
+                                    onChangeStart: (_) => _hideTimer?.cancel(),
+                                    onChangeEnd: (_) => _scheduleHide(),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                _formatDuration(dur),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -2231,768 +1881,544 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
   }
 }
 
-/// Shared control overlay (play/pause, mute, fullscreen toggle, scrubber)
-/// reused by both the inline and the fullscreen video players.
-class _VideoControlsOverlay extends StatelessWidget {
-  final VideoPlayerController controller;
-  final String? title;
-  final bool isMuted;
-  final bool isFullscreen;
-  final VoidCallback onToggleMute;
-  final VoidCallback onTogglePlayPause;
-  final VoidCallback onToggleFullscreen;
-  final VoidCallback onSeekStart;
-  final VoidCallback onSeekEnd;
-
-  const _VideoControlsOverlay({
-    required this.controller,
-    required this.title,
-    required this.isMuted,
-    required this.isFullscreen,
-    required this.onToggleMute,
-    required this.onTogglePlayPause,
-    required this.onToggleFullscreen,
-    required this.onSeekStart,
-    required this.onSeekEnd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final value = controller.value;
-    final position = value.position;
-    final duration = value.duration;
-    final progress = duration.inMilliseconds == 0
-        ? 0.0
-        : position.inMilliseconds / duration.inMilliseconds;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withOpacity(.45),
-            Colors.transparent,
-            Colors.black.withOpacity(.6),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(12.w, 10.h, 10.w, 0),
-            child: Row(
-              children: [
-                if (title != null && title!.isNotEmpty)
-                  Expanded(
-                    child: Text(
-                      title!,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.92),
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                GestureDetector(
-                  onTap: onToggleMute,
-                  child: Container(
-                    padding: EdgeInsets.all(7.r),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(.4),
-                      border: Border.all(color: Colors.white.withOpacity(.2)),
-                    ),
-                    child: Icon(
-                      isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                      color: Colors.white,
-                      size: 15.sp,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                GestureDetector(
-                  onTap: onToggleFullscreen,
-                  child: Container(
-                    padding: EdgeInsets.all(7.r),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(.4),
-                      border: Border.all(color: Colors.white.withOpacity(.2)),
-                    ),
-                    child: Icon(
-                      isFullscreen
-                          ? Icons.fullscreen_exit_rounded
-                          : Icons.fullscreen_rounded,
-                      color: Colors.white,
-                      size: 16.sp,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: onTogglePlayPause,
-            child: Container(
-              width: 60.w,
-              height: 60.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [AppColors.orange, AppColors.yellow],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.6),
-                    blurRadius: 22,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Icon(
-                value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: Colors.black,
-                size: 32.sp,
-              ),
-            ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-            child: Row(
-              children: [
-                Text(
-                  _formatDuration(position),
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3.5.h,
-                      thumbShape: RoundSliderThumbShape(
-                        enabledThumbRadius: 6.r,
-                      ),
-                      overlayShape: RoundSliderOverlayShape(
-                        overlayRadius: 12.r,
-                      ),
-                      activeTrackColor: AppColors.yellow,
-                      inactiveTrackColor: Colors.white.withOpacity(.25),
-                      thumbColor: AppColors.yellow,
-                      overlayColor: AppColors.yellow.withOpacity(.25),
-                    ),
-                    child: Slider(
-                      value: progress.clamp(0.0, 1.0),
-                      onChanged: (v) {
-                        final newPosition = Duration(
-                          milliseconds: (duration.inMilliseconds * v).round(),
-                        );
-                        controller.seekTo(newPosition);
-                      },
-                      onChangeStart: (_) => onSeekStart(),
-                      onChangeEnd: (_) => onSeekEnd(),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  _formatDuration(duration),
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CommentCard extends StatelessWidget {
-  final LessonCommentModel comment;
-  final int index;
-  final VoidCallback? onMoreTap;
-  final bool isBusy;
-
-  const _CommentCard({
-    required this.comment,
-    required this.index,
-    this.onMoreTap,
-    this.isBusy = false,
-  });
-
-  static const List<List<Color>> _avatarGradients = [
-    [AppColors.sky, Color(0xFFB388FF)],
-    [AppColors.orange, AppColors.yellow],
-    [Color(0xFF4ADE80), Color(0xFF22C55E)],
-    [Color(0xFFFF6FB5), Color(0xFFB861F5)],
-  ];
-
-  List<Color> _gradientForUser(int seed) =>
-      _avatarGradients[seed % _avatarGradients.length];
-
-  String _timeAgo(String? isoDate) {
-    if (isoDate == null || isoDate.isEmpty) return "";
-    final date = DateTime.tryParse(isoDate);
-    if (date == null) return "";
-    final diff = DateTime.now().difference(date);
-
-    if (diff.inMinutes < 1) return "Just now";
-    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
-    if (diff.inHours < 24) return "${diff.inHours}h ago";
-    if (diff.inDays < 7) return "${diff.inDays}d ago";
-    return "${(diff.inDays / 7).floor()}w ago";
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = comment.user;
-    final isOwn = comment.isOwn;
-    final name = isOwn
-        ? (user != null && user.fullName.isNotEmpty ? user.fullName : "You")
-        : (user != null && user.fullName.isNotEmpty
-              ? user.fullName
-              : "Fluent User");
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : "?";
-    final gradient = isOwn
-        ? const [AppColors.orange, AppColors.yellow]
-        : _gradientForUser(user?.id ?? comment.id);
-
-    return ClipRRect(
-          borderRadius: BorderRadius.circular(20.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20.r),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isOwn
-                      ? [
-                          AppColors.yellow.withOpacity(.14),
-                          AppColors.orange.withOpacity(.05),
-                        ]
-                      : [
-                          Colors.white.withOpacity(.09),
-                          Colors.white.withOpacity(.03),
-                        ],
-                ),
-                border: Border.all(
-                  color: isOwn
-                      ? AppColors.yellow.withOpacity(.35)
-                      : Colors.white.withOpacity(.13),
-                ),
-                boxShadow: isOwn
-                    ? [
-                        BoxShadow(
-                          color: AppColors.yellow.withOpacity(.15),
-                          blurRadius: 14,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // شريط لوني جانبي مطابق للون الأفاتار
-                    Container(
-                      width: 4.w,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: gradient,
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(20.r),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 36.w,
-                                  height: 36.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(colors: gradient),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(.5),
-                                      width: 1.2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: gradient.first.withOpacity(.45),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    initial,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13.5.sp,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 10.w),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              name,
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12.5.sp,
-                                              ),
-                                            ),
-                                          ),
-                                          if (isOwn) ...[
-                                            SizedBox(width: 6.w),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 6.w,
-                                                vertical: 1.5.h,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                gradient: const LinearGradient(
-                                                  colors: [
-                                                    AppColors.orange,
-                                                    AppColors.yellow,
-                                                  ],
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(20.r),
-                                              ),
-                                              child: Text(
-                                                "You",
-                                                style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: 8.5.sp,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      SizedBox(height: 1.h),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.access_time_rounded,
-                                            size: 9.sp,
-                                            color: Colors.white.withOpacity(.4),
-                                          ),
-                                          SizedBox(width: 3.w),
-                                          Text(
-                                            _timeAgo(comment.createdAt),
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white.withOpacity(
-                                                .45,
-                                              ),
-                                              fontSize: 9.5.sp,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (onMoreTap != null)
-                                  GestureDetector(
-                                    onTap: isBusy ? null : onMoreTap,
-                                    child: Container(
-                                      width: 28.w,
-                                      height: 28.w,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white.withOpacity(.06),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(.10),
-                                        ),
-                                      ),
-                                      child: isBusy
-                                          ? SizedBox(
-                                              width: 12.w,
-                                              height: 12.w,
-                                              child:
-                                                  const CircularProgressIndicator(
-                                                    strokeWidth: 1.6,
-                                                    color: AppColors.yellow,
-                                                  ),
-                                            )
-                                          : Icon(
-                                              Icons.more_vert_rounded,
-                                              color: Colors.white.withOpacity(
-                                                .55,
-                                              ),
-                                              size: 16.sp,
-                                            ),
-                                    ),
-                                  )
-                                else
-                                  Icon(
-                                    Icons.format_quote_rounded,
-                                    color: Colors.white.withOpacity(.10),
-                                    size: 22.sp,
-                                  ),
-                              ],
-                            ),
-                            SizedBox(height: 10.h),
-                            Container(
-                              height: 1,
-                              color: Colors.white.withOpacity(.06),
-                            ),
-                            SizedBox(height: 10.h),
-                            Text(
-                              comment.comment,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(.85),
-                                fontSize: 12.sp,
-                                height: 1.55,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        )
-        .animate()
-        .fadeIn(delay: (100 + index * 60).ms, duration: 350.ms)
-        .moveX(begin: 10, end: 0, curve: Curves.easeOutCubic);
-  }
-}
-
-class _CommentComposer extends StatefulWidget {
-  final ValueChanged<String> onSubmit;
+class _CommentsSheet extends StatefulWidget {
+  final LessonDetailModel data;
   final bool isSending;
+  final int? busyCommentId;
+  final Future<String?> Function(String text) onAdd;
+  final Future<String?> Function(int id, String text) onEdit;
+  final Future<String?> Function(int id) onDelete;
+  final Future<void> Function() onLoadMore;
+  final void Function(LessonCommentModel comment, {required bool canEdit})
+  onShowActions;
 
-  const _CommentComposer({required this.onSubmit, this.isSending = false});
+  const _CommentsSheet({
+    required this.data,
+    required this.isSending,
+    required this.busyCommentId,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onLoadMore,
+    required this.onShowActions,
+  });
 
   @override
-  State<_CommentComposer> createState() => _CommentComposerState();
+  State<_CommentsSheet> createState() => _CommentsSheetState();
 }
 
-class _CommentComposerState extends State<_CommentComposer>
-    with SingleTickerProviderStateMixin {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  late final AnimationController _borderController;
-  bool _hasText = false;
+class _CommentsSheetState extends State<_CommentsSheet> {
+  final _controller = TextEditingController();
+  final _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _borderController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
-    _controller.addListener(() {
-      final has = _controller.text.trim().isNotEmpty;
-      if (has != _hasText) setState(() => _hasText = has);
+    _scroll.addListener(() {
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 80) {
+        final state = context.read<LessonDetailCubit>().state;
+        if (state is LessonDetailSuccess &&
+            state.data.hasMoreComments &&
+            !state.isLoadingMore) {
+          widget.onLoadMore();
+        }
+      }
     });
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.dispose();
-    _borderController.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() {
-    if (widget.isSending) return;
+  Future<void> _submit() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    widget.onSubmit(text);
-    _controller.clear();
-    setState(() => _hasText = false);
+    final err = await widget.onAdd(text);
+    if (!mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err, style: GoogleFonts.poppins(fontSize: 13)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } else {
+      _controller.clear();
+      FocusScope.of(context).unfocus();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 14.h),
-      child: AnimatedBuilder(
-        animation: _borderController,
-        builder: (context, _) {
-          return CustomPaint(
-            foregroundPainter: _AnimatedBorderPainter(
-              animationValue: _borderController.value,
-              radius: 26.r,
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return BlocBuilder<LessonDetailCubit, LessonDetailState>(
+      builder: (context, state) {
+        final data = state is LessonDetailSuccess ? state.data : widget.data;
+        final loadingMore = state is LessonDetailSuccess
+            ? state.isLoadingMore
+            : false;
+        final comments = data.comments;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.78,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0B2A3A), Color(0xFF013C58)],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+              border: Border.all(color: AppColors.sky.withOpacity(0.2)),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(26.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+            child: Column(
+              children: [
+                SizedBox(height: 10.h),
+                Container(
+                  width: 40.w,
+                  height: 4.h,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26.r),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.dark.withOpacity(.55),
-                        AppColors.primary.withOpacity(.35),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(18.w, 14.h, 12.w, 8.h),
                   child: Row(
                     children: [
-                      Container(
-                        width: 34.w,
-                        height: 34.w,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [AppColors.sky, Color(0xFFB388FF)],
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.person_rounded,
+                      Icon(
+                        Icons.chat_bubble_rounded,
+                        color: AppColors.sky,
+                        size: 20.sp,
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'Comments',
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
-                          size: 18.sp,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       SizedBox(width: 8.w),
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          minLines: 1,
-                          maxLines: 4,
-                          maxLength: LessonDetailCubit.maxCommentLength,
-                          textCapitalization: TextCapitalization.sentences,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.sky.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          '${data.commentsTotal}',
                           style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 12.5.sp,
+                            color: AppColors.sky,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
                           ),
-                          cursorColor: AppColors.yellow,
-                          decoration: InputDecoration(
-                            isCollapsed: true,
-                            border: InputBorder.none,
-                            counterText: '',
-                            hintText: "Write a comment...",
-                            hintStyle: GoogleFonts.poppins(
-                              color: Colors.white.withOpacity(.4),
-                              fontSize: 12.5.sp,
-                            ),
-                          ),
-                          onSubmitted: (_) => _handleSubmit(),
                         ),
                       ),
-                      SizedBox(width: 8.w),
-                      GestureDetector(
-                        onTap: _handleSubmit,
-                        child: AnimatedContainer(
-                          duration: 200.ms,
-                          width: 38.w,
-                          height: 38.w,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: _hasText
-                                ? const LinearGradient(
-                                    colors: [
-                                      AppColors.orange,
-                                      AppColors.yellow,
-                                    ],
-                                  )
-                                : LinearGradient(
-                                    colors: [
-                                      Colors.white.withOpacity(.14),
-                                      Colors.white.withOpacity(.08),
-                                    ],
-                                  ),
-                            boxShadow: _hasText
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.yellow.withOpacity(.5),
-                                      blurRadius: 12,
-                                    ),
-                                  ]
-                                : [],
-                          ),
-                          child: widget.isSending
-                              ? Padding(
-                                  padding: EdgeInsets.all(9.r),
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.send_rounded,
-                                  color: _hasText
-                                      ? Colors.black
-                                      : Colors.white38,
-                                  size: 17.sp,
-                                ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white54,
+                          size: 22.sp,
                         ),
                       ),
                     ],
                   ),
                 ),
+                Expanded(
+                  child: comments.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No comments yet. Be the first!',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white54,
+                              fontSize: 13.sp,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: _scroll,
+                          padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
+                          itemCount: comments.length + (loadingMore ? 1 : 0),
+                          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                          itemBuilder: (context, i) {
+                            if (i >= comments.length) {
+                              return Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(12.w),
+                                  child: SizedBox(
+                                    width: 22.w,
+                                    height: 22.w,
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.yellow,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            final c = comments[i];
+                            return _CommentTile(
+                              comment: c,
+                              busy: widget.busyCommentId == c.id,
+                              onMore: c.isOwn
+                                  ? () => widget.onShowActions(
+                                      c,
+                                      canEdit: data.canUpdateComments,
+                                    )
+                                  : null,
+                            );
+                          },
+                        ),
+                ),
+                if (data.canCreateComment)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(12.w, 4.h, 12.w, 12.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            maxLines: 1,
+                            maxLength: LessonDetailCubit.maxCommentLength,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                            ),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: 'Write a comment…',
+                              hintStyle: GoogleFonts.poppins(
+                                color: Colors.white38,
+                                fontSize: 13.sp,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.07),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 12.h,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Material(
+                          color: AppColors.yellow,
+                          borderRadius: BorderRadius.circular(14.r),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14.r),
+                            onTap: widget.isSending ? null : _submit,
+                            child: SizedBox(
+                              width: 46.w,
+                              height: 46.w,
+                              child: widget.isSending
+                                  ? Padding(
+                                      padding: EdgeInsets.all(12.w),
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.dark,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.send_rounded,
+                                      color: AppColors.dark,
+                                      size: 20.sp,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: EdgeInsets.all(14.w),
+                    child: Text(
+                      'Comments are disabled for this lesson.',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CommentTile extends StatelessWidget {
+  final LessonCommentModel comment;
+  final bool busy;
+  final VoidCallback? onMore;
+
+  const _CommentTile({required this.comment, required this.busy, this.onMore});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = comment.user?.fullName.isNotEmpty == true
+        ? comment.user!.fullName
+        : 'Student';
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16.r,
+            backgroundColor: AppColors.sky.withOpacity(0.2),
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: GoogleFonts.poppins(
+                color: AppColors.sky,
+                fontWeight: FontWeight.w700,
+                fontSize: 13.sp,
               ),
             ),
-          );
-        },
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (comment.isOwn && onMore != null)
+                      busy
+                          ? SizedBox(
+                              width: 16.w,
+                              height: 16.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.yellow,
+                              ),
+                            )
+                          : GestureDetector(
+                              onTap: onMore,
+                              child: Icon(
+                                Icons.more_horiz_rounded,
+                                color: Colors.white54,
+                                size: 18.sp,
+                              ),
+                            ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  comment.comment,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(0.88),
+                    fontSize: 13.sp,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AnimatedBorderPainter extends CustomPainter {
-  final double animationValue;
-  final double radius;
-
-  _AnimatedBorderPainter({required this.animationValue, required this.radius});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
-    );
-    final startAngle = animationValue * math.pi * 2;
-
-    final glowPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0x00FFD35B),
-          Color(0x88FFD35B),
-          Color(0x00F5A201),
-          Color(0x88A8E8F9),
-          Color(0x00B388FF),
-          Color(0x88FF6FB5),
-          Color(0x00FFD35B),
-        ],
-        stops: const [0.0, 0.14, 0.32, 0.5, 0.68, 0.86, 1.0],
-      ).createShader(rect.outerRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-
-    canvas.drawRRect(rect.deflate(3.5), glowPaint);
-
-    final borderPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0xffA8E8F9),
-          Color(0xffFFD35B),
-          Color(0xffF5A201),
-          Color(0xffB388FF),
-          Color(0xffA8E8F9),
-        ],
-        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-      ).createShader(rect.outerRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    canvas.drawRRect(rect.deflate(0.5), borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) =>
-      oldDelegate.animationValue != animationValue;
-}
-
-class _TwinklingStars extends StatelessWidget {
-  final int count;
-  const _TwinklingStars({this.count = 35});
+class _BottomCta extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _BottomCta({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final rng = math.Random(7);
-    return IgnorePointer(
-      child: Stack(
-        children: List.generate(count, (i) {
-          final left = rng.nextDouble();
-          final top = rng.nextDouble();
-          final size = rng.nextDouble() * 2 + 1;
-          final delay = rng.nextInt(3000);
-          final duration = 1500 + rng.nextInt(2500);
-          final maxOpacity = rng.nextDouble() * 0.6 + 0.3;
-          final hasGlow = rng.nextBool();
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 14.h),
+        child: SizedBox(
+          width: double.infinity,
+          height: 52.h,
+          child: ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.yellow,
+              foregroundColor: AppColors.dark,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.sp,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Icon(icon, size: 20.sp),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          return Positioned(
-            left: left * 1.sw,
-            top: top * 1.sh,
-            child:
-                Container(
-                      width: size.w,
-                      height: size.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        boxShadow: hasGlow
-                            ? [
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.7),
-                                  blurRadius: 4,
-                                  spreadRadius: 0.5,
-                                ),
-                              ]
-                            : null,
-                      ),
-                    )
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(
-                      begin: 0,
-                      end: maxOpacity,
-                      duration: duration.ms,
-                      delay: delay.ms,
-                    )
-                    .then()
-                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
-          );
-        }),
+class _CenteredLoader extends StatelessWidget {
+  const _CenteredLoader();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.yellow),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback? onRetry;
+  const _ErrorView({required this.message, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              color: Colors.redAccent,
+              size: 40.sp,
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+                fontSize: 13.sp,
+              ),
+            ),
+            if (onRetry != null) ...[
+              SizedBox(height: 16.h),
+              TextButton(
+                onPressed: onRetry,
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.yellow,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LessonBackdrop extends StatelessWidget {
+  const _LessonBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xff020B18),
+            Color(0xff072238),
+            AppColors.primary,
+            Color(0xff01344F),
+            Color(0xff020B18),
+          ],
+          stops: [0.0, 0.22, 0.55, 0.8, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80.h,
+            right: -40.w,
+            child: _GlowBlob(color: AppColors.yellow, size: 220.w),
+          ),
+          Positioned(
+            bottom: 120.h,
+            left: -60.w,
+            child: _GlowBlob(color: AppColors.sky, size: 200.w),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _GlowBlob({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withOpacity(0.1),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.28),
+            blurRadius: 120,
+            spreadRadius: 30,
+          ),
+        ],
       ),
     );
   }

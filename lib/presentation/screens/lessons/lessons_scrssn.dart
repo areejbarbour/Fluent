@@ -54,6 +54,9 @@ class DailyChallengeData {
 
 class LessonsScreen extends StatefulWidget {
   final int? courseId;
+
+  /// Published course final test (CourseResource.test_id).
+  final int? testId;
   final String courseTitle;
   final String courseSubtitle;
   final String teacherName;
@@ -71,6 +74,7 @@ class LessonsScreen extends StatefulWidget {
   const LessonsScreen({
     super.key,
     this.courseId,
+    this.testId,
     this.courseTitle = "Grammar Mastery",
     this.courseSubtitle = "Level 8 · Fluent Instructor",
     this.teacherName = "Fluent Instructor",
@@ -236,8 +240,8 @@ class _LessonsScreenState extends State<LessonsScreen>
                               _LessonsPath(
                                 lessons: _lessons,
                                 flowController: _pathFlowController,
-                                onLessonTap: (lesson) {
-                                  Navigator.pushNamed(
+                                onLessonTap: (lesson) async {
+                                  await Navigator.pushNamed(
                                     context,
                                     lessonStudentDetailRoute,
                                     arguments: {
@@ -245,11 +249,31 @@ class _LessonsScreenState extends State<LessonsScreen>
                                       'lessonTitle': lesson.title,
                                     },
                                   );
+                                  if (!context.mounted) return;
+                                  // Refresh path after test pass / progress change
+                                  context
+                                      .read<StudentLessonsCubit>()
+                                      .fetchStudentLessons(
+                                        widget.courseId ?? 0,
+                                      );
                                 },
                                 // onLessonTap: (lesson) {
                                 //   widget.onLessonTap?.call(lesson);
                                 // },
                               ),
+                              if (widget.testId != null) ...[
+                                SizedBox(height: 18.h),
+                                _CourseFinalTestCard(
+                                  testId: widget.testId!,
+                                  courseTitle: widget.courseTitle,
+                                  lessonsComplete: _allLessonsComplete(state),
+                                  onStart: () => _startCourseTest(
+                                    context,
+                                    testId: widget.testId!,
+                                    courseTitle: widget.courseTitle,
+                                  ),
+                                ),
+                              ],
                             ],
                             SizedBox(height: 110.h),
                           ],
@@ -265,6 +289,43 @@ class _LessonsScreenState extends State<LessonsScreen>
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
+  }
+
+  bool _allLessonsComplete(StudentLessonsState state) {
+    if (state is! StudentLessonsSuccess) return false;
+    final d = state.data;
+    // Backend path finished when there is no current lesson and nothing locked.
+    return d.currentLesson == null && d.lockedLessons.isEmpty;
+  }
+
+  Future<void> _startCourseTest(
+    BuildContext context, {
+    required int testId,
+    required String courseTitle,
+  }) async {
+    HapticFeedback.lightImpact();
+    final result = await Navigator.pushNamed(
+      context,
+      studentTestRoute,
+      arguments: {
+        'testId': testId,
+        'title': '$courseTitle · Final test',
+        'xpPoints': 0,
+        'source': 'course',
+      },
+    );
+    if (!mounted) return;
+    context.read<StudentLessonsCubit>().fetchStudentLessons(
+      widget.courseId ?? 0,
+    );
+
+    if (result is Map) {
+      final passed = result['passed'] == true;
+      final goToCourses = result['goToCourses'] == true;
+      if (passed && goToCourses) {
+        Navigator.of(context).pop(true);
+      }
+    }
   }
 
   Widget _lessonsLoadingCard() {
@@ -2455,66 +2516,66 @@ class _LessonInfoCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
-                     children: [
+                    children: [
                       if (isQuiz)
-  ShaderMask(
-    shaderCallback: (bounds) => const LinearGradient(
-      colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-    ).createShader(bounds),
-    child: Text(
-      "🏆 Final Quiz",
-      maxLines: 2,
-      overflow: TextOverflow.visible,
-      style: GoogleFonts.poppins(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 13.sp,
-        letterSpacing: .3,
-      ),
-    ),
-  )
-else
-  Text(
-    lesson.title,
-    maxLines: 2,                    // ← صار ياخد سطرين
-    overflow: TextOverflow.visible, // ← ما عاد يقطع
-    style: GoogleFonts.poppins(
-      color: Colors.white,
-      fontWeight: FontWeight.w800,
-      fontSize: 12.5.sp,            // ← صغّرت شوي عشان ينفع أكتر
-      letterSpacing: .2,
-      height: 1.25,
-    ),
-  ),
-                    //   if (isQuiz)
-                    //     ShaderMask(
-                    //       shaderCallback: (bounds) => const LinearGradient(
-                    //         colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-                    //       ).createShader(bounds),
-                    //       child: Text(
-                    //         "🏆 Final Quiz",
-                    //         maxLines: 1,
-                    //         overflow: TextOverflow.ellipsis,
-                    //         style: GoogleFonts.poppins(
-                    //           color: Colors.white,
-                    //           fontWeight: FontWeight.w800,
-                    //           fontSize: 13.sp,
-                    //           letterSpacing: .3,
-                    //         ),
-                    //       ),
-                    //     )
-                    //   else
-                    //     Text(
-                    //       lesson.title,
-                    //       maxLines: 1,
-                    //       overflow: TextOverflow.ellipsis,
-                    //       style: GoogleFonts.poppins(
-                    //         color: Colors.white,
-                    //         fontWeight: FontWeight.w800,
-                    //         fontSize: 13.sp,
-                    //         letterSpacing: .2,
-                    //       ),
-                    //     ),
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                          ).createShader(bounds),
+                          child: Text(
+                            "🏆 Final Quiz",
+                            maxLines: 2,
+                            overflow: TextOverflow.visible,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.sp,
+                              letterSpacing: .3,
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          lesson.title,
+                          maxLines: 2, // ← صار ياخد سطرين
+                          overflow: TextOverflow.visible, // ← ما عاد يقطع
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5.sp, // ← صغّرت شوي عشان ينفع أكتر
+                            letterSpacing: .2,
+                            height: 1.25,
+                          ),
+                        ),
+                      //   if (isQuiz)
+                      //     ShaderMask(
+                      //       shaderCallback: (bounds) => const LinearGradient(
+                      //         colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                      //       ).createShader(bounds),
+                      //       child: Text(
+                      //         "🏆 Final Quiz",
+                      //         maxLines: 1,
+                      //         overflow: TextOverflow.ellipsis,
+                      //         style: GoogleFonts.poppins(
+                      //           color: Colors.white,
+                      //           fontWeight: FontWeight.w800,
+                      //           fontSize: 13.sp,
+                      //           letterSpacing: .3,
+                      //         ),
+                      //       ),
+                      //     )
+                      //   else
+                      //     Text(
+                      //       lesson.title,
+                      //       maxLines: 1,
+                      //       overflow: TextOverflow.ellipsis,
+                      //       style: GoogleFonts.poppins(
+                      //         color: Colors.white,
+                      //         fontWeight: FontWeight.w800,
+                      //         fontSize: 13.sp,
+                      //         letterSpacing: .2,
+                      //       ),
+                      //     ),
                       SizedBox(height: 2.h),
                       Text(
                         lesson.subtitle,
@@ -2655,5 +2716,149 @@ else
         .animate()
         .fadeIn(delay: 250.ms, duration: 500.ms)
         .moveX(begin: 15, end: 0, curve: Curves.easeOutCubic);
+  }
+}
+
+/// Course final exam card — same visual language as lesson path.
+
+/// Course final exam — path “boss” node style (Duolingo / global apps).
+
+/// Compact course checkpoint — refined, app-store quality, not bulky.
+class _CourseFinalTestCard extends StatelessWidget {
+  final int testId;
+  final String courseTitle;
+  final bool lessonsComplete;
+  final VoidCallback onStart;
+
+  const _CourseFinalTestCard({
+    required this.testId,
+    required this.courseTitle,
+    required this.lessonsComplete,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final locked = !lessonsComplete;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: locked ? null : onStart,
+        borderRadius: BorderRadius.circular(18.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            color: Colors.white.withOpacity(0.05),
+            border: Border.all(
+              color: locked
+                  ? Colors.white.withOpacity(0.08)
+                  : AppColors.yellow.withOpacity(0.35),
+            ),
+            boxShadow: locked
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              // Slim badge
+              Container(
+                width: 44.w,
+                height: 44.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14.r),
+                  gradient: locked
+                      ? null
+                      : LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.yellow.withOpacity(0.95),
+                            AppColors.orange.withOpacity(0.85),
+                          ],
+                        ),
+                  color: locked ? Colors.white.withOpacity(0.08) : null,
+                  border: locked
+                      ? Border.all(color: Colors.white.withOpacity(0.12))
+                      : null,
+                ),
+                child: Icon(
+                  locked ? Icons.lock_rounded : Icons.workspace_premium_rounded,
+                  color: locked ? Colors.white38 : AppColors.dark,
+                  size: 22.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      locked ? 'Final test locked' : 'Course final test',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      locked
+                          ? 'Complete all lessons to unlock'
+                          : 'Pass to finish the course',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 11.sp,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // Compact action chip
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12.r),
+                  color: locked
+                      ? Colors.white.withOpacity(0.06)
+                      : AppColors.yellow,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!locked) ...[
+                      Icon(
+                        Icons.play_arrow_rounded,
+                        size: 16.sp,
+                        color: AppColors.dark,
+                      ),
+                      SizedBox(width: 2.w),
+                    ],
+                    Text(
+                      locked ? 'Locked' : 'Start',
+                      style: GoogleFonts.poppins(
+                        color: locked ? Colors.white38 : AppColors.dark,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

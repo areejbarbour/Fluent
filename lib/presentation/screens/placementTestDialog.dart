@@ -1,14 +1,13 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
-import 'package:fluent/data/models/placement_question_model.dart';
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// ديالوج الترحيب — يظهر للمستخدم بعد التسجيل لأول مرة
-/// يعرض خيارين: بدء اختبار تحديد المستوى أو البدء من المستوى الأول
+/// First-login placement choice — clean product UI only (no server jargon).
 class PlacementTestDialog extends StatelessWidget {
   const PlacementTestDialog({super.key});
 
@@ -19,15 +18,12 @@ class PlacementTestDialog extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // خلفية معتمة + blur
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(color: Colors.black.withOpacity(0.25)),
             ),
           ),
-
-          // الديالوج
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -61,7 +57,7 @@ class PlacementTestDialog extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: _DialogContent(),
+                  child: const _DialogContent(),
                 ),
               ),
             ),
@@ -73,10 +69,12 @@ class PlacementTestDialog extends StatelessWidget {
 }
 
 class _DialogContent extends StatelessWidget {
+  const _DialogContent();
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 32),
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -85,61 +83,39 @@ class _DialogContent extends StatelessWidget {
               .fadeIn(duration: 500.ms)
               .scale(begin: const Offset(0.8, 0.8)),
           const SizedBox(height: 28),
-
           ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
+            shaderCallback: (bounds) => const LinearGradient(
               colors: [AppColors.sky, AppColors.yellow],
             ).createShader(bounds),
-            child: const Text(
-              'Take a Placement Test',
+            child: Text(
+              'Find Your Level',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
+                letterSpacing: 0.4,
                 height: 1.3,
                 color: Colors.white,
-                shadows: [
-                  Shadow(color: AppColors.sky, blurRadius: 15),
-                  Shadow(
-                    color: AppColors.sky,
-                    blurRadius: 30,
-                    offset: Offset(0, 0),
-                  ),
-                ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          const Text(
-            'Assess your skills to skip levels,\nor start directly from Level 1.',
+          const SizedBox(height: 14),
+          Text(
+            'Take a short test to start at the right level,\nor begin from Level 1.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15.5,
-              height: 1.6,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              height: 1.55,
               fontWeight: FontWeight.w400,
-              letterSpacing: 0.3,
-              color: AppColors.lightOrange,
+              color: AppColors.lightOrange.withOpacity(0.95),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // ملخص قصير للاختبار
-          Center(
-            child: _MiniInfo(
-              icon: Icons.quiz_rounded,
-              text: '${kPlacementQuestions.length} questions in 15 minutes',
-            ),
-          ),
-          const SizedBox(height: 28),
-
+          const SizedBox(height: 32),
           _GlassButton(
             label: 'Take Placement Test',
             icon: Icons.rocket_launch_rounded,
             onPressed: () {
-              Navigator.of(context).pop(); // إغلاق الديالوج
-              // فتح شاشة الاختبار الكاملة
+              Navigator.of(context).pop();
               Navigator.of(context).push(
                 PageRouteBuilder(
                   opaque: true,
@@ -181,13 +157,10 @@ class _DialogContent extends StatelessWidget {
             glowColor: AppColors.orange,
           ),
           const SizedBox(height: 14),
-
           _GlassButton(
             label: 'Start at Level 1',
             icon: Icons.play_arrow_rounded,
             onPressed: () {
-              Navigator.of(context).pop();
-              // التوجه لصفحة الطالب الرئيسية (مع مسح الـ stack)
               Navigator.of(
                 context,
               ).pushNamedAndRemoveUntil(studentHomeRoute, (route) => false);
@@ -203,53 +176,14 @@ class _DialogContent extends StatelessWidget {
             glowColor: AppColors.sky,
           ),
           const SizedBox(height: 22),
-
           Text(
-            '* You can change this later in Settings.',
+            'You can change this later in Settings.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12.0,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
               color: AppColors.sky.withOpacity(0.7),
-              height: 1.5,
-              letterSpacing: 0.3,
+              height: 1.4,
               fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniInfo extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _MiniInfo({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: AppColors.sky.withOpacity(0.10),
-        border: Border.all(color: AppColors.sky.withOpacity(0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.sky, size: 16),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.sky,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
-              ),
             ),
           ),
         ],
@@ -286,7 +220,7 @@ class _GlassButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: gradient,
@@ -306,12 +240,11 @@ class _GlassButton extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: textColor,
                   fontSize: 14.5,
-                  letterSpacing: 0.8,
+                  letterSpacing: 0.3,
                   fontWeight: FontWeight.w700,
-                  height: 1.2,
                 ),
               ),
             ],
