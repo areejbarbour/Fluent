@@ -1,10 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ✅ صلاحيات الإنترنت والإشعارات -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
     <application
-        android:label="fluent"
+        android:label="Fluent"
         android:name="${applicationName}"
-          android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -24,23 +32,25 @@
             </intent-filter>
         </activity>
 
-        <!-- ❌ احذف هذا الجزء - ما عدنا بحاجة لـ CallbackActivity -->
-        <!--
-        <activity
-            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
-            android:exported="true">
-            <intent-filter android:label="flutter_web_auth_2">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.googleusercontent.apps.1088244932090-5t1j7gcd8o993ig1a8euqjc92n4m8nim" />
-            </intent-filter>
-        </activity>
-        -->
-
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- ✅ قناة الإشعارات الافتراضية لـ Firebase (Android 8+) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel" />
+
+        <!-- ✅ أيقونة الإشعار الافتراضية (silhouette أبيض) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
+        <!-- ✅ لون الإشعار (primary) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+
     </application>
 
     <queries>

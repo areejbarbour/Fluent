@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
+import '../../../../helper/notification_bootstrap.dart';
 import 'logout_state.dart';
 
 class LogoutCubit extends Cubit<LogoutState> {
@@ -22,6 +23,9 @@ class LogoutCubit extends Cubit<LogoutState> {
       final message = data['message'] as String? ?? '';
 
       if (success) {
+        // Invalidate FCM token so this device stops receiving pushes
+        await NotificationBootstrap.clearOnLogout();
+
         // ✅ مسح SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');

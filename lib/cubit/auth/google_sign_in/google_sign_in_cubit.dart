@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../data/network/dio_client.dart';
 import '../../../data/repository/auth_repository.dart';
+import '../../../helper/notification_bootstrap.dart';
 
 class GoogleLoginCubit extends Cubit<GoogleLoginState> {
   final AuthRepository authRepository;
@@ -90,6 +91,9 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
         // 🔑 أعد تجهيز Dio بالتوكن الجديد!
         await setupDio();
         print("✅ Token stored in SharedPreferences: $token");
+
+        // Register FCM token immediately after Google login
+        await NotificationBootstrap.registerAfterAuth();
 
         emit(GoogleLoginSuccess(token: token, roles: roles, user: userMap));
         print("🎉 GoogleLoginSuccess emitted");

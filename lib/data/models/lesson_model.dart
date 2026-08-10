@@ -11,6 +11,10 @@ class LessonModel {
   final String? updatedAt;
   final String? courseName;
 
+  /// Latest review notes when status == changes_requested (from list API).
+  /// Never null at runtime — defaults to empty list.
+  final List<String> reviewNotes;
+
   LessonModel({
     required this.id,
     required this.titleEn,
@@ -23,11 +27,28 @@ class LessonModel {
     this.createdAt,
     this.updatedAt,
     this.courseName,
-  });
+    List<String>? reviewNotes,
+  }) : reviewNotes = reviewNotes ?? const [];
 
   factory LessonModel.fromJson(Map<String, dynamic> json) {
     String? video = json['video']?.toString();
     if (video != null && video.trim().isEmpty) video = null;
+
+    final notes = <String>[];
+    final rawNotes = json['review_notes'];
+    if (rawNotes is List) {
+      for (final n in rawNotes) {
+        if (n is Map) {
+          final msg =
+              n['message']?.toString() ??
+              n['note']?.toString() ??
+              n['body']?.toString();
+          if (msg != null && msg.trim().isNotEmpty) notes.add(msg.trim());
+        } else if (n is String && n.trim().isNotEmpty) {
+          notes.add(n.trim());
+        }
+      }
+    }
 
     return LessonModel(
       id: json['id'] is int
@@ -48,10 +69,11 @@ class LessonModel {
       videoUrl: video,
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
+      reviewNotes: notes,
     );
   }
 
-  LessonModel copyWith({String? courseName}) {
+  LessonModel copyWith({String? courseName, List<String>? reviewNotes}) {
     return LessonModel(
       id: id,
       titleEn: titleEn,
@@ -64,6 +86,7 @@ class LessonModel {
       createdAt: createdAt,
       updatedAt: updatedAt,
       courseName: courseName ?? this.courseName,
+      reviewNotes: reviewNotes ?? this.reviewNotes,
     );
   }
 }

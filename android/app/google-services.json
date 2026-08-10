@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "755118981201",
+    "project_id": "fluent-app-d663f",
+    "storage_bucket": "fluent-app-d663f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:755118981201:android:c8773c262de6fd675df870",
+        "android_client_info": {
+          "package_name": "com.example.fluent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDezgOZ7IdSaPw1OJS_FRPBGRARMu0XyZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

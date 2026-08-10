@@ -9,6 +9,8 @@ import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/models/word_model.dart';
 import 'package:fluent/presentation/widgets/audio_preview_tile.dart';
+import 'package:fluent/presentation/widgets/content_review_actions.dart';
+import 'package:fluent/utils/teacher_permissions.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
@@ -124,16 +126,12 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     }
   }
 
-  // ─── Status rules (حالة الدرس فقط) ───
-  bool _canEditLesson(String status) {
-    final s = status.toLowerCase();
-    return !{'closed', 'archived', 'approved', 'in_review'}.contains(s);
-  }
+  // ─── Status rules — matches TeacherLessonService exactly ───
+  bool _canEditLesson(String status) =>
+      TeacherPermissions.canEditLesson(status);
 
-  bool _canDeleteLesson(String status) {
-    final s = status.toLowerCase();
-    return {'draft', 'pending', 'changes_requested'}.contains(s);
-  }
+  bool _canDeleteLesson(String status) =>
+      TeacherPermissions.canDeleteLesson(status);
 
   String _extractVideoUrl(dynamic lesson) {
     if (lesson is Map) {
@@ -343,7 +341,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                                   SizedBox(height: 20.h),
                                   _buildCommentsSection(context, state),
                                   SizedBox(height: 16.h),
-                                  _buildActionButtons(context, state.lesson),
+                                  _buildActionButtons(
+                                    context,
+                                    state.lesson,
+                                    state.tests,
+                                  ),
                                   SizedBox(height: 32.h),
                                 ],
                               ),
@@ -701,77 +703,107 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // ─── Action buttons (Edit / Delete حسب حالة الدرس) ───
-  Widget _buildActionButtons(BuildContext context, dynamic lesson) {
+  // ─── Action buttons (Edit / Delete + Content Review) ───
+  Widget _buildActionButtons(
+    BuildContext context,
+    dynamic lesson,
+    List<TestModel> tests,
+  ) {
     final status = _lessonField(lesson, 'status', 'draft');
     final canEdit = _canEditLesson(status);
     final canDelete = _canDeleteLesson(status);
+    final lessonId = _lessonInt(lesson, 'id', widget.lessonId);
+    final videoUrl = _extractVideoUrl(lesson);
+    final hasVideo = videoUrl.trim().isNotEmpty;
+    final hasDraftTest = tests.any(
+      (t) => t.status.toLowerCase().trim() == 'draft',
+    );
 
-    if (!canEdit && !canDelete) return const SizedBox.shrink();
-
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (canEdit)
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _goEditLesson(context, lesson),
-              icon: Icon(Icons.edit_rounded, size: 16.sp),
-              label: Text(
-                'Edit Lesson',
-                style: GoogleFonts.poppins(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
+        // Edit / Delete row
+        if (canEdit || canDelete)
+          Row(
+            children: [
+              if (canEdit)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _goEditLesson(context, lesson),
+                    icon: Icon(Icons.edit_rounded, size: 16.sp),
+                    label: Text(
+                      'Edit Lesson',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sky.withOpacity(0.2),
+                      foregroundColor: AppColors.sky,
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.sky.withOpacity(0.2),
-                foregroundColor: AppColors.sky,
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-            ),
-          ),
-        if (canEdit && canDelete) SizedBox(width: 10.w),
-        if (canDelete)
-          Expanded(
-            child: BlocBuilder<LessonDeleteCubit, LessonDeleteState>(
-              builder: (context, state) {
-                final loading = state is LessonDeleteLoading;
-                return ElevatedButton.icon(
-                  onPressed: loading
-                      ? null
-                      : () => _confirmDeleteLesson(context, lesson),
-                  icon: loading
-                      ? SizedBox(
-                          width: 14.w,
-                          height: 14.w,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.redAccent,
+              if (canEdit && canDelete) SizedBox(width: 10.w),
+              if (canDelete)
+                Expanded(
+                  child: BlocBuilder<LessonDeleteCubit, LessonDeleteState>(
+                    builder: (context, state) {
+                      final loading = state is LessonDeleteLoading;
+                      return ElevatedButton.icon(
+                        onPressed: loading
+                            ? null
+                            : () => _confirmDeleteLesson(context, lesson),
+                        icon: loading
+                            ? SizedBox(
+                                width: 14.w,
+                                height: 14.w,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.redAccent,
+                                ),
+                              )
+                            : Icon(Icons.delete_outline, size: 16.sp),
+                        label: Text(
+                          'Delete',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
                           ),
-                        )
-                      : Icon(Icons.delete_outline, size: 16.sp),
-                  label: Text(
-                    'Delete',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent.withOpacity(0.2),
+                          foregroundColor: Colors.redAccent,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.2),
-                    foregroundColor: Colors.redAccent,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                  ),
-                );
-              },
-            ),
+                ),
+            ],
           ),
+
+        // Content Review actions (Submit / Resubmit / History)
+        SizedBox(height: 10.h),
+        ContentReviewActionsBar(
+          status: status,
+          targetId: lessonId,
+          isLesson: true,
+          hasVideo: hasVideo,
+          hasDraftTest: hasDraftTest,
+          onSuccess: () {
+            context.read<LessonDetailCubit>().loadLessonDetails(
+              widget.lessonId,
+            );
+          },
+        ),
       ],
     );
   }

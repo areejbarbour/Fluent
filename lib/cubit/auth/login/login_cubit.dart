@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
+import '../../../../helper/notification_bootstrap.dart';
 import 'login_state.dart';
 
 class LoginCubit extends Cubit<LoginState> {
@@ -99,6 +100,9 @@ class LoginCubit extends Cubit<LoginState> {
           print("🔑 [LoginCubit] Token saved");
           await setupDio();
           print("⚙️ [LoginCubit] Dio re-initialized");
+
+          // Register FCM token immediately after login
+          await NotificationBootstrap.registerAfterAuth();
         }
 
         print("🎉 [LoginCubit] Login successful");
