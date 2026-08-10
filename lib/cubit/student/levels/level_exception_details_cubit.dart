@@ -6,9 +6,6 @@ import 'package:fluent/cubit/student/levels/level_exception_details_state.dart';
 class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
   final LevelExceptionRepository repository;
 
-  /// Optional data from the list screen. Backend `view()` currently loads
-  /// media only, so `requested_level` is often omitted (whenLoaded). We keep
-  /// the list payload as a fallback without changing the backend.
   LevelExceptionModel? _seed;
 
   LevelExceptionDetailsCubit(this.repository, {LevelExceptionModel? seed})
@@ -17,23 +14,22 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
 
   Future<void> fetchDetails(int id) async {
     emit(LevelExceptionDetailsLoading());
-    print("🟡 [LevelExceptionDetailsCubit] Fetching details for #$id...");
+    print(" [LevelExceptionDetailsCubit] Fetching details for #$id...");
 
     final result = await repository.getDetails(id);
 
     if (result['success'] == true) {
       final fromApi = result['data'] as LevelExceptionModel;
       final merged = _mergeWithSeed(fromApi);
-      print("🎉 [LevelExceptionDetailsCubit] Details loaded");
+      print(" [LevelExceptionDetailsCubit] Details loaded");
       emit(LevelExceptionDetailsSuccess(merged));
     } else {
-      // If API fails but we still have seed from the list, show it.
       if (_seed != null && _seed!.id == id) {
-        print("⚠️ [LevelExceptionDetailsCubit] API failed — using list seed");
+        print(" [LevelExceptionDetailsCubit] API failed — using list seed");
         emit(LevelExceptionDetailsSuccess(_seed!));
         return;
       }
-      print("❌ [LevelExceptionDetailsCubit] Failed: ${result['message']}");
+      print(" [LevelExceptionDetailsCubit] Failed: ${result['message']}");
       emit(
         LevelExceptionDetailsFailure(
           result['message']?.toString() ?? 'Failed to load details',
@@ -42,7 +38,6 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
     }
   }
 
-  /// Prefer API fields; fill gaps from seed (especially requested_level).
   LevelExceptionModel _mergeWithSeed(LevelExceptionModel api) {
     final seed = _seed;
     if (seed == null || seed.id != api.id) return api;
@@ -60,7 +55,6 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
     );
   }
 
-  /// DELETE /api/level-exceptions/{exception}/attachments/{media}
   Future<String?> deleteAttachment({
     required int exceptionId,
     required int mediaId,
@@ -84,7 +78,7 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
 
     emit(current.copyWith(deletingMediaId: mediaId));
     print(
-      "🟡 [LevelExceptionDetailsCubit] Deleting attachment #$mediaId "
+      " [LevelExceptionDetailsCubit] Deleting attachment #$mediaId "
       "from exception #$exceptionId...",
     );
 
@@ -101,7 +95,7 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
     }
 
     if (result['success'] == true) {
-      print("🎉 [LevelExceptionDetailsCubit] Attachment deleted");
+      print(" [LevelExceptionDetailsCubit] Attachment deleted");
       final updatedList = after.details.attachments
           .where((a) => a.id != mediaId)
           .toList();
@@ -111,7 +105,7 @@ class LevelExceptionDetailsCubit extends Cubit<LevelExceptionDetailsState> {
       return null;
     }
 
-    print("❌ [LevelExceptionDetailsCubit] Delete failed: ${result['message']}");
+    print(" [LevelExceptionDetailsCubit] Delete failed: ${result['message']}");
     emit(after.copyWith(clearDeleting: true));
     return result['message']?.toString() ?? 'Failed to delete attachment';
   }

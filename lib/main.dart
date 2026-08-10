@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
@@ -10,11 +11,7 @@ import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
-import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
-import 'package:fluent/data/repository/profile_repository.dart';
-import 'package:fluent/data/services/attempt_service.dart';
-import 'package:fluent/data/services/profile_service.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
@@ -53,6 +50,7 @@ import 'package:fluent/data/services/word_service.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/data/services/level_exception_service.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
 import 'package:fluent/data/services/words_bank_service.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'package:fluent/data/services/lesson_word_service.dart';
@@ -61,6 +59,10 @@ import 'package:fluent/data/services/rate_service.dart';
 import 'package:fluent/data/repository/rate_repository.dart';
 import 'package:fluent/data/services/word_quiz_service.dart';
 import 'package:fluent/data/repository/word_quiz_repository.dart';
+import 'package:fluent/data/services/podcast_service.dart';
+import 'package:fluent/data/repository/podcast_repository.dart';
+import 'package:fluent/data/services/payment_service.dart';
+import 'package:fluent/data/repository/payment_repository.dart';
 
 /// Handler للإشعارات عندما التطبيق في الخلفية أو مغلق.
 @pragma('vm:entry-point')
@@ -86,6 +88,8 @@ Future<void> main() async {
     badge: true,
     sound: true,
   );
+  Stripe.publishableKey = stripePublishableKey;
+  await Stripe.instance.applySettings();
 
   await setupDio();
 
@@ -123,9 +127,7 @@ Future<void> main() async {
   final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
   final levelExceptionService = LevelExceptionService(dioInstance);
-  final levelExceptionRepository = LevelExceptionRepository(
-    levelExceptionService,
-  );
+  final levelExceptionRepository = LevelExceptionRepository(levelExceptionService,);
 
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
@@ -142,11 +144,11 @@ Future<void> main() async {
   final wordQuizService = WordQuizService(dioInstance);
   final wordQuizRepository = WordQuizRepository(wordQuizService);
 
-  final profileService = ProfileService(dioInstance);
-  final profileRepository = ProfileRepository(profileService);
+  final podcastService = PodcastService(dioInstance);
+  final podcastRepository = PodcastRepository(podcastService);
 
-  final attemptService = AttemptService(dioInstance);
-  final attemptRepository = AttemptRepository(attemptService);
+  final paymentService = PaymentService(dioInstance);
+  final paymentRepository = PaymentRepository(paymentService);
 
   final contentReviewService = ContentReviewService(dioInstance);
   final contentReviewRepository = ContentReviewRepository(contentReviewService);
@@ -178,6 +180,8 @@ Future<void> main() async {
       testRepository: testRepository,
       studentLessonRepository: studentLessonRepository,
       lessonDetailRepository: lessonDetailRepository,
+      studentLessonRepository: studentLessonRepository, 
+      lessonDetailRepository: lessonDetailRepository, 
       wordRepository: wordRepository,
       levelExceptionRepository: levelExceptionRepository,
       wordsBankRepository: wordsBankRepository,
@@ -188,6 +192,8 @@ Future<void> main() async {
       attemptRepository: attemptRepository,
       contentReviewRepository: contentReviewRepository,
       notificationRepository: notificationRepository,
+      podcastRepository: podcastRepository,
+      paymentRepository: paymentRepository,
       initialRoute: initialRoute,
       isUserLoggedIn: isUserLoggedIn,
     ),
@@ -203,6 +209,7 @@ class MyApp extends StatefulWidget {
   final TestRepository testRepository;
   final StudentLessonRepository studentLessonRepository;
   final LessonDetailRepository lessonDetailRepository;
+  final LessonDetailRepository lessonDetailRepository; 
   final WordRepository wordRepository;
   final String initialRoute;
   final LevelExceptionRepository levelExceptionRepository;
@@ -215,6 +222,8 @@ class MyApp extends StatefulWidget {
   final ContentReviewRepository contentReviewRepository;
   final NotificationRepository notificationRepository;
   final bool isUserLoggedIn;
+  final PodcastRepository podcastRepository;
+  final PaymentRepository paymentRepository;
   late final AppRouter appRouter;
 
   MyApp({
@@ -239,6 +248,8 @@ class MyApp extends StatefulWidget {
     required this.contentReviewRepository,
     required this.notificationRepository,
     this.isUserLoggedIn = false,
+    required this.podcastRepository,
+    required this.paymentRepository,
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -412,11 +423,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             RepositoryProvider<WordQuizRepository>.value(
               value: widget.wordQuizRepository,
             ),
-            RepositoryProvider<ProfileRepository>.value(
-              value: widget.profileRepository,
-            ),
-            RepositoryProvider<AttemptRepository>.value(
-              value: widget.attemptRepository,
+            RepositoryProvider<PodcastRepository>.value(
+             value: widget.podcastRepository,
             ),
             RepositoryProvider<ContentReviewRepository>.value(
               value: widget.contentReviewRepository,
@@ -424,6 +432,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             RepositoryProvider<NotificationRepository>.value(
               value: widget.notificationRepository,
             ),
+            RepositoryProvider<PaymentRepository>.value(
+            value: widget.paymentRepository,
+             ),
           ],
           child: MultiBlocProvider(
             providers: [

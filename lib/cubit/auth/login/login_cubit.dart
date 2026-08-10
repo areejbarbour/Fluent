@@ -14,12 +14,12 @@ class LoginCubit extends Cubit<LoginState> {
 
   Future<void> login({required String email, required String password}) async {
     emit(LoginLoading());
-    print("🟡 [LoginCubit] Logging in: $email");
+    print(" [LoginCubit] Logging in: $email");
 
     try {
       final data = await authRepository.login(email: email, password: password);
 
-      print("✅ [LoginCubit] Response: $data");
+      print(" [LoginCubit] Response: $data");
 
       final success = data['success'] as bool? ?? false;
       final message = data['message'] as String? ?? '';
@@ -40,16 +40,14 @@ class LoginCubit extends Cubit<LoginState> {
           roles = r is List ? r as List<dynamic> : [r];
         }
 
-        print("🎭 [LoginCubit] Extracted roles: $roles");
+        print(" [LoginCubit] Extracted roles: $roles");
 
-        // ✅ حفظ التوكن + الدور + user_id
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
           await prefs.setBool('is_logged_in', true);
           await prefs.setString('login_method', 'email');
 
-          // ✅ حفظ الدور الأولي
           if (roles.isNotEmpty) {
             final role = roles.first;
             String roleName = '';
@@ -61,14 +59,12 @@ class LoginCubit extends Cubit<LoginState> {
             }
 
             await prefs.setString('user_role', roleName);
-            print("🎭 [LoginCubit] User role saved: $roleName");
+            print(" [LoginCubit] User role saved: $roleName");
           } else {
-            // ✅ default student لو ما طلع role
             await prefs.setString('user_role', 'student');
-            print("🎭 [LoginCubit] No role found, defaulting to 'student'");
+            print(" [LoginCubit] No role found, defaulting to 'student'");
           }
 
-          // ✅ حفظ user_id من استجابة الـ login (مطابقة منطق التعليقات)
           Map<String, dynamic>? userMap;
           if (data['user'] is Map) {
             userMap = Map<String, dynamic>.from(data['user'] as Map);
@@ -80,7 +76,6 @@ class LoginCubit extends Cubit<LoginState> {
           }
           await _saveUserId(prefs, userMap);
 
-          // إن لم يُرجع الـ login كائن user، نجلبه من /api/user
           if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
             try {
               final me = await authRepository.getCurrentUser();
@@ -93,11 +88,11 @@ class LoginCubit extends Cubit<LoginState> {
                 }
               }
             } catch (e) {
-              print("⚠️ [LoginCubit] getCurrentUser fallback failed: $e");
+              print(" [LoginCubit] getCurrentUser fallback failed: $e");
             }
           }
 
-          print("🔑 [LoginCubit] Token saved");
+          print(" [LoginCubit] Token saved");
           await setupDio();
           print("⚙️ [LoginCubit] Dio re-initialized");
 
@@ -105,15 +100,15 @@ class LoginCubit extends Cubit<LoginState> {
           await NotificationBootstrap.registerAfterAuth();
         }
 
-        print("🎉 [LoginCubit] Login successful");
+        print(" [LoginCubit] Login successful");
         emit(LoginSuccess(message, token ?? '', roles));
       } else {
         final errors = data['errors'] as Map<String, dynamic>?;
-        print("❌ [LoginCubit] Login failed: $message");
+        print(" [LoginCubit] Login failed: $message");
         emit(LoginFailure(message, errors: errors));
       }
     } catch (e) {
-      print("❌ [LoginCubit] Exception: $e");
+      print(" [LoginCubit] Exception: $e");
       emit(LoginFailure(e.toString()));
     }
   }

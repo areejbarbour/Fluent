@@ -26,11 +26,13 @@ import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:fluent/presentation/screens/statics/create_level_exception_sheet.dart';
 import 'package:fluent/cubit/student/levels/level_exception_create_cubit.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/payment/payment_cubit.dart';
+import 'package:fluent/data/repository/payment_repository.dart';
+import 'package:fluent/presentation/screens/home/level_purchase_sheet.dart';
 
 enum LevelStatus { completed, current, locked, boss, available }
 
 class LevelPathData {
-  final int? testId;
   final int? id;
   final String title;
   final String subtitle;
@@ -42,7 +44,6 @@ class LevelPathData {
 
   const LevelPathData({
     this.id,
-    this.testId,
     required this.title,
     required this.subtitle,
     required this.status,
@@ -93,9 +94,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   static const List<IconData> _decorativeIcons = [
     Icons.auto_awesome_rounded,
-    Icons.diamond_rounded,
-    Icons.flight_takeoff_rounded,
-    Icons.restaurant_rounded,
+  //Icons.diamond_rounded,
+     Icons.menu_book_rounded,
+   // Icons.flight_takeoff_rounded,
+   Icons.record_voice_over_rounded, 
+    Icons.school_rounded,    
     Icons.public_rounded,
     Icons.school_rounded,
   ];
@@ -104,10 +107,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       _decorativeIcons[order % _decorativeIcons.length];
 
   static const List<List<Color>> _availableGradients = [
-    [Color(0xff4FACFE), Color(0xff2E6BE6)], // أزرق
-    [Color(0xffB388FF), Color(0xff7C4DFF)], // موف
-    [Color(0xff36D1C4), Color(0xff1FA2A6)], // فيروزي
-    [Color(0xffFF8FD9), Color(0xffD6409F)], // وردي
+    [Color(0xff4FACFE), Color(0xff2E6BE6)],
+    [Color(0xffB388FF), Color(0xff7C4DFF)], 
+    [Color(0xff36D1C4), Color(0xff1FA2A6)], 
+    [Color(0xffFF8FD9), Color(0xffD6409F)], 
   ];
 
   List<Color> _availableColorsFor(int availableIndex) =>
@@ -120,7 +123,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }) {
     return LevelPathData(
       id: level.id,
-      testId: level.testId,
       title: level.name,
       subtitle: "${level.minimumScore}-${level.maximumScore} pts",
       status: status,
@@ -969,270 +971,251 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Widget _buildDailyChallengeAndLeaders() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ===== Daily Challenge =====
-        Expanded(
-          flex: 11,
-          child: _glassContainer(
-            padding: EdgeInsets.all(12.w),
-            radius: 20.r,
-            gradientColors: [
-              Colors.white.withOpacity(.10),
-              Colors.white.withOpacity(.04),
-            ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.orange.withOpacity(.4),
-                            AppColors.orange.withOpacity(.08),
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.local_fire_department_rounded,
-                        color: AppColors.orange,
-                        size: 14.sp,
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // ===== Daily Challenge =====
+      Expanded(
+        flex: 11,
+        child: _glassContainer(
+          padding: EdgeInsets.all(12.w),
+          radius: 20.r,
+          gradientColors: [
+            Colors.white.withOpacity(.10),
+            Colors.white.withOpacity(.04),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.orange.withOpacity(.4),
+                          AppColors.orange.withOpacity(.08),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 6.w),
-                    Expanded(
-                      child: Text(
-                        "Daily Challenge",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.sp,
-                        ),
-                      ),
+                    child: Icon(
+                      Icons.local_fire_department_rounded,
+                      color: AppColors.orange,
+                      size: 14.sp,
                     ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  "Complete 10 new words",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 10.5.sp,
                   ),
-                ),
-                SizedBox(height: 10.h),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: LinearProgressIndicator(
-                    value: 0.7,
-                    minHeight: 6.h,
-                    backgroundColor: Colors.white.withOpacity(.12),
-                    valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
+                  SizedBox(width: 6.w),
+                  Text(
+                    "Daily Challenge",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.sp,
+                    ),
                   ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                "Complete 10 new words",
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.7),
+                  fontSize: 10.5.sp,
                 ),
-                SizedBox(height: 8.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "7/10",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.75),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      "70%",
-                      style: GoogleFonts.poppins(
-                        color: AppColors.yellow,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+              ),
+              SizedBox(height: 10.h),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8.r),
+                child: LinearProgressIndicator(
+                  value: 0.7,
+                  minHeight: 6.h,
+                  backgroundColor: Colors.white.withOpacity(.12),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
                 ),
-                SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.card_giftcard_rounded,
+              ),
+              SizedBox(height: 8.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "7/10",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(.75),
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    "70%",
+                    style: GoogleFonts.poppins(
                       color: AppColors.yellow,
-                      size: 12.sp,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
                     ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      "Reward: ★ 250 XP",
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Row(
+                children: [
+                  Icon(Icons.card_giftcard_rounded,
+                      color: AppColors.yellow, size: 12.sp),
+                  SizedBox(width: 4.w),
+                  Text(
+                    "Reward: ★ 250 XP",
+                    style: GoogleFonts.poppins(
+                      color: AppColors.yellow,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      SizedBox(width: 10.w),
+
+      // ===== Top Leaders =====
+      Expanded(
+        flex: 10,
+        child: _glassContainer(
+          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
+          radius: 20.r,
+          gradientColors: [
+            Colors.white.withOpacity(.10),
+            Colors.white.withOpacity(.04),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(5.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.yellow.withOpacity(.4),
+                          AppColors.yellow.withOpacity(.08),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.emoji_events_rounded,
+                      color: AppColors.yellow,
+                      size: 13.sp,
+                    ),
+                  ),
+                  SizedBox(width: 5.w),
+                  Expanded(
+                    child: Text(
+                      "Top Leaders",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
-                        color: AppColors.yellow,
-                        fontSize: 10.sp,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                    },
+                    child: Text(
+                      "View all",
+                      style: GoogleFonts.poppins(
+                        color: AppColors.sky,
                         fontWeight: FontWeight.w700,
+                        fontSize: 9.5.sp,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+                  ),
+                ],
+              ),
 
-        SizedBox(width: 10.w),
-
-        // ===== Top Leaders =====
-        Expanded(
-          flex: 10,
-          child: _glassContainer(
-            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
-            radius: 20.r,
-            gradientColors: [
-              Colors.white.withOpacity(.10),
-              Colors.white.withOpacity(.04),
-            ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(5.r),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.yellow.withOpacity(.4),
-                            AppColors.yellow.withOpacity(.08),
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.emoji_events_rounded,
-                        color: AppColors.yellow,
-                        size: 13.sp,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Expanded(
-                      child: Text(
-                        "Top Leaders",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.5.sp,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        // TODO: navigate to full leaderboard
-                      },
-                      child: Text(
-                        "View all",
-                        style: GoogleFonts.poppins(
-                          color: AppColors.sky,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 9.5.sp,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 10.h),
-
-                // Leaders list
-                _leaderRow(
-                  rank: 1,
-                  name: "Omar",
-                  xp: "18,200",
-                  color: AppColors.yellow,
-                ),
-                SizedBox(height: 7.h),
-                _leaderRow(
-                  rank: 2,
-                  name: "Lina",
-                  xp: "16,400",
-                  color: const Color(0xFFC0C0C0),
-                ),
-                SizedBox(height: 7.h),
-                _leaderRow(
-                  rank: 3,
-                  name: "Ziad",
-                  xp: "15,100",
-                  color: const Color(0xFFCD7F32),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ).animate().fadeIn(delay: 150.ms, duration: 450.ms);
-  }
-
-  Widget _leaderRow({
-    required int rank,
-    required String name,
-    required String xp,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 20.w,
-          height: 20.w,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [color.withOpacity(.9), color.withOpacity(.55)],
-            ),
-            boxShadow: [
-              BoxShadow(color: color.withOpacity(.35), blurRadius: 6),
+              SizedBox(height: 10.h),
+              _leaderRow(rank: 1, name: "Omar", xp: "18,200", color: AppColors.yellow),
+              SizedBox(height: 7.h),
+              _leaderRow(rank: 2, name: "Lina", xp: "16,400", color: const Color(0xFFC0C0C0)),
+              SizedBox(height: 7.h),
+              _leaderRow(rank: 3, name: "Ziad", xp: "15,100", color: const Color(0xFFCD7F32)),
             ],
           ),
-          child: Text(
-            "$rank",
-            style: GoogleFonts.poppins(
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-              fontSize: 9.sp,
-            ),
-          ),
         ),
-        SizedBox(width: 7.w),
-        Expanded(
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 11.sp,
-            ),
+      ),
+    ],
+  ).animate().fadeIn(delay: 150.ms, duration: 450.ms);
+}
+
+Widget _leaderRow({
+  required int rank,
+  required String name,
+  required String xp,
+  required Color color,
+}) {
+  return Row(
+    children: [
+      Container(
+        width: 20.w,
+        height: 20.w,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [
+              color.withOpacity(.9),
+              color.withOpacity(.55),
+            ],
           ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(.35),
+              blurRadius: 6,
+            ),
+          ],
         ),
-        Text(
-          "$xp XP",
+        child: Text(
+          "$rank",
           style: GoogleFonts.poppins(
-            color: Colors.white.withOpacity(.65),
-            fontWeight: FontWeight.w600,
-            fontSize: 9.5.sp,
+            color: Colors.black,
+            fontWeight: FontWeight.w800,
+            fontSize: 9.sp,
           ),
         ),
-      ],
-    );
-  }
+      ),
+      SizedBox(width: 7.w),
+      Expanded(
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 11.sp,
+          ),
+        ),
+      ),
+      Text(
+        "$xp XP",
+        style: GoogleFonts.poppins(
+          color: Colors.white.withOpacity(.65),
+          fontWeight: FontWeight.w600,
+          fontSize: 9.5.sp,
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _dailyChallengeRingIcon() {
     return SizedBox(
@@ -2392,10 +2375,6 @@ class _MountainsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MountainsPainter old) => false;
 }
-
-/// المسار (Levels Path) — أرقام ScreenUtil (.w / .h / .r / .sp) مع
-/// Clamp حماية عشان الواجهة تتكيف مع أي حجم شاشة موبايل من غير ما
-/// تنكسر أو تتراكب العناصر فوق بعضها.
 class _LevelsPath extends StatelessWidget {
   final List<LevelPathData> levels;
   final AnimationController flowController;
@@ -2775,25 +2754,6 @@ class _LevelNode extends StatelessWidget {
     if (isLocked) {
       HapticFeedback.mediumImpact();
       _showCreateExceptionSheet(context);
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(
-      //     content: Row(
-      //       children: [
-      //         const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-      //         SizedBox(width: 8.w),
-      //         const Expanded(
-      //           child: Text("Finish the previous level to unlock this one! 💪"),
-      //         ),
-      //       ],
-      //     ),
-      //     backgroundColor: AppColors.primary,
-      //     behavior: SnackBarBehavior.floating,
-      //     shape: RoundedRectangleBorder(
-      //       borderRadius: BorderRadius.circular(12.r),
-      //     ),
-      //     duration: const Duration(seconds: 2),
-      //   ),
-      // );
       return;
     }
 
@@ -2816,7 +2776,6 @@ class _LevelNode extends StatelessWidget {
       levelCoursesRoute,
       arguments: {
         'levelId': level.id,
-        'testId': level.testId,
         'userName': userName,
         'xp': xp,
         'streakDays': streakDays,
@@ -2829,100 +2788,130 @@ class _LevelNode extends StatelessWidget {
   }
 
   void _showPurchaseSheet(BuildContext context) {
-    final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ClipRRect(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: AppColors.dark.withOpacity(.9),
-              border: Border.all(color: Colors.white.withOpacity(.15)),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40.w,
-                  height: 4.h,
-                  margin: EdgeInsets.only(bottom: 14.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.3),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.lock_open_rounded,
-                      color: sheetColors.first,
-                      size: 20.sp,
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        level.title,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  level.subtitle,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 12.sp,
-                  ),
-                ),
-                SizedBox(height: 18.h),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: sheetColors),
-                      borderRadius: BorderRadius.circular(16.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: sheetColors.first.withOpacity(.5),
-                          blurRadius: 14,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-              ],
-            ),
-          ),
-        ),
-      ),
+  if (level.id == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Level ID is missing')),
     );
+    return;
   }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return BlocProvider(
+        create: (ctx) => PaymentCubit(ctx.read<PaymentRepository>()),
+        child: LevelPurchaseSheet(
+          levelId: level.id!,
+          levelTitle: level.title,
+          levelSubtitle: level.subtitle,
+          price: level.price,
+          colors: level.colors,
+          onSuccess: () {
+            context.read<StudentLevelsCubit>().fetchStudentLevels();
+          },
+        ),
+      );
+    },
+  );
+}
+
+  // void _showPurchaseSheet(BuildContext context) {
+  //   final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (_) => ClipRRect(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+  //       child: BackdropFilter(
+  //         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+  //         child: Container(
+  //           padding: EdgeInsets.all(20.w),
+  //           decoration: BoxDecoration(
+  //             color: AppColors.dark.withOpacity(.9),
+  //             border: Border.all(color: Colors.white.withOpacity(.15)),
+  //             borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+  //           ),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Container(
+  //                 width: 40.w,
+  //                 height: 4.h,
+  //                 margin: EdgeInsets.only(bottom: 14.h),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white.withOpacity(.3),
+  //                   borderRadius: BorderRadius.circular(10.r),
+  //                 ),
+  //               ),
+  //               Row(
+  //                 children: [
+  //                   Icon(
+  //                     Icons.lock_open_rounded,
+  //                     color: sheetColors.first,
+  //                     size: 20.sp,
+  //                   ),
+  //                   SizedBox(width: 8.w),
+  //                   Expanded(
+  //                     child: Text(
+  //                       level.title,
+  //                       style: GoogleFonts.poppins(
+  //                         color: Colors.white,
+  //                         fontWeight: FontWeight.w800,
+  //                         fontSize: 16.sp,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //               SizedBox(height: 4.h),
+  //               Text(
+  //                 level.subtitle,
+  //                 style: GoogleFonts.poppins(
+  //                   color: Colors.white.withOpacity(.7),
+  //                   fontSize: 12.sp,
+  //                 ),
+  //               ),
+  //               SizedBox(height: 18.h),
+  //               GestureDetector(
+  //                 onTap: () {
+  //                   Navigator.pop(context);
+  //                 },
+  //                 child: Container(
+  //                   padding: EdgeInsets.symmetric(vertical: 14.h),
+  //                   width: double.infinity,
+  //                   decoration: BoxDecoration(
+  //                     gradient: LinearGradient(colors: sheetColors),
+  //                     borderRadius: BorderRadius.circular(16.r),
+  //                     boxShadow: [
+  //                       BoxShadow(
+  //                         color: sheetColors.first.withOpacity(.5),
+  //                         blurRadius: 14,
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   child: Center(
+  //                     child: Text(
+  //                       "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
+  //                       style: GoogleFonts.poppins(
+  //                         color: Colors.white,
+  //                         fontWeight: FontWeight.w800,
+  //                         fontSize: 13.sp,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(height: 8.h),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -2948,7 +2937,6 @@ class _LevelNode extends StatelessWidget {
     } else if (isCurrent) {
       gradientColors = [AppColors.orange, AppColors.yellow];
     } else if (isAvailable) {
-      // ✅ كل مستوى متاح للشراء ياخد لونه الخاص (أزرق/موف/فيروزي/وردي..)
       gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
     } else {
       // completed
@@ -3188,32 +3176,6 @@ class _LevelNode extends StatelessWidget {
         );
   }
 
-  //   void _showCreateExceptionSheet(BuildContext context) {
-  //   if (level.id == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Level ID is missing')),
-  //     );
-  //     return;
-  //   }
-
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (_) {
-  //       return BlocProvider(
-  //         create: (ctx) => LevelExceptionCreateCubit(
-  //           ctx.read<LevelExceptionRepository>(),
-  //         ),
-  //         child: _CreateExceptionSheet(
-  //           levelId: level.id!,
-  //           levelTitle: level.title,
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
   void _showCreateExceptionSheet(BuildContext context) {
     if (level.id == null) {
       ScaffoldMessenger.of(
@@ -3441,7 +3403,6 @@ class _LevelInfoCard extends StatelessWidget {
                                   'levelTitle': level.title,
                                   'levelSubtitle': level.subtitle,
                                   'levelId': level.id,
-                                  'testId': level.testId,
                                 },
                               );
                             },

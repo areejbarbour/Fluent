@@ -8,7 +8,7 @@ class ResendOtpCubit extends Cubit<ResendOtpState> {
 
   Future<void> resendOtp({required String email, required String type}) async {
     emit(ResendOtpLoading());
-    print("🟡 [ResendOtpCubit] Resending OTP to: $email, type: $type");
+    print(" [ResendOtpCubit] Resending OTP to: $email, type: $type");
 
     try {
       final data = await authRepository.resendOtp(email: email, type: type);
@@ -17,14 +17,14 @@ class ResendOtpCubit extends Cubit<ResendOtpState> {
       final message = data['message'] as String? ?? '';
 
       if (success) {
-        print("🎉 [ResendOtpCubit] OTP resent: $message");
+        print(" [ResendOtpCubit] OTP resent: $message");
         emit(ResendOtpSuccess(message));
       } else {
-        print("❌ [ResendOtpCubit] Resend failed: $message");
+        print(" [ResendOtpCubit] Resend failed: $message");
         emit(ResendOtpFailure(message));
       }
     } catch (e) {
-      print("❌ [ResendOtpCubit] Exception: $e");
+      print(" [ResendOtpCubit] Exception: $e");
       emit(ResendOtpFailure(e.toString()));
     }
   }

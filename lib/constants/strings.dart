@@ -1,6 +1,7 @@
-//  const String baseUrl = 'http://192.168.1.5:8000';
-const String baseUrl = 'http://192.168.10.224:8000';
+ //const String baseUrl = 'http://192.168.1.5:8000';
+//const String baseUrl = 'http://192.168.10.224:8000';
 //const String baseUrl = 'http://172.20.10.2:8000';
+const String baseUrl = 'https://fluent.moayadismail.com';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -14,7 +15,6 @@ const String homeRoute = '/home';
 const String streakRoute = '/streak';
 const String placementTestDialogRoute = '/placement-test-dialog';
 const String placementTestRoute = '/placement-test';
-const String studentTestRoute = '/student-test';
 const String studentHomeRoute = '/student/home';
 const String teacherHomeRoute = '/teacher/home';
 const String levelCoursesRoute = '/level-courses';
@@ -87,9 +87,6 @@ String apiCreateLevelException(int levelId) =>
 // delete Exception
 String apiDeleteLevelException(int id) => '/api/levelexceptions/$id/delete';
 
-// delete a single Level Exception attachment (Spatie Media)
-// Backend: DELETE /api/level-exceptions/{levelException}/attachments/{media}
-// Allowed only while status === pending
 String apiDeleteLevelExceptionAttachment(int exceptionId, int mediaId) =>
     '/api/level-exceptions/$exceptionId/attachments/$mediaId';
 
@@ -112,25 +109,6 @@ String apiWordQuizCheck(int wordId) => '/api/words/$wordId/quiz_check';
 String apiRateCourse(int courseId) => '/api/rate/$courseId';
 String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
 
-// ✅ Student / Teacher Profile API
-const String apiStudentProfile = '/api/student/profile';
-const String apiTeacherProfile = '/api/teacher/profile';
-
-// ── Student attempts (tests / placement) ─────────────────────
-
-const String apiStartPlacementTest = '/api/startPlacementTest';
-String apiTestStart(int testId) => '/api/tests/$testId/start';
-
-/// CRITICAL: backend path is `submit-answer`, NOT `answer`.
-String apiAttemptSubmitAnswer(int attemptId, int questionId) =>
-    '/api/attempts/$attemptId/questions/$questionId/submit-answer';
-
-String apiAttemptFinish(int attemptId) => '/api/attempts/$attemptId/finish';
-
-String apiAttemptLeave(int attemptId) => '/api/attempts/$attemptId/leave';
-
-String apiAttemptReview(int attemptId) => '/api/attempts/$attemptId/review';
-
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';
 
@@ -148,6 +126,29 @@ String apiUpdateComment(int commentId) => '/api/comments/$commentId/update';
 
 // ✅ Delete Lesson Comment API
 String apiDeleteComment(int commentId) => '/api/comments/$commentId/delete';
+
+// ✅ Student Podcast API
+const String apiPodcastTopics = '/api/podcasts/topics';
+String apiTopicPodcasts(int topicId) => '/api/podcasts/$topicId';
+
+// ✅ Podcast detail route
+const String topicPodcastsRoute = '/topic-podcasts';
+
+// ✅ Open (purchase) podcast with points
+String apiOpenPodcast(int podcastId) => '/api/podcasts/$podcastId/open';
+
+// ✅ Podcast detail
+String apiPodcastDetails(int podcastId) => '/api/podcasts/$podcastId/details';
+const String podcastDetailRoute = '/podcast-detail';
+
+// ✅ Payment API
+String apiCreatePaymentIntent(int id) => '/api/payments/$id/create-intent';
+String apiPaymentStatus(String paymentIntentId) =>
+    '/api/payments/$paymentIntentId/status';
+
+// Stripe publishable key (test)
+const String stripePublishableKey =
+    'pk_test_51U0JM13hGKhXKNjRobR8Fgo98Nh3dDcFFG103DNbmOnT4NiJturB1HWRINQKQFZEWN85CMH3uf1h5Q1LK3ojrx5x00N4JQ5PR8';
 
 // ✅ Question API Endpoints
 const String apiQuestions = '/api/questions';

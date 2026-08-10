@@ -17,7 +17,7 @@ class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
   }) async {
     emit(LevelExceptionCreateLoading());
     print(
-      "🟡 [LevelExceptionCreateCubit] Creating exception for level #$levelId...",
+      " [LevelExceptionCreateCubit] Creating exception for level #$levelId...",
     );
 
     final result = await repository.createException(
@@ -27,7 +27,7 @@ class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
     );
 
     if (result['success'] == true) {
-      print("🎉 [LevelExceptionCreateCubit] Created successfully");
+      print(" [LevelExceptionCreateCubit] Created successfully");
       emit(
         LevelExceptionCreateSuccess(
           data: result['data'],
@@ -35,7 +35,7 @@ class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
         ),
       );
     } else {
-      print("❌ [LevelExceptionCreateCubit] Failed: ${result['message']}");
+      print(" [LevelExceptionCreateCubit] Failed: ${result['message']}");
       emit(
         LevelExceptionCreateFailure(
           result['message'] ?? 'Failed to submit request',

@@ -9,17 +9,17 @@ class StudentCoursesCubit extends Cubit<StudentCoursesState> {
   Future<void> fetchStudentCourses(int levelId) async {
     if (isClosed) return;
     emit(StudentCoursesLoading());
-    print("🟡 [StudentCoursesCubit] Fetching courses for level $levelId...");
+    print(" [StudentCoursesCubit] Fetching courses for level $levelId...");
 
     final result = await courseRepository.getStudentCourses(levelId);
 
     if (isClosed) return;
 
     if (result['success'] == true) {
-      print("🎉 [StudentCoursesCubit] Courses loaded successfully");
+      print(" [StudentCoursesCubit] Courses loaded successfully");
       emit(StudentCoursesSuccess(result['data']));
     } else {
-      print("❌ [StudentCoursesCubit] Failed: ${result['message']}");
+      print(" [StudentCoursesCubit] Failed: ${result['message']}");
       emit(
         StudentCoursesFailure(result['message'] ?? 'Failed to load courses'),
       );
