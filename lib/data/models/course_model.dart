@@ -7,6 +7,9 @@ class CourseModel {
   final String image;
   final String teacherName; // ← جديد
 
+  /// Published course test id (CourseResource.test_id).
+  final int? testId;
+
   CourseModel({
     required this.id,
     required this.name,
@@ -15,10 +18,10 @@ class CourseModel {
     required this.status,
     required this.image,
     required this.teacherName,
+    this.testId,
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
-
     String teacherName = "Fluent Instructor"; // قيمة افتراضية
 
     final teacher = json['teacher'];
@@ -28,6 +31,7 @@ class CourseModel {
       teacherName = "$first $last".trim();
       if (teacherName.isEmpty) teacherName = "Fluent Instructor";
     }
+    final testRaw = json['test_id'];
     return CourseModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
@@ -36,6 +40,9 @@ class CourseModel {
       status: json['status']?.toString() ?? '',
       image: json['image']?.toString() ?? '',
       teacherName: teacherName,
+      testId: testRaw == null
+          ? null
+          : (testRaw is int ? testRaw : int.tryParse(testRaw.toString())),
     );
   }
 }
@@ -63,7 +70,8 @@ class StudentCoursesModel {
     return StudentCoursesModel(
       currentCourse: json['current_course'] != null
           ? CourseModel.fromJson(
-              Map<String, dynamic>.from(json['current_course']))
+              Map<String, dynamic>.from(json['current_course']),
+            )
           : null,
       completedCourses: parseList(json['completed_courses']),
       lockedCourses: parseList(json['locked_courses']),

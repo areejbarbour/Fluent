@@ -5,6 +5,9 @@ import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_state.dart';
 import 'package:fluent/data/models/test_model.dart';
+import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/data/repository/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -26,6 +29,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   late final AnimationController _pulseController;
   late final ScrollController _scrollController;
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
+
+  String _displayName = '';
+  String? _imageUrl;
 
   static const List<List<Color>> _featureGradients = [
     [Color(0xffA8E8F9), Color(0xff00537A)],
@@ -52,7 +58,56 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     // ✅ جلب البيانات تلقائياً عند فتح الشاشة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TeacherHomeCubit>().loadDashboardData();
+      _loadTeacherIdentity();
     });
+  }
+
+  Future<void> _loadTeacherIdentity() async {
+    String name = widget.userName;
+    String? imageUrl;
+
+    try {
+      final auth = context.read<AuthRepository>();
+      final userRes = await auth.getCurrentUser();
+      if (userRes['success'] == true && userRes['data'] is Map) {
+        final u = Map<String, dynamic>.from(userRes['data'] as Map);
+        final first = (u['first_name'] ?? '').toString().trim();
+        final last = (u['last_name'] ?? '').toString().trim();
+        final full = ('$first $last').trim();
+        if (full.isNotEmpty) name = full;
+      }
+    } catch (_) {}
+
+    try {
+      final profileRepo = context.read<ProfileRepository>();
+      final profileRes = await profileRepo.getTeacherProfile();
+      if (profileRes['success'] == true &&
+          profileRes['data'] is TeacherProfileModel) {
+        final p = profileRes['data'] as TeacherProfileModel;
+        if (p.imageUrl != null && p.imageUrl!.isNotEmpty) {
+          imageUrl = p.imageUrl;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _displayName = name;
+      _imageUrl = imageUrl;
+    });
+  }
+
+  String get _formalGreeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
+  Future<void> _openProfile() async {
+    HapticFeedback.selectionClick();
+    await Navigator.pushNamed(context, profileRoute);
+    if (mounted) _loadTeacherIdentity();
   }
 
   @override
@@ -243,84 +298,116 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
             children: [
               Row(
                 children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                            width: 54.w,
-                            height: 54.w, // ✅ تصغير قليلاً
+                  // Professional avatar (tappable → profile)
+                  GestureDetector(
+                    onTap: _openProfile,
+                    child: SizedBox(
+                      width: 72.w,
+                      height: 72.w,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                                width: 72.w,
+                                height: 72.w,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const SweepGradient(
+                                    colors: [
+                                      AppColors.sky,
+                                      AppColors.yellow,
+                                      AppColors.orange,
+                                      AppColors.sky,
+                                    ],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.sky.withOpacity(.40),
+                                      blurRadius: 16,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              )
+                              .animate(onPlay: (c) => c.repeat())
+                              .rotate(
+                                duration: 10.seconds,
+                                curve: Curves.linear,
+                              ),
+                          Container(
+                            width: 64.w,
+                            height: 64.w,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: const SweepGradient(
-                                colors: [
-                                  AppColors.sky,
-                                  AppColors.yellow,
-                                  AppColors.sky,
-                                ],
+                              color: AppColors.primary.withOpacity(.30),
+                              border: Border.all(
+                                color: AppColors.dark,
+                                width: 3,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.sky.withOpacity(.45),
-                                  blurRadius: 18,
-                                  spreadRadius: 1,
-                                ),
-                              ],
                             ),
-                          )
-                          .animate(onPlay: (c) => c.repeat())
-                          .rotate(duration: 8.seconds, curve: Curves.linear),
-                      Container(
-                        width: 46.w,
-                        height: 46.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(.25),
-                          border: Border.all(color: AppColors.dark, width: 2.5),
-                        ),
-                        child: Icon(
-                          Icons.school_rounded,
-                          color: Colors.white,
-                          size: 24.sp,
-                        ),
+                            clipBehavior: Clip.antiAlias,
+                            child: _imageUrl != null
+                                ? Image.network(
+                                    _imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      Icons.school_rounded,
+                                      color: Colors.white,
+                                      size: 28.sp,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.school_rounded,
+                                    color: Colors.white,
+                                    size: 28.sp,
+                                  ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  SizedBox(width: 10.w),
+                  SizedBox(width: 12.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Text("👋", style: TextStyle(fontSize: 14.sp)),
-                            SizedBox(width: 4.w),
-                            Flexible(
-                              child: Text(
-                                "Welcome back,",
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.75),
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _formalGreeting,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(.72),
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
+                        SizedBox(height: 2.h),
                         ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
                             colors: [Colors.white, AppColors.sky],
                           ).createShader(bounds),
                           child: Text(
-                            widget.userName,
-                            maxLines: 1,
+                            _displayName.isNotEmpty
+                                ? _displayName
+                                : widget.userName,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
-                              fontSize: 18.sp,
+                              fontSize: 17.sp,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: .3,
-                            ), // ✅ تصغير الخط
+                              letterSpacing: .2,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          'Instructor',
+                          style: GoogleFonts.poppins(
+                            color: AppColors.yellow.withOpacity(.85),
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -332,7 +419,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                     onTap: () {},
                   ),
                   SizedBox(width: 6.w),
-                  _circleIconButton(icon: Icons.settings_rounded, onTap: () {}),
+                  _circleIconButton(
+                    icon: Icons.settings_rounded,
+                    onTap: _openProfile,
+                  ),
                 ],
               ),
               SizedBox(height: 14.h),

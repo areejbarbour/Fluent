@@ -164,7 +164,10 @@ class Question {
       id: json['id'] is int ? json['id'] : 0,
       userId: json['user_id'] is int ? json['user_id'] : 0,
       type: QuestionType.fromString(json['type']?.toString()),
-      titleQuestionEn: json['title_question_en']?.toString() ?? '',
+      // Student API returns `title_question` (translated); teacher returns en/ar.
+      titleQuestionEn:
+          (json['title_question_en'] ?? json['title_question'])?.toString() ??
+          '',
       titleQuestionAr: json['title_question_ar']?.toString() ?? '',
       textQuestion: json['text_question']?.toString(),
       difficulty: QuestionDifficulty.fromString(json['difficulty']?.toString()),

@@ -38,8 +38,11 @@ class LevelModel {
   final int maximumScore;
   final String price;
   final int estimatedDuration;
-  final String status; 
+  final String status;
   final LevelCreatorModel? creator;
+
+  /// Published level final test (LevelResource.test_id).
+  final int? testId;
 
   LevelModel({
     required this.id,
@@ -51,9 +54,11 @@ class LevelModel {
     required this.estimatedDuration,
     required this.status,
     this.creator,
+    this.testId,
   });
 
   factory LevelModel.fromJson(Map<String, dynamic> json) {
+    final testRaw = json['test_id'];
     return LevelModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
@@ -64,8 +69,13 @@ class LevelModel {
       estimatedDuration: json['estimated_duration'] ?? 0,
       status: json['status']?.toString() ?? '',
       creator: json['creator'] != null
-          ? LevelCreatorModel.fromJson(Map<String, dynamic>.from(json['creator']))
+          ? LevelCreatorModel.fromJson(
+              Map<String, dynamic>.from(json['creator']),
+            )
           : null,
+      testId: testRaw == null
+          ? null
+          : (testRaw is int ? testRaw : int.tryParse(testRaw.toString())),
     );
   }
 
@@ -96,7 +106,9 @@ class StudentLevelsModel {
 
     return StudentLevelsModel(
       currentLevel: json['current_level'] != null
-          ? LevelModel.fromJson(Map<String, dynamic>.from(json['current_level']))
+          ? LevelModel.fromJson(
+              Map<String, dynamic>.from(json['current_level']),
+            )
           : null,
       completedLevels: parseList(json['completed_levels']),
       availableLevels: parseList(json['available_levels']),
