@@ -10,6 +10,7 @@ import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/data/models/level_model.dart';
 import 'package:fluent/presentation/widgets/app_backdrop.dart';
+import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:fluent/presentation/widgets/arrange_answer_widget.dart';
 import 'package:fluent/presentation/widgets/fill_answer_widget.dart';
 import 'package:flutter/material.dart';
@@ -85,7 +86,6 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
     }
   }
 
-  /// Confirm locally — user may still change answers before Next.
   void _onConfirm(PlacementAttemptInProgress state) {
     final q = state.currentQuestion;
     if (!_hasLocalAnswer(q)) {
@@ -109,7 +109,6 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
     setState(() => _confirmed = true);
   }
 
-  /// Next = submit to API once, then advance. No return to this question.
   Future<void> _onNext(PlacementAttemptInProgress state) async {
     if (!_confirmed) {
       _onConfirm(state);
@@ -136,7 +135,6 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
     }
 
     if (!ok) {
-      // Stay on question so user can fix and confirm again.
       setState(() => _confirmed = false);
       return;
     }
@@ -144,11 +142,6 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
     HapticFeedback.mediumImpact();
     _resetLocalAnswer();
     cubit.goNext();
-  }
-
-  void _goNext(PlacementAttemptInProgress state) {
-    _resetLocalAnswer();
-    context.read<PlacementAttemptCubit>().goNext();
   }
 
   void _snack(String msg) {
@@ -161,6 +154,31 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  Future<void> _goAfterLeave(BuildContext context) async {
+    try {
+      final repo = context.read<LevelRepository>();
+      final res = await repo.getStudentLevels();
+      if (!context.mounted) return;
+      if (res['success'] == true && res['data'] is StudentLevelsModel) {
+        final data = res['data'] as StudentLevelsModel;
+        final alreadyPlaced =
+            data.currentLevel != null ||
+            data.completedLevels.isNotEmpty ||
+            data.availableLevels.isNotEmpty;
+        if (alreadyPlaced) {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(studentHomeRoute, (route) => false);
+          return;
+        }
+      }
+    } catch (_) {}
+    if (!context.mounted) return;
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(placementTestDialogRoute, (route) => false);
   }
 
   Future<bool> _onWillPop() async {
@@ -209,7 +227,7 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
 
     if (leave == true) {
       await context.read<PlacementAttemptCubit>().leave();
-      return true;
+      return false;
     }
     return false;
   }
@@ -250,7 +268,9 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
                     showErr(state.inlineError!);
                   }
                   if (state is PlacementAttemptLeft) {
-                    if (Navigator.canPop(context)) Navigator.pop(context);
+                    // إذا عامل تحديد مستوى سابقاً (عنده مستوى) → الهوم مباشرة
+                    // وإلا → شاشة الاختيار
+                    _goAfterLeave(context);
                   }
                 },
                 builder: (context, state) {
@@ -363,7 +383,12 @@ class _IntroView extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: IconButton(
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: () {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  placementTestDialogRoute,
+                  (route) => false,
+                );
+              },
               icon: Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
@@ -380,25 +405,8 @@ class _IntroView extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Container(
-            padding: EdgeInsets.all(22.r),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.yellow.withOpacity(0.25),
-                  AppColors.orange.withOpacity(0.12),
-                ],
-              ),
-              border: Border.all(color: AppColors.yellow.withOpacity(0.35)),
-            ),
-            child: Icon(
-              Icons.school_rounded,
-              color: AppColors.yellow,
-              size: 48.sp,
-            ),
-          ),
-          SizedBox(height: 22.h),
+          AppLogo(size: 120.r),
+          SizedBox(height: 24.h),
           Text(
             'Placement Test',
             style: GoogleFonts.poppins(
@@ -407,14 +415,14 @@ class _IntroView extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 12.h),
           Text(
-            'Answer in order. Your score unlocks levels by the ranges defined on the server.',
+            'Welcome! A short assessment to discover your level and unlock the learning path that fits you best.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white60,
-              fontSize: 13.sp,
-              height: 1.5,
+              fontSize: 13.5.sp,
+              height: 1.55,
             ),
           ),
           const Spacer(),
@@ -690,7 +698,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Progress like Word Pulse — no green/red (no per-question reveal).
 class _SegmentProgress extends StatelessWidget {
   final int total;
   final int currentIndex;
@@ -889,8 +896,6 @@ class _AnswerArea extends StatelessWidget {
         );
 
       case QuestionType.arrange:
-        // المشتتات تبقى ظاهرة في البنك (تصعيب السؤال).
-        // الإرسال = ترتيب شريط الإجابة فقط → يطابق ArrangeScorer في الباك.
         return ArrangeAnswerWidget(
           key: ValueKey('arrange-${question.id}'),
           question: question,
@@ -901,8 +906,6 @@ class _AnswerArea extends StatelessWidget {
 
       case QuestionType.pair:
         final answers = question.answers.where((a) => a.id != null).toList();
-        // Stable but strong shuffle per question — lefts and rights use different seeds
-        // so matching by row order is never the correct solution.
         final lefts = List.of(answers);
         final rightOptions = List.of(answers);
         lefts.shuffle(math.Random(question.id * 7919 + 17));
@@ -954,15 +957,36 @@ class _AnswerArea extends StatelessWidget {
                             fontSize: 12.sp,
                           ),
                         ),
+                        selectedItemBuilder: (context) {
+                          return [
+                            for (final r in rightOptions)
+                              Text(
+                                r.rightText ?? r.textAnswer ?? '#${r.id}',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 12.sp,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ];
+                        },
                         items: [
                           for (final r in rightOptions)
                             DropdownMenuItem(
                               value: r.id,
+                              enabled:
+                                  !pairMap.values.contains(r.id) ||
+                                  pairMap[left.id] == r.id,
                               child: Text(
                                 r.rightText ?? r.textAnswer ?? '#${r.id}',
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
                                   fontSize: 12.sp,
+                                  decoration: pairMap.values.contains(r.id)
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                  decorationColor: Colors.white70,
+                                  decorationThickness: 1.6,
                                 ),
                               ),
                             ),
@@ -1097,15 +1121,7 @@ class _FinishedViewState extends State<_FinishedView> {
           ...data.completedLevels,
           if (data.currentLevel != null) data.currentLevel!,
         ];
-        // Backend: recommended = min_score <= score <= max_score
         LevelModel? match;
-        for (final l in all) {
-          if (score >= l.minimumScore && score <= l.maximumScore) {
-            match = l;
-            break;
-          }
-        }
-        // Prefer highest order among matches if duplicates
         for (final l in all) {
           if (score >= l.minimumScore &&
               score <= l.maximumScore &&
@@ -1123,11 +1139,150 @@ class _FinishedViewState extends State<_FinishedView> {
     if (mounted) setState(() => _loadingLevel = false);
   }
 
+  String get _headline {
+    final s = widget.state.result.scorePercent;
+    if (s >= 90) return 'Outstanding!';
+    if (s >= 75) return 'Great job!';
+    if (s >= 60) return 'Well done!';
+    if (s >= 40) return 'Nice work!';
+    if (s >= 20) return 'Good start!';
+    return 'Keep going!';
+  }
+
+  String get _subtitle {
+    final s = widget.state.result.scorePercent;
+    if (s >= 90) return 'You crushed it — your path is unlocked.';
+    if (s >= 75) return 'Strong result. You are ready for the next step.';
+    if (s >= 60) return 'Solid progress. Your learning path is set.';
+    if (s >= 40) return 'You are on your way. Levels are ready for you.';
+    if (s >= 20) return 'Every step counts. Your journey starts here.';
+    return 'Practice makes progress. Your path is ready.';
+  }
+
+  IconData get _resultIcon {
+    final s = widget.state.result.scorePercent;
+    if (s >= 90) return Icons.auto_awesome_rounded;
+    if (s >= 75) return Icons.star_rounded;
+    if (s >= 60) return Icons.trending_up_rounded;
+    if (s >= 40) return Icons.rocket_launch_rounded;
+    if (s >= 20) return Icons.flag_rounded;
+    return Icons.explore_rounded;
+  }
+
+  Color get _resultIconColor {
+    final s = widget.state.result.scorePercent;
+    if (s >= 75) return AppColors.yellow;
+    if (s >= 40) return AppColors.sky;
+    return AppColors.orange;
+  }
+
+  Question? _findQuestion(int id) {
+    for (final q in widget.state.test.questions) {
+      if (q.id == id) return q;
+    }
+    return null;
+  }
+
+  void _openReviewSheet() {
+    final review = widget.state.review;
+    if (review == null || review.wrongAnswers.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.72,
+          minChildSize: 0.45,
+          maxChildSize: 0.94,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.dark,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(height: 10.h),
+                  Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(20.w, 16.h, 12.w, 8.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Review your answers',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 17.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: Colors.white54,
+                            size: 22.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Take a moment to learn from these questions.',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 24.h),
+                      itemCount: review.wrongAnswers.length,
+                      separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                      itemBuilder: (_, i) {
+                        final w = review.wrongAnswers[i];
+                        return _ReviewCard(
+                          index: i + 1,
+                          wrong: w,
+                          question: _findQuestion(w.questionId),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = widget.state.result;
     final review = widget.state.review;
-    final passing = widget.state.test.passingScore;
+    final hasMistakes = review != null && review.wrongAnswers.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 20.h),
@@ -1149,32 +1304,51 @@ class _FinishedViewState extends State<_FinishedView> {
             ),
           ),
           const Spacer(),
-          Icon(
-            r.passed ? Icons.emoji_events_rounded : Icons.flag_rounded,
-            color: r.passed ? AppColors.yellow : AppColors.orange,
-            size: 64.sp,
+          Container(
+            padding: EdgeInsets.all(18.r),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  _resultIconColor.withOpacity(0.22),
+                  _resultIconColor.withOpacity(0.06),
+                ],
+              ),
+              border: Border.all(color: _resultIconColor.withOpacity(0.35)),
+            ),
+            child: Icon(_resultIcon, color: _resultIconColor, size: 48.sp),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 16.h),
           Text(
-            r.passed ? 'You passed!' : 'Test completed',
+            _headline,
             style: GoogleFonts.poppins(
               color: Colors.white,
-              fontSize: 22.sp,
+              fontSize: 24.sp,
               fontWeight: FontWeight.w800,
             ),
           ),
           SizedBox(height: 6.h),
           Text(
+            _subtitle,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: Colors.white60,
+              fontSize: 13.sp,
+              height: 1.45,
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Text(
             '${r.scorePercent}%',
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
-              fontSize: 40.sp,
+              fontSize: 44.sp,
               fontWeight: FontWeight.w800,
             ),
           ),
           if (_loadingLevel)
             Padding(
-              padding: EdgeInsets.only(top: 8.h),
+              padding: EdgeInsets.only(top: 10.h),
               child: SizedBox(
                 width: 18.w,
                 height: 18.w,
@@ -1185,7 +1359,7 @@ class _FinishedViewState extends State<_FinishedView> {
               ),
             )
           else if (_levelName != null) ...[
-            SizedBox(height: 10.h),
+            SizedBox(height: 12.h),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
@@ -1203,71 +1377,31 @@ class _FinishedViewState extends State<_FinishedView> {
               ),
             ),
           ],
-          SizedBox(height: 8.h),
-          // Text(
-          //   'Passing score: $passing%',
-          //   style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12.sp),
-          // ),
-          if (review != null && review.wrongAnswers.isNotEmpty) ...[
-            SizedBox(height: 16.h),
-            Expanded(
-              child: ListView.separated(
-                itemCount: review.wrongAnswers.length,
-                separatorBuilder: (_, __) => SizedBox(height: 8.h),
-                itemBuilder: (_, i) {
-                  final w = review.wrongAnswers[i];
-                  return Container(
-                    padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(
-                        color: Colors.redAccent.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Q${w.questionId} · ${w.type} · ${w.score}/${w.maxScore}',
-                          style: GoogleFonts.poppins(
-                            color: AppColors.orange,
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          w.questionText,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          'Yours: ${_fmt(w.submittedAnswer)}',
-                          style: GoogleFonts.poppins(
-                            color: Colors.redAccent,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                        Text(
-                          'Correct: ${_fmt(w.correctAnswer)}',
-                          style: GoogleFonts.poppins(
-                            color: Colors.greenAccent,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+          const Spacer(),
+          if (hasMistakes) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 48.h,
+              child: OutlinedButton(
+                onPressed: _openReviewSheet,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withOpacity(0.28)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: Text(
+                  'Review your mistakes',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.sp,
+                  ),
+                ),
               ),
             ),
-          ] else
-            const Spacer(),
+            SizedBox(height: 10.h),
+          ],
           SizedBox(
             width: double.infinity,
             height: 52.h,
@@ -1298,31 +1432,276 @@ class _FinishedViewState extends State<_FinishedView> {
       ),
     );
   }
+}
 
-  String _fmt(dynamic answer) {
+class _ReviewCard extends StatelessWidget {
+  final int index;
+  final ReviewWrongAnswer wrong;
+  final Question? question;
+
+  const _ReviewCard({
+    required this.index,
+    required this.wrong,
+    required this.question,
+  });
+
+  String _labelForId(int? id) {
+    if (id == null || question == null) return id?.toString() ?? '—';
+    for (final a in question!.answers) {
+      if (a.id == id) {
+        final t = (a.textAnswer ?? a.leftText ?? a.rightText ?? '').trim();
+        if (t.isNotEmpty) return t;
+      }
+    }
+    return '#$id';
+  }
+
+  String _pairSideLabel(int? id, {required bool leftSide}) {
+    if (id == null || question == null) return id?.toString() ?? '—';
+    for (final a in question!.answers) {
+      if (a.id == id) {
+        if (leftSide) {
+          final t = (a.leftText ?? a.textAnswer ?? '').trim();
+          if (t.isNotEmpty) return t;
+        } else {
+          final t = (a.rightText ?? a.textAnswer ?? '').trim();
+          if (t.isNotEmpty) return t;
+        }
+      }
+    }
+    return _labelForId(id);
+  }
+
+  String _fmtSubmitted() {
+    final answer = wrong.submittedAnswer;
     if (answer == null) return '—';
     if (answer is String) return answer;
-    if (answer is Map) {
-      if (answer.containsKey('selected_answer_id')) {
-        return 'Option #${answer['selected_answer_id']}';
-      }
-      if (answer.containsKey('answers')) {
-        final a = answer['answers'];
-        if (a is Map) {
-          return a.entries.map((e) => '{${e.key}}: ${e.value}').join(' · ');
-        }
-      }
-      if (answer.containsKey('ordered_ids')) {
-        return 'Order: ${answer['ordered_ids']}';
-      }
-      if (answer.containsKey('pairs')) {
-        final p = answer['pairs'];
-        if (p is Map) {
-          return p.entries.map((e) => '${e.key}→${e.value}').join(' · ');
-        }
-      }
-      return answer.toString();
+    if (answer is! Map) return answer.toString();
+    final map = Map<String, dynamic>.from(answer);
+
+    if (map.containsKey('selected_answer_id')) {
+      final id = map['selected_answer_id'];
+      final parsed = id is int ? id : int.tryParse(id?.toString() ?? '');
+      return _labelForId(parsed);
     }
-    return answer.toString();
+
+    if (map.containsKey('answers')) {
+      final a = map['answers'];
+      if (a is Map) {
+        final entries = a.entries.toList()
+          ..sort((x, y) {
+            final xi = int.tryParse(x.key.toString()) ?? 0;
+            final yi = int.tryParse(y.key.toString()) ?? 0;
+            return xi.compareTo(yi);
+          });
+        return entries
+            .map((e) => '${e.value}'.trim())
+            .where((s) => s.isNotEmpty)
+            .join(' · ');
+      }
+    }
+
+    if (map.containsKey('ordered_ids')) {
+      final raw = map['ordered_ids'];
+      if (raw is List) {
+        return raw
+            .map((item) {
+              final id = item is int ? item : int.tryParse(item.toString());
+              return _labelForId(id);
+            })
+            .join(' → ');
+      }
+    }
+
+    if (map.containsKey('pairs')) {
+      final p = map['pairs'];
+      if (p is Map) {
+        return p.entries
+            .map((e) {
+              final left = int.tryParse(e.key.toString());
+              final right = e.value is int
+                  ? e.value as int
+                  : int.tryParse(e.value.toString());
+              return '${_pairSideLabel(left, leftSide: true)} → ${_pairSideLabel(right, leftSide: false)}';
+            })
+            .join(' · ');
+      }
+    }
+
+    return map.toString();
+  }
+
+  String _fmtCorrect() {
+    final answer = wrong.correctAnswer;
+    if (answer == null) return '—';
+    if (answer is String) return answer;
+    if (answer is! Map) return answer.toString();
+    final map = Map<String, dynamic>.from(answer);
+
+    if (map.containsKey('selected_answer_id')) {
+      final id = map['selected_answer_id'];
+      final parsed = id is int ? id : int.tryParse(id?.toString() ?? '');
+      return _labelForId(parsed);
+    }
+
+    if (map.containsKey('answers')) {
+      final a = map['answers'];
+      if (a is Map) {
+        final parts = <String>[];
+        final keys = a.keys.toList()
+          ..sort((x, y) {
+            final xi = int.tryParse(x.toString()) ?? 0;
+            final yi = int.tryParse(y.toString()) ?? 0;
+            return xi.compareTo(yi);
+          });
+        for (final k in keys) {
+          final v = a[k];
+          if (v is List) {
+            parts.add(v.map((e) => e.toString()).join(' / '));
+          } else {
+            parts.add(v.toString());
+          }
+        }
+        return parts.join(' · ');
+      }
+    }
+
+    if (map.containsKey('ordered_ids')) {
+      final raw = map['ordered_ids'];
+      if (raw is List) {
+        return raw
+            .map((item) {
+              final id = item is int ? item : int.tryParse(item.toString());
+              return _labelForId(id);
+            })
+            .join(' → ');
+      }
+    }
+
+    if (map.containsKey('pairs')) {
+      final p = map['pairs'];
+      if (p is Map) {
+        return p.entries
+            .map((e) {
+              final left = int.tryParse(e.key.toString());
+              final right = e.value is int
+                  ? e.value as int
+                  : int.tryParse(e.value.toString());
+              return '${_pairSideLabel(left, leftSide: true)} → ${_pairSideLabel(right, leftSide: false)}';
+            })
+            .join(' · ');
+      }
+    }
+
+    return map.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = wrong.type.toUpperCase();
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Text(
+                  '$index · $type',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.orange,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${wrong.score}/${wrong.maxScore}',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            wrong.questionText.isNotEmpty
+                ? wrong.questionText
+                : (question?.titleQuestionEn ?? 'Question'),
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 13.5.sp,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          _AnswerLine(
+            label: 'Your answer',
+            value: _fmtSubmitted(),
+            color: const Color(0xFFFF8A80),
+          ),
+          SizedBox(height: 6.h),
+          _AnswerLine(
+            label: 'Correct answer',
+            value: _fmtCorrect(),
+            color: const Color(0xFF69F0AE),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _AnswerLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            color: Colors.white38,
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(height: 2.h),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            color: color,
+            fontSize: 12.5.sp,
+            fontWeight: FontWeight.w600,
+            height: 1.35,
+          ),
+        ),
+      ],
+    );
   }
 }

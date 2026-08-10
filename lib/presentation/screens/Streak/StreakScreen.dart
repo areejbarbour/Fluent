@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
 import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:flutter/material.dart';
 
@@ -96,12 +97,7 @@ class StreakScreen extends StatelessWidget {
                   _ActionButton(
                     label: 'CONTINUE TO YOUR JOURNEY',
                     onPressed: () {
-                      // ✅ الانتقال لصفحة الطالب الرئيسية
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        studentHomeRoute,
-                        (route) => false,
-                      );
+                      StudentEntryNavigator.goAfterStreak(context);
                     },
                   ),
 

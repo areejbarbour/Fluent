@@ -227,7 +227,7 @@ class _StudentTestViewState extends State<_StudentTestView> {
           ),
         ),
         content: Text(
-          'Leaving abandons this attempt. You can retake when ready.',
+          'If you leave now, this attempt will end. You can try again later.',
           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
         ),
         actions: [
@@ -485,7 +485,7 @@ class _IntroView extends StatelessWidget {
           ),
           SizedBox(height: 10.h),
           Text(
-            'Answer in order. Your score unlocks levels by the ranges defined on the server.',
+            'Answer each question in order. Your score opens the next step on your path.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: Colors.white60,
@@ -1123,11 +1123,21 @@ class _AnswerArea extends StatelessWidget {
                           for (final r in rightOptions)
                             DropdownMenuItem(
                               value: r.id,
+                              // يمنع اختيار نفس الكلمة مرتين (إلا إذا كانت هي المختارة حالياً لهذا الصف)
+                              enabled:
+                                  !pairMap.values.contains(r.id) ||
+                                  pairMap[left.id] == r.id,
                               child: Text(
                                 r.rightText ?? r.textAnswer ?? '#${r.id}',
                                 style: GoogleFonts.poppins(
-                                  color: Colors.white,
+                                  color: Colors.white, // كل الكلمات نفس الدرجة
                                   fontSize: 12.sp,
+                                  decoration: pairMap.values.contains(r.id)
+                                      ? TextDecoration
+                                            .lineThrough // الكلمة المختارة تتشطب
+                                      : TextDecoration.none,
+                                  decorationColor: Colors.white70,
+                                  decorationThickness: 1.6,
                                 ),
                               ),
                             ),
@@ -1428,67 +1438,7 @@ class _FinishedViewState extends State<_FinishedView>
                         isLevel: isLevel,
                       ),
                     ],
-                    if (!passed &&
-                        review != null &&
-                        review.wrongAnswers.isNotEmpty) ...[
-                      SizedBox(height: 20.h),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Review mistakes',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 10.h),
-                      ...List.generate(review.wrongAnswers.length, (i) {
-                        final w = review.wrongAnswers[i];
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: 8.h),
-                          child: _MistakeCard(
-                            index: i + 1,
-                            questionText: w.questionText,
-                            yours: _fmtAnswer(w.questionId, w.submittedAnswer),
-                            correct: _fmtAnswer(w.questionId, w.correctAnswer),
-                          ),
-                        );
-                      }),
-                    ],
-                    // When passed, review may still list partial mistakes
-                    if (passed &&
-                        review != null &&
-                        review.wrongAnswers.isNotEmpty) ...[
-                      SizedBox(height: 18.h),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Almost perfect — check these',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white70,
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      ...List.generate(review.wrongAnswers.length.clamp(0, 5), (
-                        i,
-                      ) {
-                        final w = review.wrongAnswers[i];
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: 8.h),
-                          child: _MistakeCard(
-                            index: i + 1,
-                            questionText: w.questionText,
-                            yours: _fmtAnswer(w.questionId, w.submittedAnswer),
-                            correct: _fmtAnswer(w.questionId, w.correctAnswer),
-                          ),
-                        );
-                      }),
-                    ],
+
                     SizedBox(height: 12.h),
                   ],
                 ),
@@ -1497,6 +1447,30 @@ class _FinishedViewState extends State<_FinishedView>
 
             // Dynamic CTA
             if (passed) ...[
+              if (review != null && review.wrongAnswers.isNotEmpty) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48.h,
+                  child: OutlinedButton(
+                    onPressed: _openReviewSheet,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.28)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                    ),
+                    child: Text(
+                      passed ? 'Review your answers' : 'Review your mistakes',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10.h),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 54.h,
@@ -1583,7 +1557,7 @@ class _FinishedViewState extends State<_FinishedView>
               ),
               SizedBox(height: 8.h),
               Text(
-                'Retake when you are ready — progress is saved on the server.',
+                'Retake when you are ready — your progress is saved.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   color: Colors.white38,
@@ -1594,6 +1568,90 @@ class _FinishedViewState extends State<_FinishedView>
           ],
         ),
       ),
+    );
+  }
+
+  void _openReviewSheet() {
+    final review = widget.state.review;
+    if (review == null || review.wrongAnswers.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.72,
+          minChildSize: 0.45,
+          maxChildSize: 0.94,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.dark,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(height: 10.h),
+                  Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(20.w, 16.h, 12.w, 8.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.state.result.passed
+                                ? 'Review your answers'
+                                : 'Review your mistakes',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: Colors.white54,
+                            size: 22.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 24.h),
+                      itemCount: review.wrongAnswers.length,
+                      separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                      itemBuilder: (_, i) {
+                        final w = review.wrongAnswers[i];
+                        return _MistakeCard(
+                          index: i + 1,
+                          questionText: w.questionText,
+                          yours: _fmtAnswer(w.questionId, w.submittedAnswer),
+                          correct: _fmtAnswer(w.questionId, w.correctAnswer),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1812,7 +1870,7 @@ class _SuccessBanner extends StatelessWidget {
               children: [
                 Text(
                   isLevel
-                      ? 'Level marked complete'
+                      ? 'Level complete'
                       : (isCourse
                             ? 'Next course unlocked'
                             : 'Next lesson unlocked'),
@@ -1824,12 +1882,12 @@ class _SuccessBanner extends StatelessWidget {
                 ),
                 Text(
                   isLevel
-                      ? 'Your path will refresh with new levels when available'
+                      ? 'Keep going — new levels open as you progress'
                       : (isCourse
-                            ? 'Course marked complete on the server'
+                            ? 'Great progress — the next course is ready for you'
                             : (xpPoints > 0
                                   ? '$xpLabel earned · keep your streak going'
-                                  : 'Progress saved · keep your streak going')),
+                                  : 'Nice work · keep your streak going')),
                   style: GoogleFonts.poppins(
                     color: Colors.white60,
                     fontSize: 11.sp,

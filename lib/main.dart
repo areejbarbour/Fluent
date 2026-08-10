@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
@@ -17,16 +19,28 @@ import 'package:fluent/data/services/auth_service.dart';
 import 'package:fluent/data/services/question_service.dart';
 import 'package:fluent/data/services/lesson_service.dart';
 import 'package:fluent/data/services/test_service.dart';
+import 'package:fluent/data/services/content_review_service.dart';
+import 'package:fluent/data/repository/content_review_repository.dart';
+import 'package:fluent/data/services/notification_service.dart';
+import 'package:fluent/data/repository/notification_repository.dart';
+import 'package:fluent/cubit/notification/notification_cubit.dart';
+import 'package:fluent/helper/local_notifications_service.dart';
+import 'package:fluent/helper/notification_bootstrap.dart';
+import 'package:fluent/helper/notification_route_resolver.dart';
+import 'package:fluent/helper/nav_key.dart';
+import 'package:fluent/data/models/notification_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/cubit/student/levels/levels_cubit.dart';
 import 'package:fluent/data/repository/level_repository.dart';
+import 'package:fluent/data/models/level_model.dart';
 import 'package:fluent/data/services/level_service.dart';
 import 'package:fluent/data/services/course_service.dart';
 import 'package:fluent/data/repository/course_repository.dart';
 import 'app_router.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
 import 'constants/strings.dart';
 import 'package:fluent/data/services/student_lesson_service.dart';
 import 'package:fluent/data/repository/student_lesson_repository.dart';
@@ -50,9 +64,30 @@ import 'package:fluent/data/repository/podcast_repository.dart';
 import 'package:fluent/data/services/payment_service.dart';
 import 'package:fluent/data/repository/payment_repository.dart';
 
-void main() async {
+/// Handler للإشعارات عندما التطبيق في الخلفية أو مغلق.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await LocalNotificationsService.instance.init();
+  print(
+    '📩 [BG] message id=${message.messageId} title=${message.notification?.title}',
+  );
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── Firebase init (يجب قبل أي استخدام لـ FCM) ──
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // طلب إذن الإشعارات مبكراً (Android 13+ / iOS)
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
   Stripe.publishableKey = stripePublishableKey;
   await Stripe.instance.applySettings();
 
@@ -115,12 +150,23 @@ void main() async {
   final paymentService = PaymentService(dioInstance);
   final paymentRepository = PaymentRepository(paymentService);
 
+  final contentReviewService = ContentReviewService(dioInstance);
+  final contentReviewRepository = ContentReviewRepository(contentReviewService);
+
+  final notificationService = NotificationService(dioInstance);
+  final notificationRepository = NotificationRepository(notificationService);
+
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
       initialRoute = teacherHomeRoute;
     } else {
-      initialRoute = studentHomeRoute;
+      final placed =
+          await StudentEntryNavigator.hasCompletedPlacementStandalone(
+            levelRepository,
+          );
+      initialRoute = placed ? studentHomeRoute : placementTestDialogRoute;
+      print('🔍 [main] student placed=$placed → $initialRoute');
     }
   }
 
@@ -132,6 +178,8 @@ void main() async {
       courseRepository: courseRepository,
       lessonRepository: lessonRepository,
       testRepository: testRepository,
+      studentLessonRepository: studentLessonRepository,
+      lessonDetailRepository: lessonDetailRepository,
       studentLessonRepository: studentLessonRepository, 
       lessonDetailRepository: lessonDetailRepository, 
       wordRepository: wordRepository,
@@ -140,9 +188,14 @@ void main() async {
       lessonWordRepository: lessonWordRepository,
       rateRepository: rateRepository,
       wordQuizRepository: wordQuizRepository,
+      profileRepository: profileRepository,
+      attemptRepository: attemptRepository,
+      contentReviewRepository: contentReviewRepository,
+      notificationRepository: notificationRepository,
       podcastRepository: podcastRepository,
       paymentRepository: paymentRepository,
       initialRoute: initialRoute,
+      isUserLoggedIn: isUserLoggedIn,
     ),
   );
 }
@@ -155,6 +208,7 @@ class MyApp extends StatefulWidget {
   final LessonRepository lessonRepository;
   final TestRepository testRepository;
   final StudentLessonRepository studentLessonRepository;
+  final LessonDetailRepository lessonDetailRepository;
   final LessonDetailRepository lessonDetailRepository; 
   final WordRepository wordRepository;
   final String initialRoute;
@@ -163,6 +217,11 @@ class MyApp extends StatefulWidget {
   final LessonWordRepository lessonWordRepository;
   final RateRepository rateRepository;
   final WordQuizRepository wordQuizRepository;
+  final ProfileRepository profileRepository;
+  final AttemptRepository attemptRepository;
+  final ContentReviewRepository contentReviewRepository;
+  final NotificationRepository notificationRepository;
+  final bool isUserLoggedIn;
   final PodcastRepository podcastRepository;
   final PaymentRepository paymentRepository;
   late final AppRouter appRouter;
@@ -176,7 +235,7 @@ class MyApp extends StatefulWidget {
     required this.lessonRepository,
     required this.testRepository,
     required this.studentLessonRepository,
-    required this.lessonDetailRepository, // ✅ جديد
+    required this.lessonDetailRepository,
     required this.wordRepository,
     required this.initialRoute,
     required this.levelExceptionRepository,
@@ -184,6 +243,11 @@ class MyApp extends StatefulWidget {
     required this.lessonWordRepository,
     required this.rateRepository,
     required this.wordQuizRepository,
+    required this.profileRepository,
+    required this.attemptRepository,
+    required this.contentReviewRepository,
+    required this.notificationRepository,
+    this.isUserLoggedIn = false,
     required this.podcastRepository,
     required this.paymentRepository,
   }) {
@@ -194,8 +258,119 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // Uses the shared global `navigatorKey` from helper/nav_key.dart so
+  // LocalNotificationsService can also navigate from outside the widget tree.
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _setupForegroundMessaging();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAppReady());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // رجع من الخلفية → حدّث فوراً + تأكيد تسجيل التوكن
+      _refreshNotifications();
+      _ensureFcmRegistered();
+    }
+  }
+
+  Future<void> _onAppReady() async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return;
+
+    // Listen for FCM token rotation for the whole app lifetime
+    NotificationBootstrap.listenTokenRefresh();
+
+    if (widget.isUserLoggedIn) {
+      // تسجيل FCM token عند فتح التطبيق (جلسة سابقة)
+      await NotificationBootstrap.registerFromContext(ctx);
+      await NotificationBootstrap.refreshUnread(ctx);
+    }
+  }
+
+  Future<void> _ensureFcmRegistered() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) return;
+      await NotificationBootstrap.registerAfterAuth();
+    } catch (e) {
+      print('⚠️ [FCM] ensure registered: $e');
+    }
+  }
+
+  /// استماع الإشعارات والتطبيق مفتوح (Foreground)
+  void _setupForegroundMessaging() {
+    // التطبيق مفتوح → إشعار جديد
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('📩 [FG] ${message.notification?.title}');
+
+      // إشعار حقيقي أعلى الشاشة (اسم التطبيق + أيقونة)
+      await LocalNotificationsService.instance.showFromFirebase(message);
+
+      // تحديث العداد والقائمة
+      _refreshNotifications();
+    });
+
+    // ضغط على الإشعار من الخلفية
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('📩 [Opened] ${message.messageId}');
+      _refreshNotifications();
+      _openFromMessage(message);
+    });
+
+    // فتح التطبيق من إشعار وهو كان مغلقاً
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshNotifications();
+        _openFromMessage(message);
+      });
+    });
+  }
+
+  /// يفتح الصفحة المناسبة حسب نوع وبيانات الإشعار (نفس منطق التوجيه
+  /// المستخدم داخل شاشة الإشعارات وعند الضغط من شريط النظام).
+  void _openFromMessage(RemoteMessage message) {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return;
+
+    final type =
+        message.data['type']?.toString() ?? AppNotificationModel.typeGeneral;
+
+    NotificationRouteResolver.open(
+      ctx,
+      type: type,
+      data: message.data,
+      fallbackTitle: message.notification?.title,
+    );
+  }
+
+  void _refreshNotifications() {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) {
+      print('⚠️ [FCM] context is null — skip refresh');
+      return;
+    }
+    try {
+      print('🔄 [FCM] calling refreshAll()');
+      ctx.read<NotificationCubit>().refreshAll();
+    } catch (e, st) {
+      print('❌ [FCM] refreshAll error: $e');
+      print(st);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,12 +426,23 @@ class _MyAppState extends State<MyApp> {
             RepositoryProvider<PodcastRepository>.value(
              value: widget.podcastRepository,
             ),
+            RepositoryProvider<ContentReviewRepository>.value(
+              value: widget.contentReviewRepository,
+            ),
+            RepositoryProvider<NotificationRepository>.value(
+              value: widget.notificationRepository,
+            ),
             RepositoryProvider<PaymentRepository>.value(
             value: widget.paymentRepository,
              ),
           ],
           child: MultiBlocProvider(
             providers: [
+              BlocProvider(
+                create: (_) =>
+                    NotificationCubit(widget.notificationRepository)
+                      ..loadUnreadCount(),
+              ),
               BlocProvider(create: (_) => SignUpCubit(widget.authRepository)),
               BlocProvider(create: (_) => LoginCubit(widget.authRepository)),
               BlocProvider(

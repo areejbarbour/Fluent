@@ -3,6 +3,7 @@ import 'package:fluent/data/models/question_model.dart';
 import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
+import 'package:fluent/presentation/widgets/content_review_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -176,6 +177,13 @@ class _TestDetailViewScreenState extends State<TestDetailViewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTestInfo(test),
+            SizedBox(height: 16.h),
+            ContentReviewActionsBar(
+              status: test.status,
+              targetId: test.id,
+              isLesson: false,
+              onSuccess: _load,
+            ),
             SizedBox(height: 24.h),
             _buildQuestionsSection(test.questions),
           ],

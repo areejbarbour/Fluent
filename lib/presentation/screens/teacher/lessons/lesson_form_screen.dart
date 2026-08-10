@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent/presentation/widgets/audio_preview_tile.dart';
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/utils/teacher_permissions.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_state.dart';
@@ -31,11 +32,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-final RegExp enRegex = RegExp(r'^[a-zA-Z0-9\s.,!?;:()"\u0027-]+$');
-final RegExp arRegex = RegExp(
-  r'^[\u0600-\u06FF0-9\s،؟؛:()«»"\u0027!,-]+$',
-  unicode: true,
-);
+final RegExp enRegex = RegExp(r'^[a-zA-Z0-9\s\-_]+$');
+final RegExp arRegex = RegExp(r'^[\u0600-\u06FF\s0-9\-_]+$');
 
 class LessonFormScreen extends StatefulWidget {
   final int? courseId;
@@ -81,28 +79,26 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     return (widget.courseStatus ?? '').toLowerCase() == 'pending';
   }
 
-  /// تعديل كامل ممنوع حسب حالة الدرس
+  /// Backend TeacherLessonService: blocked CLOSED|ARCHIVED|APPROVED|IN_REVIEW
   bool get isRestrictedEdit {
     if (!isEditMode) return !canCreateLesson;
-    const blocked = {'closed', 'archived', 'approved', 'in_review'};
-    return blocked.contains(_lessonStatus);
+    return !TeacherPermissions.canEditLesson(_lessonStatus);
   }
 
-  /// درس منشور → order + video مقفولين
-  bool get isPublishedEdit => isEditMode && _lessonStatus == 'published';
+  /// Backend: published allows only title_en, title_ar, xp_points
+  bool get isPublishedEdit =>
+      isEditMode && TeacherPermissions.isPublishedLessonEdit(_lessonStatus);
 
-  /// حذف حسب حالة الدرس فقط
+  /// Backend: delete only draft|pending|changes_requested
   bool get canDelete {
     if (!isEditMode) return false;
-    const deletable = {'draft', 'pending', 'changes_requested'};
-    return deletable.contains(_lessonStatus);
+    return TeacherPermissions.canDeleteLesson(_lessonStatus);
   }
 
-  /// Backend TeacherWordService: draft | pending | changes_requested only
+  /// Backend TeacherWordService: draft|pending|changes_requested only
   bool get canManageWords {
     if (!isEditMode) return false;
-    const allowed = {'draft', 'pending', 'changes_requested'};
-    return allowed.contains(_lessonStatus);
+    return TeacherPermissions.canManageWords(_lessonStatus);
   }
 
   @override
@@ -1481,12 +1477,14 @@ class _FormView extends StatelessWidget {
         ),
         validator: (v) {
           if (!isEnabled) return null;
-          if (v == null || v.isEmpty) return 'Required';
-          if (label.contains('English') && !enRegex.hasMatch(v)) {
-            return 'Only English letters, numbers, spaces allowed';
+          if (v == null || v.trim().isEmpty) return 'Required';
+          final t = v.trim();
+          if (t.length > 255) return 'Max 255 characters';
+          if (label.contains('English') && !enRegex.hasMatch(t)) {
+            return 'English: letters, numbers, spaces, - and _ only';
           }
-          if (label.contains('Arabic') && !arRegex.hasMatch(v)) {
-            return 'Only Arabic letters, numbers, spaces allowed';
+          if (label.contains('Arabic') && !arRegex.hasMatch(t)) {
+            return 'Arabic: letters, numbers, spaces, - and _ only';
           }
           return null;
         },

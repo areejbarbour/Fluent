@@ -5,12 +5,14 @@ import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_state.dart';
 import 'package:fluent/data/models/content_status.dart';
+import 'package:fluent/utils/teacher_permissions.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart'; // ➕ جديد
 import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/helper/lessons/lesson_helpers.dart';
 import 'package:fluent/helper/questions/question_helpers.dart';
+import 'package:fluent/presentation/widgets/content_review_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -664,6 +666,24 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
   Widget _buildLessonRow(LessonModel lesson) {
     final color = StatusUI.statusColor(lesson.status);
 
+    // Backend ContentReviewService requires exactly one draft test linked
+    // to the lesson before submit. Use the tests already loaded on the board.
+    final boardState = context.read<TeacherStatusBoardCubit>().state;
+    bool hasDraftTest = false;
+    if (boardState is TeacherStatusBoardLoaded) {
+      final draftCount = boardState.testsByStatus.values
+          .expand((list) => list)
+          .where(
+            (t) =>
+                t.isLessonTest &&
+                t.testableId == lesson.id &&
+                t.normalizedStatus == 'draft',
+          )
+          .length;
+      // Exactly one draft test → allowed. Zero or more than one → blocked.
+      hasDraftTest = draftCount == 1;
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.pushNamed(
@@ -733,8 +753,48 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                       ),
                     ],
                   ),
+                  // Last review note (backend sends review_notes when changes_requested)
+                  if (lesson.reviewNotes.isNotEmpty) ...[
+                    SizedBox(height: 4.h),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.rate_review_outlined,
+                          size: 11.sp,
+                          color: Colors.orange.shade300,
+                        ),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Text(
+                            lesson.reviewNotes.first,
+                            style: GoogleFonts.poppins(
+                              color: Colors.orange.shade200,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
+            ),
+            // Content Review compact actions (Submit / Resubmit / History)
+            ContentReviewActionsBar(
+              status: lesson.status,
+              targetId: lesson.id,
+              isLesson: true,
+              compact: true,
+              hasVideo: (lesson.videoUrl ?? '').trim().isNotEmpty,
+              // Matches backend: exactly one draft test required for submit
+              hasDraftTest: hasDraftTest,
+              onSuccess: () {
+                context.read<TeacherStatusBoardCubit>().loadAll();
+              },
             ),
             Icon(
               Icons.chevron_right_rounded,
@@ -756,11 +816,7 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
         ? 'Course #${test.testableId}'
         : 'Lesson #${test.testableId}';
     final typeLabel = isCourseTest ? 'Course Test' : 'Lesson Test';
-    final canEdit = ![
-      'in_review',
-      'archived',
-      'closed',
-    ].contains(test.status.toLowerCase());
+    final canEdit = TeacherPermissions.canEditTest(test.status);
 
     return GestureDetector(
       onTap: () {
@@ -886,6 +942,16 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
                   ],
                 ],
               ),
+            ),
+            // Content Review compact actions
+            ContentReviewActionsBar(
+              status: test.status,
+              targetId: test.id,
+              isLesson: false,
+              compact: true,
+              onSuccess: () {
+                context.read<TeacherStatusBoardCubit>().loadAll();
+              },
             ),
           ],
         ),

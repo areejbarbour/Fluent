@@ -15,6 +15,7 @@ import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_cubit.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
+import 'package:fluent/cubit/teacher/content_review/content_review_cubit.dart';
 import 'package:fluent/cubit/teacher/tests/create/test_create_cubit.dart';
 import 'package:fluent/cubit/teacher/tests/delete/test_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/tests/update/test_update_cubit.dart';
@@ -24,6 +25,8 @@ import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
+import 'package:fluent/data/repository/content_review_repository.dart';
+import 'package:fluent/presentation/screens/notifications/notifications_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/course_tests_screen.dart';
@@ -362,11 +365,19 @@ case podcastDetailRoute:
 
       case teacherStatusBoardRoute:
         return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (ctx) => TeacherStatusBoardCubit(
-              ctx.read<LessonRepository>(),
-              ctx.read<TestRepository>(),
-            )..loadAll(),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) => TeacherStatusBoardCubit(
+                  ctx.read<LessonRepository>(),
+                  ctx.read<TestRepository>(),
+                )..loadAll(),
+              ),
+              BlocProvider(
+                create: (ctx) =>
+                    ContentReviewCubit(ctx.read<ContentReviewRepository>()),
+              ),
+            ],
             child: const TeacherStatusBoardScreen(),
           ),
         );
@@ -460,6 +471,10 @@ case podcastDetailRoute:
                 create: (ctx) =>
                     LessonDeleteCubit(ctx.read<LessonRepository>()),
               ),
+              BlocProvider(
+                create: (ctx) =>
+                    ContentReviewCubit(ctx.read<ContentReviewRepository>()),
+              ),
             ],
             child: LessonDetailScreen(
               lessonId: lessonId,
@@ -497,7 +512,11 @@ case podcastDetailRoute:
         final args = settings.arguments as Map<String, dynamic>;
         final int testId = args['testId'] as int;
         return MaterialPageRoute(
-          builder: (_) => TestDetailViewScreen(testId: testId),
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                ContentReviewCubit(ctx.read<ContentReviewRepository>()),
+            child: TestDetailViewScreen(testId: testId),
+          ),
         );
 
       case courseTestsRoute:
@@ -513,6 +532,10 @@ case podcastDetailRoute:
             child: CourseTestsScreen(course: course),
           ),
         );
+
+      case notificationsRoute:
+        // NotificationCubit is provided globally in main.dart
+        return MaterialPageRoute(builder: (_) => const NotificationsScreen());
 
       default:
         return MaterialPageRoute(

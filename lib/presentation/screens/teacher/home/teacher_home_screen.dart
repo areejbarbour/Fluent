@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/notification/notification_cubit.dart';
+import 'package:fluent/cubit/notification/notification_state.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_cubit.dart';
 import 'package:fluent/cubit/teacher/home/home_teacher_state.dart';
 import 'package:fluent/data/models/test_model.dart';
@@ -413,10 +415,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       ],
                     ),
                   ),
-                  _circleIconButton(
-                    icon: Icons.notifications_rounded,
-                    badgeCount: 3,
-                    onTap: () {},
+                  BlocBuilder<NotificationCubit, NotificationState>(
+                    buildWhen: (p, c) => p.unreadCount != c.unreadCount,
+                    builder: (context, notifState) {
+                      return _circleIconButton(
+                        icon: Icons.notifications_rounded,
+                        badgeCount: notifState.unreadCount,
+                        onTap: () {
+                          Navigator.pushNamed(context, notificationsRoute);
+                        },
+                      );
+                    },
                   ),
                   SizedBox(width: 6.w),
                   _circleIconButton(
