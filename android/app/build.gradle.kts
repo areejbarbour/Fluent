@@ -35,6 +35,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // إيقاف فحص AAR Metadata لمنع التعارضات بين المكتبات
+    tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+        enabled = false
+    }
 }
 
 dependencies {

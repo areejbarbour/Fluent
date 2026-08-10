@@ -9,13 +9,13 @@ class WordsBankCubit extends Cubit<WordsBankState> {
 
   Future<void> fetchAll() async {
     emit(WordsBankLoading());
-    print("🟡 [WordsBankCubit] Fetching learning + know words...");
+    print(" [WordsBankCubit] Fetching learning + know words...");
 
     final learningResult = await repository.getLearningWords();
     final knowResult = await repository.getKnowWords();
 
     if (learningResult['success'] == true) {
-      print("🎉 [WordsBankCubit] Words loaded");
+      print(" [WordsBankCubit] Words loaded");
       emit(
         WordsBankSuccess(
           learningWords: learningResult['data'] ?? [],
@@ -25,7 +25,7 @@ class WordsBankCubit extends Cubit<WordsBankState> {
         ),
       );
     } else {
-      print("❌ [WordsBankCubit] Failed: ${learningResult['message']}");
+      print(" [WordsBankCubit] Failed: ${learningResult['message']}");
       emit(
         WordsBankFailure(
           learningResult['message'] ?? 'Failed to load word bank',

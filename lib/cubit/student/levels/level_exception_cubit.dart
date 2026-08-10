@@ -11,7 +11,7 @@ class LevelExceptionCubit extends Cubit<LevelExceptionState> {
   /// Loads page 1 for every status in parallel (board view).
   Future<void> loadBoard() async {
     emit(LevelExceptionLoading());
-    print("🟡 [LevelExceptionCubit] Loading exception board (page 1)...");
+    print(" [LevelExceptionCubit] Loading exception board (page 1)...");
 
     try {
       final results = await Future.wait([
@@ -43,7 +43,7 @@ class LevelExceptionCubit extends Cubit<LevelExceptionState> {
       }
 
       print(
-        "🎉 [LevelExceptionCubit] Board page1 — "
+        " [LevelExceptionCubit] Board page1 — "
         "pending=${metaMap['pending']?.total}, "
         "in_review=${metaMap['in_review']?.total}, "
         "approved=${metaMap['approved']?.total}, "
@@ -51,7 +51,7 @@ class LevelExceptionCubit extends Cubit<LevelExceptionState> {
       );
       emit(LevelExceptionSuccess(map, metaByStatus: metaMap));
     } catch (e) {
-      print("❌ [LevelExceptionCubit] Unexpected: $e");
+      print(" [LevelExceptionCubit] Unexpected: $e");
       emit(LevelExceptionFailure(e.toString()));
     }
   }
@@ -65,7 +65,7 @@ class LevelExceptionCubit extends Cubit<LevelExceptionState> {
 
     final nextPage = current.metaFor(status).currentPage + 1;
     emit(current.copyWith(loadingMoreStatus: status));
-    print("🟡 [LevelExceptionCubit] loadMore $status page $nextPage");
+    print(" [LevelExceptionCubit] loadMore $status page $nextPage");
 
     final result = await repository.getByStatus(status, page: nextPage);
 

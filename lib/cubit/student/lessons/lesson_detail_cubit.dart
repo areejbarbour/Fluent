@@ -5,7 +5,6 @@ import '../../../data/repository/lesson_detail_repository.dart';
 import 'package:fluent/cubit/student/lessons/lesson_detail_state.dart';
 
 class LessonDetailCubit extends Cubit<LessonDetailState> {
-  /// مطابق لـ validation الباك: max:1000
   static const int maxCommentLength = 1000;
 
   final LessonDetailRepository lessonDetailRepository;
@@ -30,7 +29,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
   Future<void> fetchLessonDetail(int lessonId) async {
     _lessonId = lessonId;
     emit(LessonDetailLoading());
-    print("🟡 [LessonDetailCubit] Fetching detail for lesson $lessonId...");
+    print(" [LessonDetailCubit] Fetching detail for lesson $lessonId...");
 
     final userId = await _resolveCurrentUserId();
     final result = await lessonDetailRepository.getLessonDetail(
@@ -40,15 +39,14 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     );
 
     if (result['success'] == true) {
-      print("🎉 [LessonDetailCubit] Lesson detail loaded successfully");
+      print(" [LessonDetailCubit] Lesson detail loaded successfully");
       var data = result['data'] as LessonDetailModel;
 
-      // تحميل باقي صفحات التعليقات تلقائياً إن وُجد pagination
       data = await _loadAllCommentPages(lessonId, data, userId);
 
       emit(LessonDetailSuccess(data));
     } else {
-      print("❌ [LessonDetailCubit] Failed: ${result['message']}");
+      print(" [LessonDetailCubit] Failed: ${result['message']}");
       emit(
         LessonDetailFailure(
           result['message'] ?? 'Failed to load lesson details',
@@ -57,7 +55,6 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     }
   }
 
-  /// يجلب كل صفحات التعليقات حتى تكتمل القائمة (منطق الباك: paginate)
   Future<LessonDetailModel> _loadAllCommentPages(
     int lessonId,
     LessonDetailModel firstPage,
@@ -72,7 +69,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
 
     while (currentPage < lastPage) {
       final next = currentPage + 1;
-      print("📄 [LessonDetailCubit] Loading comments page $next / $lastPage");
+      print(" [LessonDetailCubit] Loading comments page $next / $lastPage");
       final result = await lessonDetailRepository.getLessonDetail(
         lessonId,
         page: next,
@@ -103,7 +100,6 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     );
   }
 
-  /// تحميل الصفحة التالية يدوياً (إن احتجت UI لـ load more)
   Future<void> loadMoreComments() async {
     final current = state;
     if (current is! LessonDetailSuccess) return;
@@ -161,13 +157,12 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       return 'Comment must not exceed $maxCommentLength characters';
     }
 
-    // منطق الباك: لا تعليق إلا إذا الدرس published
     final current = state;
     if (current is LessonDetailSuccess && !current.data.canCreateComment) {
       return 'You cannot create a comment for this lesson.';
     }
 
-    print("🟡 [LessonDetailCubit] Submitting comment for lesson $lessonId...");
+    print(" [LessonDetailCubit] Submitting comment for lesson $lessonId...");
     final userId = await _resolveCurrentUserId();
     final result = await lessonDetailRepository.postComment(
       lessonId,
@@ -176,14 +171,14 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     );
 
     if (result['success'] == true) {
-      print("🎉 [LessonDetailCubit] Comment added successfully");
+      print(" [LessonDetailCubit] Comment added successfully");
       final newComment = (result['data'] as LessonCommentModel).copyWith(
         isOwn: true,
       );
       _insertComment(newComment);
       return null;
     } else {
-      print("❌ [LessonDetailCubit] Comment failed: ${result['message']}");
+      print(" [LessonDetailCubit] Comment failed: ${result['message']}");
       return result['message'] ?? 'Failed to add comment';
     }
   }
@@ -198,18 +193,16 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     final current = state;
     if (current is! LessonDetailSuccess) return null;
 
-    // منطق الباك: لا تعديل إذا archived / closed
     if (!current.data.canUpdateComments) {
       return 'Comments cannot be updated for this lesson.';
     }
 
-    // منطق الباك: التعديل لصاحب التعليق فقط
     final target = current.data.comments.where((c) => c.id == commentId);
     if (target.isEmpty || !target.first.isOwn) {
       return 'You can only edit your own comments.';
     }
 
-    print("🟡 [LessonDetailCubit] Updating comment $commentId...");
+    print(" [LessonDetailCubit] Updating comment $commentId...");
     final userId = await _resolveCurrentUserId();
     final result = await lessonDetailRepository.updateComment(
       commentId,
@@ -218,8 +211,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     );
 
     if (result['success'] == true) {
-      print("🎉 [LessonDetailCubit] Comment updated successfully");
-      // الباك عند التحديث قد لا يرجع user — نحتفظ ببيانات التعليق السابق
+      print(" [LessonDetailCubit] Comment updated successfully");
       final prev = target.first;
       final raw = result['data'] as LessonCommentModel;
       final updatedComment = raw.copyWith(
@@ -236,7 +228,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       );
       return null;
     } else {
-      print("❌ [LessonDetailCubit] Update failed: ${result['message']}");
+      print(" [LessonDetailCubit] Update failed: ${result['message']}");
       return result['message'] ?? 'Failed to update comment';
     }
   }
@@ -245,17 +237,16 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
     final current = state;
     if (current is! LessonDetailSuccess) return null;
 
-    // منطق الباك: الحذف لصاحب التعليق (UI الطالب = own فقط)
     final target = current.data.comments.where((c) => c.id == commentId);
     if (target.isEmpty || !target.first.isOwn) {
       return 'You can only delete your own comments.';
     }
 
-    print("🟡 [LessonDetailCubit] Deleting comment $commentId...");
+    print(" [LessonDetailCubit] Deleting comment $commentId...");
     final result = await lessonDetailRepository.deleteComment(commentId);
 
     if (result['success'] == true) {
-      print("🎉 [LessonDetailCubit] Comment deleted successfully");
+      print(" [LessonDetailCubit] Comment deleted successfully");
       final updatedComments = current.data.comments
           .where((c) => c.id != commentId)
           .toList();
@@ -273,7 +264,7 @@ class LessonDetailCubit extends Cubit<LessonDetailState> {
       );
       return null;
     } else {
-      print("❌ [LessonDetailCubit] Delete failed: ${result['message']}");
+      print(" [LessonDetailCubit] Delete failed: ${result['message']}");
       return result['message'] ?? 'Failed to delete comment';
     }
   }

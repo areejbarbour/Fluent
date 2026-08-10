@@ -1,6 +1,10 @@
 import 'package:dio/dio.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
+import 'package:flutter_stripe/flutter_stripe.dart';
+
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
@@ -61,6 +65,10 @@ import 'package:fluent/data/services/rate_service.dart';
 import 'package:fluent/data/repository/rate_repository.dart';
 import 'package:fluent/data/services/word_quiz_service.dart';
 import 'package:fluent/data/repository/word_quiz_repository.dart';
+import 'package:fluent/data/services/podcast_service.dart';
+import 'package:fluent/data/repository/podcast_repository.dart';
+import 'package:fluent/data/services/payment_service.dart';
+import 'package:fluent/data/repository/payment_repository.dart';
 
 /// Handler للإشعارات عندما التطبيق في الخلفية أو مغلق.
 @pragma('vm:entry-point')
@@ -86,6 +94,9 @@ Future<void> main() async {
     badge: true,
     sound: true,
   );
+
+  Stripe.publishableKey = stripePublishableKey;
+  await Stripe.instance.applySettings();
 
   await setupDio();
 
@@ -154,6 +165,12 @@ Future<void> main() async {
   final notificationService = NotificationService(dioInstance);
   final notificationRepository = NotificationRepository(notificationService);
 
+  final podcastService = PodcastService(dioInstance);
+  final podcastRepository = PodcastRepository(podcastService);
+
+  final paymentService = PaymentService(dioInstance);
+  final paymentRepository = PaymentRepository(paymentService);
+
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
@@ -176,18 +193,25 @@ Future<void> main() async {
       courseRepository: courseRepository,
       lessonRepository: lessonRepository,
       testRepository: testRepository,
+
       studentLessonRepository: studentLessonRepository,
       lessonDetailRepository: lessonDetailRepository,
+
       wordRepository: wordRepository,
       levelExceptionRepository: levelExceptionRepository,
       wordsBankRepository: wordsBankRepository,
       lessonWordRepository: lessonWordRepository,
       rateRepository: rateRepository,
       wordQuizRepository: wordQuizRepository,
+
       profileRepository: profileRepository,
       attemptRepository: attemptRepository,
       contentReviewRepository: contentReviewRepository,
       notificationRepository: notificationRepository,
+
+      podcastRepository: podcastRepository,
+      paymentRepository: paymentRepository,
+
       initialRoute: initialRoute,
       isUserLoggedIn: isUserLoggedIn,
     ),
@@ -202,7 +226,9 @@ class MyApp extends StatefulWidget {
   final LessonRepository lessonRepository;
   final TestRepository testRepository;
   final StudentLessonRepository studentLessonRepository;
+
   final LessonDetailRepository lessonDetailRepository;
+
   final WordRepository wordRepository;
   final String initialRoute;
   final LevelExceptionRepository levelExceptionRepository;
@@ -210,11 +236,16 @@ class MyApp extends StatefulWidget {
   final LessonWordRepository lessonWordRepository;
   final RateRepository rateRepository;
   final WordQuizRepository wordQuizRepository;
+
   final ProfileRepository profileRepository;
   final AttemptRepository attemptRepository;
   final ContentReviewRepository contentReviewRepository;
   final NotificationRepository notificationRepository;
   final bool isUserLoggedIn;
+
+  final PodcastRepository podcastRepository;
+  final PaymentRepository paymentRepository;
+
   late final AppRouter appRouter;
 
   MyApp({
@@ -234,11 +265,15 @@ class MyApp extends StatefulWidget {
     required this.lessonWordRepository,
     required this.rateRepository,
     required this.wordQuizRepository,
+
     required this.profileRepository,
     required this.attemptRepository,
     required this.contentReviewRepository,
     required this.notificationRepository,
     this.isUserLoggedIn = false,
+
+    required this.podcastRepository,
+    required this.paymentRepository,
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -412,6 +447,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             RepositoryProvider<WordQuizRepository>.value(
               value: widget.wordQuizRepository,
             ),
+
             RepositoryProvider<ProfileRepository>.value(
               value: widget.profileRepository,
             ),
@@ -423,6 +459,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             ),
             RepositoryProvider<NotificationRepository>.value(
               value: widget.notificationRepository,
+            ),
+
+            RepositoryProvider<PodcastRepository>.value(
+              value: widget.podcastRepository,
+            ),
+            RepositoryProvider<PaymentRepository>.value(
+              value: widget.paymentRepository,
             ),
           ],
           child: MultiBlocProvider(

@@ -12,7 +12,7 @@ class ResetPasswordCubit extends Cubit<ResetPasswordState> {
     required String passwordConfirmation,
   }) async {
     emit(ResetPasswordLoading());
-    print("🟡 [ResetPasswordCubit] Resetting password for: $email");
+    print(" [ResetPasswordCubit] Resetting password for: $email");
 
     try {
       final data = await authRepository.resetPassword(
@@ -25,15 +25,15 @@ class ResetPasswordCubit extends Cubit<ResetPasswordState> {
       final message = data['message'] as String? ?? '';
 
       if (success) {
-        print("🎉 [ResetPasswordCubit] Password reset: $message");
+        print(" [ResetPasswordCubit] Password reset: $message");
         emit(ResetPasswordSuccess(message));
       } else {
         final errors = data['errors'] as Map<String, dynamic>?;
-        print("❌ [ResetPasswordCubit] Failed: $message");
+        print(" [ResetPasswordCubit] Failed: $message");
         emit(ResetPasswordFailure(message, errors: errors));
       }
     } catch (e) {
-      print("❌ [ResetPasswordCubit] Exception: $e");
+      print(" [ResetPasswordCubit] Exception: $e");
       emit(ResetPasswordFailure(e.toString()));
     }
   }

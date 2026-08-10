@@ -15,7 +15,7 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
     required String type,
   }) async {
     emit(VerifyOtpLoading());
-    print("🟡 [VerifyOtpCubit] Verifying OTP for: $email, type: $type");
+    print(" [VerifyOtpCubit] Verifying OTP for: $email, type: $type");
 
     try {
       final data = await authRepository.verifyOtp(
@@ -32,7 +32,6 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
         final token = data['token'] as String?;
         final user = data['user'] as Map<String, dynamic>?;
 
-        // ✅ حفظ التوكن فقط في حالة REGISTER
         if (token != null && token.isNotEmpty && type == 'register') {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
@@ -40,7 +39,6 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
           await prefs.setString('login_method', 'email');
           await prefs.setString('user_role', 'student');
 
-          // ✅ حفظ user_id بعد التسجيل (للتعليقات / isOwn)
           await _saveUserId(prefs, user);
           if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
             try {
@@ -54,12 +52,12 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
                 }
               }
             } catch (e) {
-              print("⚠️ [VerifyOtpCubit] getCurrentUser fallback failed: $e");
+              print(" [VerifyOtpCubit] getCurrentUser fallback failed: $e");
             }
           }
 
-          print("🎭 [VerifyOtpCubit] New user role forced to: student");
-          print("🔑 [VerifyOtpCubit] Token saved: $token");
+          print(" [VerifyOtpCubit] New user role forced to: student");
+          print(" [VerifyOtpCubit] Token saved: $token");
 
           await setupDio();
           print("⚙️ [VerifyOtpCubit] Dio re-initialized");
@@ -68,15 +66,15 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
           await NotificationBootstrap.registerAfterAuth();
         }
 
-        print("🎉 [VerifyOtpCubit] Account verified successfully");
+        print(" [VerifyOtpCubit] Account verified successfully");
         emit(VerifyOtpSuccess(message, token ?? '', user: user));
       } else {
         final errors = data['errors'] as Map<String, dynamic>?;
-        print("❌ [VerifyOtpCubit] Verification failed: $message");
+        print(" [VerifyOtpCubit] Verification failed: $message");
         emit(VerifyOtpFailure(message, errors: errors));
       }
     } catch (e) {
-      print("❌ [VerifyOtpCubit] Exception: $e");
+      print(" [VerifyOtpCubit] Exception: $e");
       emit(VerifyOtpFailure(e.toString()));
     }
   }

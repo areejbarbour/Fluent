@@ -560,28 +560,92 @@ class _ExceptionCard extends StatelessWidget {
 
     return BlocListener<LevelExceptionDeleteCubit, LevelExceptionDeleteState>(
       listener: (context, state) {
-        if (state is LevelExceptionDeleteSuccess && state.id == item.id) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message, style: GoogleFonts.poppins(fontSize: 13.sp)),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-            ),
-          );
-          context.read<LevelExceptionCubit>().removeLocally(item.id);
-          context.read<LevelExceptionCubit>().loadBoard();
-        } else if (state is LevelExceptionDeleteFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message, style: GoogleFonts.poppins(fontSize: 13.sp)),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-            ),
-          );
-        }
-      },
+    if (state is LevelExceptionDeleteSuccess && state.id == item.id) {
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6.r),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(.15),
+                ),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: const Color(0xFF4ADE80),
+                  size: 18.sp,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  state.message,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5.sp,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+          ),
+          margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      context.read<LevelExceptionCubit>().removeLocally(item.id);
+      context.read<LevelExceptionCubit>().loadBoard();
+    } else if (state is LevelExceptionDeleteFailure) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6.r),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(.15),
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 18.sp,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  state.message,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5.sp,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+          ),
+          margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  },
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();

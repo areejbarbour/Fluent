@@ -3,15 +3,6 @@ import 'package:fluent/data/models/rate_model.dart';
 import 'package:fluent/data/repository/rate_repository.dart';
 import 'rate_state.dart';
 
-/// Student course rating (matches backend RateController / RateServiece).
-///
-/// - rateCourse: POST /api/rate/{course}  { stars: 1..5 }
-///   Backend allows only completed courses; uses updateOrCreate.
-/// - deleteRate: DELETE /api/rate/{rate}/delete
-///   Only the owner can delete.
-///
-/// Keeps an in-memory map of courseId → RateModel so the UI can show
-/// the current stars and offer delete after a successful rate in-session.
 class RateCubit extends Cubit<RateState> {
   final RateRepository rateRepository;
 
@@ -49,7 +40,7 @@ class RateCubit extends Cubit<RateState> {
     }
 
     emit(RateLoading(courseId: courseId));
-    print('🟡 [RateCubit] Rating course #$courseId with $stars stars...');
+    print(' [RateCubit] Rating course #$courseId with $stars stars...');
 
     final result = await rateRepository.rateCourse(
       courseId: courseId,
@@ -59,7 +50,7 @@ class RateCubit extends Cubit<RateState> {
     if (result['success'] == true && result['data'] is RateModel) {
       final rate = result['data'] as RateModel;
       _ratesByCourse[courseId] = rate;
-      print('🎉 [RateCubit] Rated course #$courseId → rate #${rate.id}');
+      print(' [RateCubit] Rated course #$courseId → rate #${rate.id}');
       emit(RateSuccess(
         rate: rate,
         courseId: courseId,
@@ -68,7 +59,7 @@ class RateCubit extends Cubit<RateState> {
     } else {
       final message =
           result['message']?.toString() ?? 'Failed to rate this course.';
-      print('❌ [RateCubit] Rate failed: $message');
+      print(' [RateCubit] Rate failed: $message');
       emit(RateFailure(
         message,
         errors: result['errors'] as Map<String, dynamic>?,
@@ -91,7 +82,7 @@ class RateCubit extends Cubit<RateState> {
     }
 
     emit(RateLoading(courseId: courseId, isDeleting: true));
-    print('🟡 [RateCubit] Deleting rate #$resolvedId for course #$courseId...');
+    print(' [RateCubit] Deleting rate #$resolvedId for course #$courseId...');
 
     final result = await rateRepository.deleteRate(resolvedId);
 
@@ -99,7 +90,7 @@ class RateCubit extends Cubit<RateState> {
       _ratesByCourse.remove(courseId);
       final message =
           result['message']?.toString() ?? 'Rating deleted successfully';
-      print('🎉 [RateCubit] Rate deleted');
+      print(' [RateCubit] Rate deleted');
       emit(RateDeleted(
         courseId: courseId,
         rateId: resolvedId,
@@ -108,7 +99,7 @@ class RateCubit extends Cubit<RateState> {
     } else {
       final message =
           result['message']?.toString() ?? 'Failed to delete rating.';
-      print('❌ [RateCubit] Delete failed: $message');
+      print(' [RateCubit] Delete failed: $message');
       emit(RateFailure(
         message,
         errors: result['errors'] as Map<String, dynamic>?,

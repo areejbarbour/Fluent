@@ -1,6 +1,11 @@
 //  const String baseUrl = 'http://192.168.1.5:8000';
+//const String baseUrl = 'http://192.168.10.224:8000';
+
+//const String baseUrl = 'http://192.168.1.5:8000';
 const String baseUrl = 'http://192.168.10.224:8000';
+
 //const String baseUrl = 'http://172.20.10.2:8000';
+// const String baseUrl = 'https://fluent.moayadismail.com';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -87,9 +92,6 @@ String apiCreateLevelException(int levelId) =>
 // delete Exception
 String apiDeleteLevelException(int id) => '/api/levelexceptions/$id/delete';
 
-// delete a single Level Exception attachment (Spatie Media)
-// Backend: DELETE /api/level-exceptions/{levelException}/attachments/{media}
-// Allowed only while status === pending
 String apiDeleteLevelExceptionAttachment(int exceptionId, int mediaId) =>
     '/api/level-exceptions/$exceptionId/attachments/$mediaId';
 
@@ -148,6 +150,29 @@ String apiUpdateComment(int commentId) => '/api/comments/$commentId/update';
 
 // ✅ Delete Lesson Comment API
 String apiDeleteComment(int commentId) => '/api/comments/$commentId/delete';
+
+// ✅ Student Podcast API
+const String apiPodcastTopics = '/api/podcasts/topics';
+String apiTopicPodcasts(int topicId) => '/api/podcasts/$topicId';
+
+// ✅ Podcast detail route
+const String topicPodcastsRoute = '/topic-podcasts';
+
+// ✅ Open (purchase) podcast with points
+String apiOpenPodcast(int podcastId) => '/api/podcasts/$podcastId/open';
+
+// ✅ Podcast detail
+String apiPodcastDetails(int podcastId) => '/api/podcasts/$podcastId/details';
+const String podcastDetailRoute = '/podcast-detail';
+
+// ✅ Payment API
+String apiCreatePaymentIntent(int id) => '/api/payments/$id/create-intent';
+String apiPaymentStatus(String paymentIntentId) =>
+    '/api/payments/$paymentIntentId/status';
+
+// Stripe publishable key (test)
+const String stripePublishableKey =
+    'pk_test_51U0JM13hGKhXKNjRobR8Fgo98Nh3dDcFFG103DNbmOnT4NiJturB1HWRINQKQFZEWN85CMH3uf1h5Q1LK3ojrx5x00N4JQ5PR8';
 
 // ✅ Question API Endpoints
 const String apiQuestions = '/api/questions';

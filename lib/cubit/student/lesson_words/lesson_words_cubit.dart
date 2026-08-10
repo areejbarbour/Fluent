@@ -11,32 +11,30 @@ class LessonWordsCubit extends Cubit<LessonWordsState> {
 
   Future<void> fetchLessonWords(int lessonId) async {
     emit(LessonWordsLoading());
-    print("🟡 [LessonWordsCubit] Fetching words for lesson #$lessonId...");
+    print(" [LessonWordsCubit] Fetching words for lesson #$lessonId...");
 
     final result = await repository.getLessonWords(lessonId);
 
     if (result['success'] == true) {
       _currentWords = List<LessonWordModel>.from(result['data'] ?? []);
-      print("🎉 [LessonWordsCubit] Loaded ${_currentWords.length} words");
+      print(" [LessonWordsCubit] Loaded ${_currentWords.length} words");
       emit(LessonWordsSuccess(_currentWords));
     } else {
-      print("❌ [LessonWordsCubit] Failed: ${result['message']}");
+      print(" [LessonWordsCubit] Failed: ${result['message']}");
       emit(
         LessonWordsFailure(result['message'] ?? 'Failed to load lesson words'),
       );
     }
   }
 
-  /// Backend adds/updates word bank only — lesson word list is unchanged.
   Future<void> moveToLearning(int wordId) async {
     emit(LessonWordsSuccess(_currentWords, busyWordId: wordId));
-    print("🟡 [LessonWordsCubit] Adding word #$wordId to learning...");
+    print(" [LessonWordsCubit] Adding word #$wordId to learning...");
 
     final result = await repository.moveToLearning(wordId);
 
     if (result['success'] == true) {
-      // Keep word in lesson list (matches backend getLessonWords).
-      print("🎉 [LessonWordsCubit] Added to learning (list unchanged)");
+      print(" [LessonWordsCubit] Added to learning (list unchanged)");
       emit(
         LessonWordsActionSuccess(
           message: result['message'] ?? 'Added to learning list',
@@ -45,7 +43,7 @@ class LessonWordsCubit extends Cubit<LessonWordsState> {
       );
       emit(LessonWordsSuccess(_currentWords));
     } else {
-      print("❌ [LessonWordsCubit] Failed: ${result['message']}");
+      print(" [LessonWordsCubit] Failed: ${result['message']}");
       emit(
         LessonWordsFailure(result['message'] ?? 'Failed to update word status'),
       );
@@ -53,16 +51,14 @@ class LessonWordsCubit extends Cubit<LessonWordsState> {
     }
   }
 
-  /// Backend adds/updates word bank only — lesson word list is unchanged.
   Future<void> moveToKnow(int wordId) async {
     emit(LessonWordsSuccess(_currentWords, busyWordId: wordId));
-    print("🟡 [LessonWordsCubit] Adding word #$wordId to know...");
+    print(" [LessonWordsCubit] Adding word #$wordId to know...");
 
     final result = await repository.moveToKnow(wordId);
 
     if (result['success'] == true) {
-      // Keep word in lesson list (matches backend getLessonWords).
-      print("🎉 [LessonWordsCubit] Added to know (list unchanged)");
+      print(" [LessonWordsCubit] Added to know (list unchanged)");
       emit(
         LessonWordsActionSuccess(
           message: result['message'] ?? 'Added to known words',
@@ -71,7 +67,7 @@ class LessonWordsCubit extends Cubit<LessonWordsState> {
       );
       emit(LessonWordsSuccess(_currentWords));
     } else {
-      print("❌ [LessonWordsCubit] Failed: ${result['message']}");
+      print(" [LessonWordsCubit] Failed: ${result['message']}");
       emit(
         LessonWordsFailure(result['message'] ?? 'Failed to update word status'),
       );

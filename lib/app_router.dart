@@ -85,7 +85,11 @@ import 'package:fluent/cubit/student/words_bank/words_bank_cubit.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
 import 'package:fluent/data/repository/lesson_word_repository.dart';
-
+import 'package:fluent/cubit/student/podcasts/podcast_topics_cubit.dart';
+import 'package:fluent/cubit/student/podcasts/topic_podcasts_cubit.dart';
+import 'package:fluent/data/repository/podcast_repository.dart';
+import 'package:fluent/cubit/student/podcasts/podcast_detail_cubit.dart';
+import 'package:fluent/presentation/screens/statics/podcast_detail_screen.dart';
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -214,9 +218,30 @@ class AppRouter {
             child: const WordBankScreen(),
           ),
         );
+        
+        case podcastsRoute:
+  return MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (ctx) =>
+          PodcastTopicsCubit(ctx.read<PodcastRepository>())..fetchTopics(),
+      child: const PodcastsScreen(),
+    ),
+  );
+case podcastDetailRoute:
+  final args = settings.arguments as Map<String, dynamic>;
+  final int podcastId = args['podcastId'] as int;
+  final String podcastTitle = args['title'] as String? ?? '';
 
-      case podcastsRoute:
-        return MaterialPageRoute(builder: (_) => const PodcastsScreen());
+  return MaterialPageRoute(
+    builder: (_) => BlocProvider(
+      create: (ctx) => PodcastDetailCubit(ctx.read<PodcastRepository>())
+        ..fetchDetails(podcastId),
+      child: PodcastDetailScreen(
+        podcastId: podcastId,
+        podcastTitle: podcastTitle,
+      ),
+    ),
+  );
 
       case aiConversationRoute:
         return MaterialPageRoute(builder: (_) => const AIConversationScreen());
@@ -230,10 +255,10 @@ class AppRouter {
                   ctx.read<LessonRepository>(),
                   ctx.read<QuestionRepository>(),
                   ctx.read<TestRepository>(),
-                )..loadDashboardData(), // جلب البيانات فور فتح الشاشة
+                )..loadDashboardData(), 
               ),
             ],
-            child: const TeacherHomeScreen(), // لم نعد نحتاج لتمرير متغيرات
+            child: const TeacherHomeScreen(), 
           ),
         );
 
@@ -260,23 +285,6 @@ class AppRouter {
             ),
           ),
         );
-
-      // // ✅ Student: Lesson video + comments detail
-      // case lessonStudentDetailRoute:
-      //   final args = settings.arguments as Map<String, dynamic>;
-      //   final lessonId = args['lessonId'] as int?;
-
-      //   return MaterialPageRoute(
-      //     builder: (_) => BlocProvider(
-      //       create: (ctx) => student_lesson.LessonDetailCubit(
-      //         ctx.read<LessonDetailRepository>(),
-      //       )..fetchLessonDetail(lessonId ?? 0),
-      //       child: student_lesson_screen.LessonDetailScreen(
-      //         lessonId: lessonId,
-      //         lessonTitle: args['lessonTitle'] as String? ?? '',
-      //       ),
-      //     ),
-      //   );
 
       case lessonStudentDetailRoute:
         final args = settings.arguments as Map<String, dynamic>;
@@ -349,14 +357,12 @@ class AppRouter {
               BlocProvider(
                 create: (ctx) =>
                     QuestionFilterCubit(ctx.read<QuestionRepository>()),
-              ), // ✅ هذا السطر
+              ), 
             ],
             child: const QuestionsListScreen(),
           ),
         );
 
-      // ✅ Teacher: Lesson status board (teacher's home screen)
-      // ✅ Teacher: Status Board
       case teacherStatusBoardRoute:
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
@@ -376,7 +382,6 @@ class AppRouter {
           ),
         );
 
-      // ✅ Teacher: All Courses Library
       case teacherCoursesRoute:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
@@ -395,7 +400,7 @@ class AppRouter {
             builder: (_) => BlocProvider(
               create: (ctx) => TeacherCourseDetailCubit(
                 ctx.read<LessonRepository>(),
-                ctx.read<TestRepository>(), // ✅
+                ctx.read<TestRepository>(), 
                 args,
               )..loadLessons(),
               child: TeacherCourseDetailScreen(course: args),
@@ -426,7 +431,6 @@ class AppRouter {
                 create: (ctx) =>
                     LessonDeleteCubit(ctx.read<LessonRepository>()),
               ),
-              // ✅ جديد: توفير TestDeleteCubit
               BlocProvider(
                 create: (ctx) => TestDeleteCubit(ctx.read<TestRepository>()),
               ),
