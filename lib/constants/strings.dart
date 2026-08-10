@@ -1,7 +1,7 @@
- //const String baseUrl = 'http://192.168.1.5:8000';
-//const String baseUrl = 'http://192.168.10.224:8000';
+//const String baseUrl = 'http://192.168.1.5:8000';
+const String baseUrl = 'http://192.168.10.224:8000';
 //const String baseUrl = 'http://172.20.10.2:8000';
-const String baseUrl = 'https://fluent.moayadismail.com';
+// const String baseUrl = 'https://fluent.moayadismail.com';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -25,6 +25,7 @@ const String podcastsRoute = '/podcasts';
 const String aiConversationRoute = '/ai-conversation';
 const String levelExceptionsRoute = '/level-exceptions';
 const String notificationsRoute = '/notifications';
+const String studentTestRoute = '/student-test';
 
 // ✅ Teacher Question routes
 const String questionsListRoute = '/teacher/questions';
@@ -108,6 +109,25 @@ String apiWordQuizCheck(int wordId) => '/api/words/$wordId/quiz_check';
 // ✅ Student Rate API (course must be completed — backend RateServiece)
 String apiRateCourse(int courseId) => '/api/rate/$courseId';
 String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
+
+// ✅ Student / Teacher Profile API
+const String apiStudentProfile = '/api/student/profile';
+const String apiTeacherProfile = '/api/teacher/profile';
+
+// ── Student attempts (tests / placement) ─────────────────────
+
+const String apiStartPlacementTest = '/api/startPlacementTest';
+String apiTestStart(int testId) => '/api/tests/$testId/start';
+
+/// CRITICAL: backend path is `submit-answer`, NOT `answer`.
+String apiAttemptSubmitAnswer(int attemptId, int questionId) =>
+    '/api/attempts/$attemptId/questions/$questionId/submit-answer';
+
+String apiAttemptFinish(int attemptId) => '/api/attempts/$attemptId/finish';
+
+String apiAttemptLeave(int attemptId) => '/api/attempts/$attemptId/leave';
+
+String apiAttemptReview(int attemptId) => '/api/attempts/$attemptId/review';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';

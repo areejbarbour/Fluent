@@ -1,6 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:fluent/data/repository/attempt_repository.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/data/services/attempt_service.dart';
+import 'package:fluent/data/services/profile_service.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
@@ -127,7 +131,9 @@ Future<void> main() async {
   final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
   final levelExceptionService = LevelExceptionService(dioInstance);
-  final levelExceptionRepository = LevelExceptionRepository(levelExceptionService,);
+  final levelExceptionRepository = LevelExceptionRepository(
+    levelExceptionService,
+  );
 
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
@@ -144,17 +150,23 @@ Future<void> main() async {
   final wordQuizService = WordQuizService(dioInstance);
   final wordQuizRepository = WordQuizRepository(wordQuizService);
 
-  final podcastService = PodcastService(dioInstance);
-  final podcastRepository = PodcastRepository(podcastService);
+  final profileService = ProfileService(dioInstance);
+  final profileRepository = ProfileRepository(profileService);
 
-  final paymentService = PaymentService(dioInstance);
-  final paymentRepository = PaymentRepository(paymentService);
+  final attemptService = AttemptService(dioInstance);
+  final attemptRepository = AttemptRepository(attemptService);
 
   final contentReviewService = ContentReviewService(dioInstance);
   final contentReviewRepository = ContentReviewRepository(contentReviewService);
 
   final notificationService = NotificationService(dioInstance);
   final notificationRepository = NotificationRepository(notificationService);
+
+  final podcastService = PodcastService(dioInstance);
+  final podcastRepository = PodcastRepository(podcastService);
+
+  final paymentService = PaymentService(dioInstance);
+  final paymentRepository = PaymentRepository(paymentService);
 
   String initialRoute = onboardingRoute;
   if (isUserLoggedIn) {
@@ -180,8 +192,8 @@ Future<void> main() async {
       testRepository: testRepository,
       studentLessonRepository: studentLessonRepository,
       lessonDetailRepository: lessonDetailRepository,
-      studentLessonRepository: studentLessonRepository, 
-      lessonDetailRepository: lessonDetailRepository, 
+      //  studentLessonRepository: studentLessonRepository,
+      //  lessonDetailRepository: lessonDetailRepository,
       wordRepository: wordRepository,
       levelExceptionRepository: levelExceptionRepository,
       wordsBankRepository: wordsBankRepository,
@@ -209,7 +221,7 @@ class MyApp extends StatefulWidget {
   final TestRepository testRepository;
   final StudentLessonRepository studentLessonRepository;
   final LessonDetailRepository lessonDetailRepository;
-  final LessonDetailRepository lessonDetailRepository; 
+  // final LessonDetailRepository lessonDetailRepository;
   final WordRepository wordRepository;
   final String initialRoute;
   final LevelExceptionRepository levelExceptionRepository;
@@ -423,18 +435,25 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             RepositoryProvider<WordQuizRepository>.value(
               value: widget.wordQuizRepository,
             ),
-            RepositoryProvider<PodcastRepository>.value(
-             value: widget.podcastRepository,
+            RepositoryProvider<ProfileRepository>.value(
+              value: widget.profileRepository,
+            ),
+            RepositoryProvider<AttemptRepository>.value(
+              value: widget.attemptRepository,
             ),
             RepositoryProvider<ContentReviewRepository>.value(
               value: widget.contentReviewRepository,
             ),
+            RepositoryProvider<PodcastRepository>.value(
+              value: widget.podcastRepository,
+            ),
+
             RepositoryProvider<NotificationRepository>.value(
               value: widget.notificationRepository,
             ),
             RepositoryProvider<PaymentRepository>.value(
-            value: widget.paymentRepository,
-             ),
+              value: widget.paymentRepository,
+            ),
           ],
           child: MultiBlocProvider(
             providers: [
