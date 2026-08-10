@@ -21,7 +21,6 @@ import 'package:fluent/cubit/student/lesson_words/lesson_words_cubit.dart';
 import 'package:fluent/cubit/student/lesson_words/lesson_words_state.dart';
 import 'package:fluent/data/models/lesson_word_model.dart';
 
-/// Shared time formatter used by both the inline and fullscreen video players.
 String _formatDuration(Duration d) {
   final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -52,12 +51,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   Future<void> _playWordAudio(String? audioUrl) async {
     if (audioUrl == null || audioUrl.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No audio for this word'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      _showErrorSnack('No audio for this word');
       return;
     }
     try {
@@ -74,8 +68,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   void _showLessonWordsDialog() {
     final lessonId = widget.lessonId ?? 0;
-
-    // ناخد الـ Cubit من الـ context الحالي قبل ما نفتح الـ Dialog
     final cubit = context.read<LessonWordsCubit>();
     cubit.fetchLessonWords(lessonId);
 
@@ -107,49 +99,143 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   Future<void> _handleAddComment(String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-    if (trimmed.length > LessonDetailCubit.maxCommentLength) {
-      _showErrorSnack(
-        'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
-      );
-      return;
-    }
-    setState(() => _isSendingComment = true);
-    final error = await context.read<LessonDetailCubit>().submitComment(
-      widget.lessonId ?? 0,
-      trimmed,
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) return;
+  if (trimmed.length > LessonDetailCubit.maxCommentLength) {
+    _showErrorSnack(
+      'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
     );
-    if (!mounted) return;
-    setState(() => _isSendingComment = false);
-
-    if (error != null) _showErrorSnack(error);
+    return;
   }
+  setState(() => _isSendingComment = true);
+  final error = await context.read<LessonDetailCubit>().submitComment(
+    widget.lessonId ?? 0,
+    trimmed,
+  );
+  if (!mounted) return;
+  setState(() => _isSendingComment = false);
+
+  if (error != null) {
+    _showErrorSnack(error);
+  } else {
+    _showSuccessSnack('Comment added successfully');
+  }
+}
+
+Future<void> _handleEditComment(int commentId, String newText) async {
+  setState(() => _busyCommentId = commentId);
+  final error = await context.read<LessonDetailCubit>().editComment(
+    commentId,
+    newText,
+  );
+  if (!mounted) return;
+  setState(() => _busyCommentId = null);
+  if (error != null) {
+    _showErrorSnack(error);
+  } else {
+    _showSuccessSnack('Comment updated successfully');
+  }
+}
+
+Future<void> _handleDeleteComment(int commentId) async {
+  setState(() => _busyCommentId = commentId);
+  final error = await context.read<LessonDetailCubit>().removeComment(
+    commentId,
+  );
+  if (!mounted) return;
+  setState(() => _busyCommentId = null);
+  if (error != null) {
+    _showErrorSnack(error);
+  } else {
+    _showSuccessSnack('Comment deleted successfully');
+  }
+}
 
   void _showErrorSnack(String message) {
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Colors.white,
-              size: 18,
+  HapticFeedback.mediumImpact();
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(6.r),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(.15),
             ),
-            SizedBox(width: 8.w),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        duration: const Duration(seconds: 3),
+            child: Icon(
+              Icons.error_outline_rounded,
+              color: Colors.redAccent,
+              size: 18.sp,
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5.sp,
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+      backgroundColor: AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
+void _showSuccessSnack(String message) {
+  HapticFeedback.lightImpact();
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(6.r),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(.15),
+            ),
+            child: Icon(
+              Icons.check_circle_rounded,
+              color: const Color(0xFF4ADE80),
+              size: 18.sp,
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
 
   void _showCommentActions(LessonCommentModel comment, {bool canEdit = true}) {
     HapticFeedback.selectionClick();
@@ -189,7 +275,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                   ),
                   SizedBox(height: 18.h),
-                  // ✅ تعديل فقط إن لم يكن الدرس archived/closed (منطق الباك)
                   if (canEdit) ...[
                     _actionTile(
                       icon: Icons.edit_rounded,
@@ -574,27 +659,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Future<void> _handleEditComment(int commentId, String newText) async {
-    setState(() => _busyCommentId = commentId);
-    final error = await context.read<LessonDetailCubit>().editComment(
-      commentId,
-      newText,
-    );
-    if (!mounted) return;
-    setState(() => _busyCommentId = null);
-    if (error != null) _showErrorSnack(error);
-  }
-
-  Future<void> _handleDeleteComment(int commentId) async {
-    setState(() => _busyCommentId = commentId);
-    final error = await context.read<LessonDetailCubit>().removeComment(
-      commentId,
-    );
-    if (!mounted) return;
-    setState(() => _busyCommentId = null);
-    if (error != null) _showErrorSnack(error);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -642,7 +706,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     if (state is! LessonDetailSuccess) {
                       return const SizedBox.shrink();
                     }
-                    // مطابق للباك: لا إنشاء تعليق إلا إذا الدرس published
                     if (!state.data.canCreateComment) {
                       return SafeArea(
                         top: false,

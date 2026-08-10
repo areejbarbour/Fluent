@@ -50,7 +50,6 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
 
       if (result != null) {
         setState(() {
-          // أضف الملفات الجديدة بدون مسح الموجودين
           for (final file in result.files) {
             if (file.path != null && !_selectedFilePaths.contains(file.path)) {
               _selectedFilePaths.add(file.path!);
@@ -153,26 +152,53 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
   Widget build(BuildContext context) {
     return BlocListener<LevelExceptionCreateCubit, LevelExceptionCreateState>(
       listener: (context, state) {
-        if (state is LevelExceptionCreateSuccess) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
+  if (state is LevelExceptionCreateSuccess) {
+    Navigator.pop(context);
+
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6.r),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(.15),
               ),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: const Color(0xFF4ADE80),
+                size: 18.sp,
               ),
             ),
-          );
-        } else if (state is LevelExceptionCreateFailure) {
-          // Keep sheet open and show error in-form.
-          setState(() => _formError = state.message);
-        }
-      },
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Text(
+                state.message,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5.sp,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  } else if (state is LevelExceptionCreateFailure) {
+    setState(() => _formError = state.message);
+  }
+},
       child: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,

@@ -16,7 +16,7 @@ class LevelExceptionUpdateCubit extends Cubit<LevelExceptionUpdateState> {
     List<MultipartFile>? attachments,
   }) async {
     emit(LevelExceptionUpdateLoading());
-    print("🟡 [LevelExceptionUpdateCubit] Updating exception #$id...");
+    print(" [LevelExceptionUpdateCubit] Updating exception #$id...");
 
     final result = await repository.updateException(
       id: id,
@@ -25,7 +25,7 @@ class LevelExceptionUpdateCubit extends Cubit<LevelExceptionUpdateState> {
     );
 
     if (result['success'] == true) {
-      print("🎉 [LevelExceptionUpdateCubit] Updated successfully");
+      print(" [LevelExceptionUpdateCubit] Updated successfully");
       emit(
         LevelExceptionUpdateSuccess(
           updated: result['data'],
@@ -33,7 +33,7 @@ class LevelExceptionUpdateCubit extends Cubit<LevelExceptionUpdateState> {
         ),
       );
     } else {
-      print("❌ [LevelExceptionUpdateCubit] Failed: ${result['message']}");
+      print(" [LevelExceptionUpdateCubit] Failed: ${result['message']}");
       emit(
         LevelExceptionUpdateFailure(
           result['message'] ?? 'Failed to update request',

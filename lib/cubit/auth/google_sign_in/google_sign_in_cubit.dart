@@ -14,35 +14,34 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
 
   Future<void> loginWithGoogle() async {
     emit(GoogleLoginLoading());
-    print("⏳ Google login process started");
+    print(" Google login process started");
 
     try {
-      // تسجيل الخروج من حساب قديم لتجنب الدخول التلقائي
       await _googleSignIn.signOut();
 
       final user = await _googleSignIn.signIn();
 
       if (user == null) {
-        print("❌ Google Sign-In was cancelled by the user");
+        print(" Google Sign-In was cancelled by the user");
         emit(const GoogleLoginFailure('Google Sign-In was cancelled'));
         return;
       }
 
-      print("✅ Google user selected: ${user.email}");
+      print(" Google user selected: ${user.email}");
 
       final googleAuth = await user.authentication;
       final accessToken = googleAuth.accessToken;
 
       if (accessToken == null) {
-        print("❌ Failed to retrieve access token from GoogleAuth");
+        print(" Failed to retrieve access token from GoogleAuth");
         emit(const GoogleLoginFailure('Failed to retrieve access token'));
         return;
       }
 
-      print("🔐 Access token received: $accessToken");
+      print(" Access token received: $accessToken");
 
       final response = await authRepository.googleLogin(token: accessToken);
-      print("📡 Received response from backend: $response");
+      print(" Received response from backend: $response");
 
       if (response['success'] == true) {
         final token = response['token'];
@@ -54,7 +53,6 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('login_method', 'google');
 
-        // ✅ حفظ role (نفس منطقك السابق)
         if (roles.isNotEmpty) {
           final role = roles.first;
           String roleName = '';
@@ -66,10 +64,9 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
           }
 
           await prefs.setString('user_role', roleName);
-          print("🎭 [GoogleLoginCubit] Role saved: $roleName");
+          print(" [GoogleLoginCubit] Role saved: $roleName");
         }
 
-        // ✅ حفظ user_id لمطابقة isOwn في التعليقات
         await _saveUserId(prefs, userMap);
         if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
           try {
@@ -83,23 +80,22 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
               }
             }
           } catch (e) {
-            print("⚠️ [GoogleLoginCubit] getCurrentUser fallback failed: $e");
+            print(" [GoogleLoginCubit] getCurrentUser fallback failed: $e");
           }
         }
 
-        // 🔑 أعد تجهيز Dio بالتوكن الجديد!
         await setupDio();
-        print("✅ Token stored in SharedPreferences: $token");
+        print(" Token stored in SharedPreferences: $token");
 
         emit(GoogleLoginSuccess(token: token, roles: roles, user: userMap));
-        print("🎉 GoogleLoginSuccess emitted");
+        print(" GoogleLoginSuccess emitted");
       } else {
         final errorMsg = response['message'] ?? 'Google login failed';
-        print("❌ Backend login failed: $errorMsg");
+        print(" Backend login failed: $errorMsg");
         emit(GoogleLoginFailure(errorMsg));
       }
     } catch (e) {
-      print("❌ Unexpected error occurred during Google login: $e");
+      print(" Unexpected error occurred during Google login: $e");
       emit(const GoogleLoginFailure('An unexpected error occurred'));
     }
   }

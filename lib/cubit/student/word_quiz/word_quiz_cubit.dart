@@ -16,7 +16,7 @@ class WordQuizCubit extends Cubit<WordQuizState> {
 
   Future<void> loadQuiz() async {
     emit(const WordQuizLoading());
-    print('🟡 [WordQuizCubit] Loading quiz...');
+    print(' [WordQuizCubit] Loading quiz...');
 
     final result = await repository.getQuiz();
     if (result['success'] != true) {
@@ -32,7 +32,7 @@ class WordQuizCubit extends Cubit<WordQuizState> {
       return;
     }
 
-    print('🎉 [WordQuizCubit] Loaded ${questions.length} questions');
+    print(' [WordQuizCubit] Loaded ${questions.length} questions');
     emit(WordQuizInProgress(questions: questions, currentIndex: 0));
   }
 
@@ -52,7 +52,7 @@ class WordQuizCubit extends Cubit<WordQuizState> {
     final wordId = s.current.wordId;
     final answerId = s.selectedOptionId!;
 
-    print('🟡 [WordQuizCubit] Checking word #$wordId answer #$answerId');
+    print(' [WordQuizCubit] Checking word #$wordId answer #$answerId');
     final result = await repository.checkAnswer(
       wordId: wordId,
       answerId: answerId,

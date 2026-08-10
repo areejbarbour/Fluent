@@ -17,5 +17,4 @@ class AppColors {
 
       //static const Color yellowMid = Color(0xFFFFBA42); // أصفر-برتقالي
 
-
 }

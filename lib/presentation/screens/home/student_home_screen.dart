@@ -20,6 +20,9 @@ import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:fluent/presentation/screens/statics/create_level_exception_sheet.dart';
 import 'package:fluent/cubit/student/levels/level_exception_create_cubit.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/payment/payment_cubit.dart';
+import 'package:fluent/data/repository/payment_repository.dart';
+import 'package:fluent/presentation/screens/home/level_purchase_sheet.dart';
 
 enum LevelStatus { completed, current, locked, boss, available }
 
@@ -78,9 +81,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   static const List<IconData> _decorativeIcons = [
     Icons.auto_awesome_rounded,
-    Icons.diamond_rounded,
-    Icons.flight_takeoff_rounded,
-    Icons.restaurant_rounded,
+  //Icons.diamond_rounded,
+     Icons.menu_book_rounded,
+   // Icons.flight_takeoff_rounded,
+   Icons.record_voice_over_rounded, 
+    Icons.school_rounded,    
     Icons.public_rounded,
     Icons.school_rounded,
   ];
@@ -89,10 +94,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       _decorativeIcons[order % _decorativeIcons.length];
 
   static const List<List<Color>> _availableGradients = [
-    [Color(0xff4FACFE), Color(0xff2E6BE6)], // أزرق
-    [Color(0xffB388FF), Color(0xff7C4DFF)], // موف
-    [Color(0xff36D1C4), Color(0xff1FA2A6)], // فيروزي
-    [Color(0xffFF8FD9), Color(0xffD6409F)], // وردي
+    [Color(0xff4FACFE), Color(0xff2E6BE6)],
+    [Color(0xffB388FF), Color(0xff7C4DFF)], 
+    [Color(0xff36D1C4), Color(0xff1FA2A6)], 
+    [Color(0xffFF8FD9), Color(0xffD6409F)], 
   ];
 
   List<Color> _availableColorsFor(int availableIndex) =>
@@ -1005,7 +1010,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      // TODO: navigate to full leaderboard
                     },
                     child: Text(
                       "View all",
@@ -1020,8 +1024,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               ),
 
               SizedBox(height: 10.h),
-
-              // Leaders list
               _leaderRow(rank: 1, name: "Omar", xp: "18,200", color: AppColors.yellow),
               SizedBox(height: 7.h),
               _leaderRow(rank: 2, name: "Lina", xp: "16,400", color: const Color(0xFFC0C0C0)),
@@ -2191,10 +2193,6 @@ class _MountainsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MountainsPainter old) => false;
 }
-
-/// المسار (Levels Path) — أرقام ScreenUtil (.w / .h / .r / .sp) مع
-/// Clamp حماية عشان الواجهة تتكيف مع أي حجم شاشة موبايل من غير ما
-/// تنكسر أو تتراكب العناصر فوق بعضها.
 class _LevelsPath extends StatelessWidget {
   final List<LevelPathData> levels;
   final AnimationController flowController;
@@ -2574,25 +2572,6 @@ class _LevelNode extends StatelessWidget {
     if (isLocked) {
       HapticFeedback.mediumImpact();
       _showCreateExceptionSheet(context);
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(
-      //     content: Row(
-      //       children: [
-      //         const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-      //         SizedBox(width: 8.w),
-      //         const Expanded(
-      //           child: Text("Finish the previous level to unlock this one! 💪"),
-      //         ),
-      //       ],
-      //     ),
-      //     backgroundColor: AppColors.primary,
-      //     behavior: SnackBarBehavior.floating,
-      //     shape: RoundedRectangleBorder(
-      //       borderRadius: BorderRadius.circular(12.r),
-      //     ),
-      //     duration: const Duration(seconds: 2),
-      //   ),
-      // );
       return;
     }
 
@@ -2627,100 +2606,130 @@ class _LevelNode extends StatelessWidget {
   }
 
   void _showPurchaseSheet(BuildContext context) {
-    final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ClipRRect(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: AppColors.dark.withOpacity(.9),
-              border: Border.all(color: Colors.white.withOpacity(.15)),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40.w,
-                  height: 4.h,
-                  margin: EdgeInsets.only(bottom: 14.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.3),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.lock_open_rounded,
-                      color: sheetColors.first,
-                      size: 20.sp,
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        level.title,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  level.subtitle,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 12.sp,
-                  ),
-                ),
-                SizedBox(height: 18.h),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: sheetColors),
-                      borderRadius: BorderRadius.circular(16.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: sheetColors.first.withOpacity(.5),
-                          blurRadius: 14,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-              ],
-            ),
-          ),
-        ),
-      ),
+  if (level.id == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Level ID is missing')),
     );
+    return;
   }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return BlocProvider(
+        create: (ctx) => PaymentCubit(ctx.read<PaymentRepository>()),
+        child: LevelPurchaseSheet(
+          levelId: level.id!,
+          levelTitle: level.title,
+          levelSubtitle: level.subtitle,
+          price: level.price,
+          colors: level.colors,
+          onSuccess: () {
+            context.read<StudentLevelsCubit>().fetchStudentLevels();
+          },
+        ),
+      );
+    },
+  );
+}
+
+  // void _showPurchaseSheet(BuildContext context) {
+  //   final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (_) => ClipRRect(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+  //       child: BackdropFilter(
+  //         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+  //         child: Container(
+  //           padding: EdgeInsets.all(20.w),
+  //           decoration: BoxDecoration(
+  //             color: AppColors.dark.withOpacity(.9),
+  //             border: Border.all(color: Colors.white.withOpacity(.15)),
+  //             borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+  //           ),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Container(
+  //                 width: 40.w,
+  //                 height: 4.h,
+  //                 margin: EdgeInsets.only(bottom: 14.h),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white.withOpacity(.3),
+  //                   borderRadius: BorderRadius.circular(10.r),
+  //                 ),
+  //               ),
+  //               Row(
+  //                 children: [
+  //                   Icon(
+  //                     Icons.lock_open_rounded,
+  //                     color: sheetColors.first,
+  //                     size: 20.sp,
+  //                   ),
+  //                   SizedBox(width: 8.w),
+  //                   Expanded(
+  //                     child: Text(
+  //                       level.title,
+  //                       style: GoogleFonts.poppins(
+  //                         color: Colors.white,
+  //                         fontWeight: FontWeight.w800,
+  //                         fontSize: 16.sp,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //               SizedBox(height: 4.h),
+  //               Text(
+  //                 level.subtitle,
+  //                 style: GoogleFonts.poppins(
+  //                   color: Colors.white.withOpacity(.7),
+  //                   fontSize: 12.sp,
+  //                 ),
+  //               ),
+  //               SizedBox(height: 18.h),
+  //               GestureDetector(
+  //                 onTap: () {
+  //                   Navigator.pop(context);
+  //                 },
+  //                 child: Container(
+  //                   padding: EdgeInsets.symmetric(vertical: 14.h),
+  //                   width: double.infinity,
+  //                   decoration: BoxDecoration(
+  //                     gradient: LinearGradient(colors: sheetColors),
+  //                     borderRadius: BorderRadius.circular(16.r),
+  //                     boxShadow: [
+  //                       BoxShadow(
+  //                         color: sheetColors.first.withOpacity(.5),
+  //                         blurRadius: 14,
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   child: Center(
+  //                     child: Text(
+  //                       "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
+  //                       style: GoogleFonts.poppins(
+  //                         color: Colors.white,
+  //                         fontWeight: FontWeight.w800,
+  //                         fontSize: 13.sp,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(height: 8.h),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -2746,7 +2755,6 @@ class _LevelNode extends StatelessWidget {
     } else if (isCurrent) {
       gradientColors = [AppColors.orange, AppColors.yellow];
     } else if (isAvailable) {
-      // ✅ كل مستوى متاح للشراء ياخد لونه الخاص (أزرق/موف/فيروزي/وردي..)
       gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
     } else {
       // completed
@@ -2985,32 +2993,6 @@ class _LevelNode extends StatelessWidget {
           curve: Curves.easeOutBack,
         );
   }
-
-  //   void _showCreateExceptionSheet(BuildContext context) {
-  //   if (level.id == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Level ID is missing')),
-  //     );
-  //     return;
-  //   }
-
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (_) {
-  //       return BlocProvider(
-  //         create: (ctx) => LevelExceptionCreateCubit(
-  //           ctx.read<LevelExceptionRepository>(),
-  //         ),
-  //         child: _CreateExceptionSheet(
-  //           levelId: level.id!,
-  //           levelTitle: level.title,
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 
   void _showCreateExceptionSheet(BuildContext context) {
     if (level.id == null) {

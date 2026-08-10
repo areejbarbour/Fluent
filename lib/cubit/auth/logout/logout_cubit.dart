@@ -13,7 +13,7 @@ class LogoutCubit extends Cubit<LogoutState> {
 
   Future<void> logout() async {
     emit(LogoutLoading());
-    print("🟡 [LogoutCubit] Logging out...");
+    print(" [LogoutCubit] Logging out...");
 
     try {
       final data = await authRepository.logout();
@@ -22,27 +22,25 @@ class LogoutCubit extends Cubit<LogoutState> {
       final message = data['message'] as String? ?? '';
 
       if (success) {
-        // ✅ مسح SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');
         await prefs.remove('is_logged_in');
         await prefs.remove('login_method');
-        await prefs.remove('user_role'); // ✅ مسح الدور
-        await prefs.remove('user_id'); // ✅ مسح user_id (تعليقات / isOwn)
-        print("🧹 [LogoutCubit] SharedPreferences cleared");
+        await prefs.remove('user_role'); 
+        await prefs.remove('user_id'); 
+        print(" [LogoutCubit] SharedPreferences cleared");
 
-        // ✅ إعادة setup Dio بدون token
         await setupDio();
-        print("⚙️ [LogoutCubit] Dio re-initialized without token");
+        print(" [LogoutCubit] Dio re-initialized without token");
 
-        print("🎉 [LogoutCubit] Logout successful");
+        print(" [LogoutCubit] Logout successful");
         emit(LogoutSuccess(message));
       } else {
-        print("❌ [LogoutCubit] Logout failed: $message");
+        print(" [LogoutCubit] Logout failed: $message");
         emit(LogoutFailure(message));
       }
     } catch (e) {
-      print("❌ [LogoutCubit] Exception: $e");
+      print(" [LogoutCubit] Exception: $e");
       emit(LogoutFailure(e.toString()));
     }
   }

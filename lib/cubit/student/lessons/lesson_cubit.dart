@@ -9,15 +9,15 @@ class StudentLessonsCubit extends Cubit<StudentLessonsState> {
 
   Future<void> fetchStudentLessons(int courseId) async {
     emit(StudentLessonsLoading());
-    print("🟡 [StudentLessonsCubit] Fetching lessons for course $courseId...");
+    print(" [StudentLessonsCubit] Fetching lessons for course $courseId...");
 
     final result = await studentLessonRepository.getStudentLessons(courseId);
 
     if (result['success'] == true) {
-      print("🎉 [StudentLessonsCubit] Lessons loaded successfully");
+      print(" [StudentLessonsCubit] Lessons loaded successfully");
       emit(StudentLessonsSuccess(result['data']));
     } else {
-      print("❌ [StudentLessonsCubit] Failed: ${result['message']}");
+      print(" [StudentLessonsCubit] Failed: ${result['message']}");
       emit(
         StudentLessonsFailure(result['message'] ?? 'Failed to load lessons'),
       );

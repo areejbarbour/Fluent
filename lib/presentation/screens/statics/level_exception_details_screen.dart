@@ -698,19 +698,63 @@ class _DetailsBody extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          error ?? 'Attachment deleted successfully.',
-          style: GoogleFonts.poppins(fontSize: 13.sp),
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(6.r),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(.15),
+          ),
+          child: Icon(
+            error == null
+                ? Icons.check_circle_rounded
+                : Icons.error_outline_rounded,
+            color: error == null
+                ? const Color(0xFF4ADE80)
+                : Colors.redAccent,
+            size: 18.sp,
+          ),
         ),
-        backgroundColor: error == null ? AppColors.sky : Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Text(
+            error ?? 'Attachment deleted successfully.',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5.sp,
+            ),
+          ),
         ),
-      ),
-    );
+      ],
+    ),
+    backgroundColor: AppColors.primary,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14.r),
+    ),
+    margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+    duration: const Duration(seconds: 3),
+  ),
+);
+
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Text(
+    //       error ?? 'Attachment deleted successfully.',
+    //       style: GoogleFonts.poppins(fontSize: 13.sp),
+    //     ),
+    //     backgroundColor: error == null ? AppColors.sky : Colors.redAccent,
+    //     behavior: SnackBarBehavior.floating,
+    //     shape: RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.circular(10.r),
+    //     ),
+    //   ),
+    // );
   }
 
   Widget _sectionCard({
@@ -974,27 +1018,55 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
   Widget build(BuildContext context) {
     return BlocListener<LevelExceptionUpdateCubit, LevelExceptionUpdateState>(
       listener: (context, state) {
-        if (state is LevelExceptionUpdateSuccess) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13.sp),
+  if (state is LevelExceptionUpdateSuccess) {
+    Navigator.pop(context);
+
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6.r),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(.15),
               ),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: const Color(0xFF4ADE80),
+                size: 18.sp,
               ),
             ),
-          );
-          widget.onSuccess(state.updated);
-        } else if (state is LevelExceptionUpdateFailure) {
-          // Keep sheet open and show error in-form.
-          setState(() => _formError = state.message);
-        }
-      },
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Text(
+                state.message ?? 'Request updated successfully.',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5.sp,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    widget.onSuccess(state.updated);
+  } else if (state is LevelExceptionUpdateFailure) {
+    setState(() => _formError = state.message);
+  }
+},
+     
       child: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,

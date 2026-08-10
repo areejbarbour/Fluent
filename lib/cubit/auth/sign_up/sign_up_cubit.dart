@@ -17,10 +17,10 @@ class SignUpCubit extends Cubit<SignUpState> {
     required String passwordConfirmation,
   }) async {
     emit(SignUpLoading());
-    print("🟡 [SignUpCubit] Starting sign up process...");
+    print(" [SignUpCubit] Starting sign up process...");
 
     try {
-      print("📨 [SignUpCubit] Sending registration request...");
+      print(" [SignUpCubit] Sending registration request...");
       final data = await authRepository.register(
         firstName: firstName,
         lastName: lastName,
@@ -29,7 +29,7 @@ class SignUpCubit extends Cubit<SignUpState> {
         passwordConfirmation: passwordConfirmation,
       );
 
-      print("✅ [SignUpCubit] Response received: $data");
+      print(" [SignUpCubit] Response received: $data");
 
       final success = data['success'] as bool? ?? false;
       final message = data['message'] as String? ?? '';
@@ -37,15 +37,15 @@ class SignUpCubit extends Cubit<SignUpState> {
       final errors = data['errors'] as Map<String, dynamic>?;
 
       if (success) {
-        print("🎉 [SignUpCubit] Registration successful: $message");
-        print("📧 [SignUpCubit] Navigate to OTP verification screen");
+        print(" [SignUpCubit] Registration successful: $message");
+        print(" [SignUpCubit] Navigate to OTP verification screen");
         emit(SignUpSuccess(message));
       } else {
-        print("❌ [SignUpCubit] Registration failed: $message");
+        print(" [SignUpCubit] Registration failed: $message");
         emit(SignUpFailure(message, errors: errors));
       }
     } catch (e) {
-      print("❌ [SignUpCubit] Exception: $e");
+      print(" [SignUpCubit] Exception: $e");
       emit(SignUpFailure(e.toString()));
     }
   }
