@@ -178,18 +178,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                       // ✅ التوجيه بناءً على الـ type
                       if (widget.type == OtpType.register) {
-                        // ✅ NEW USER = دائماً يروح لـ Student Home
+                        // طالب جديد → شاشة اختيار تحديد المستوى / المستوى 1
                         Navigator.pushNamedAndRemoveUntil(
                           context,
-                          studentHomeRoute,
+                          placementTestDialogRoute,
                           (route) => false,
                         );
-                        Future.delayed(Duration(milliseconds: 500), () {
-                          showDialog(
-                            context: context,
-                            builder: (_) => PlacementTestDialog(),
-                          );
-                        });
                       } else if (widget.type == OtpType.forgotPassword) {
                         // ✅ Forgot Password = يروح لـ SetNewPasswordScreen
                         Navigator.pushReplacementNamed(

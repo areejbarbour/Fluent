@@ -1,3 +1,4 @@
+import 'package:fluent/utils/teacher_permissions.dart';
 import 'package:fluent/data/models/question_model.dart';
 
 class TestModel {
@@ -30,18 +31,9 @@ class TestModel {
   bool get isCourseTest => normalizedTestableType == 'course';
   bool get isLessonTest => normalizedTestableType == 'lesson';
 
-  bool get canEdit {
-    final s = normalizedStatus;
-    return s != 'in_review' && s != 'archived' && s != 'closed';
-  }
+  bool get canEdit => TeacherPermissions.canEditTest(status);
 
-  bool get canDelete {
-    final s = normalizedStatus;
-    return s != 'published' &&
-        s != 'archived' &&
-        s != 'closed' &&
-        s != 'in_review';
-  }
+  bool get canDelete => TeacherPermissions.canDeleteTest(status);
 
   factory TestModel.fromJson(Map<String, dynamic> json) {
     final parsedQuestions = <Question>[];
@@ -67,8 +59,8 @@ class TestModel {
           ? json['passing_score']
           : int.tryParse(json['passing_score'].toString()) ?? 0,
       status: json['status']?.toString().toLowerCase().trim() ?? 'draft',
-      testableType: json['testable_type']?.toString().toLowerCase().trim() ??
-          'lesson',
+      testableType:
+          json['testable_type']?.toString().toLowerCase().trim() ?? 'lesson',
       testableId: json['testable_id'] is int
           ? json['testable_id']
           : int.tryParse(json['testable_id'].toString()) ?? 0,

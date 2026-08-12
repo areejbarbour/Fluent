@@ -1,6 +1,10 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
+import 'package:fluent/data/models/level_model.dart';
+import 'package:fluent/data/repository/level_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/presentation/screens/placement/placement_test_screen.dart';
 import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +12,52 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// First-login placement choice — clean product UI only (no server jargon).
-class PlacementTestDialog extends StatelessWidget {
+/// If the student already completed placement / has levels → go home immediately.
+class PlacementTestDialog extends StatefulWidget {
   const PlacementTestDialog({super.key});
 
   @override
+  State<PlacementTestDialog> createState() => _PlacementTestDialogState();
+}
+
+class _PlacementTestDialogState extends State<PlacementTestDialog> {
+  bool _checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _gate();
+  }
+
+  Future<void> _gate() async {
+    try {
+      final alreadyPlaced = await StudentEntryNavigator.hasCompletedPlacement(
+        context,
+      );
+      if (!mounted) return;
+      if (alreadyPlaced) {
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil(studentHomeRoute, (route) => false);
+        return;
+      }
+    } catch (_) {
+      // fall through to dialog
+    }
+    if (mounted) setState(() => _checking = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_checking) {
+      return const Material(
+        color: Colors.black54,
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.yellow),
+        ),
+      );
+    }
+
     return Material(
       type: MaterialType.transparency,
       child: Stack(
@@ -160,7 +205,10 @@ class _DialogContent extends StatelessWidget {
           _GlassButton(
             label: 'Start at Level 1',
             icon: Icons.play_arrow_rounded,
-            onPressed: () {
+            onPressed: () async {
+              await StudentEntryNavigator.markSkipPlacement();
+              await StudentEntryNavigator.markOnboarded();
+              if (!context.mounted) return;
               Navigator.of(
                 context,
               ).pushNamedAndRemoveUntil(studentHomeRoute, (route) => false);

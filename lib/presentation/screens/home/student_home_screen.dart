@@ -3,6 +3,12 @@ import 'dart:ui';
 
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/cubit/notification/notification_cubit.dart';
+import 'package:fluent/cubit/notification/notification_state.dart';
+import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/data/repository/auth_repository.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -57,11 +63,11 @@ class StudentHomeScreen extends StatefulWidget {
 
   const StudentHomeScreen({
     super.key,
-    this.userName = "Rasha",
-    this.xp = 12540,
-    this.streakDays = 15,
-    this.level = 8,
-    this.levelProgress = 0.78,
+    this.userName = '',
+    this.xp = 0,
+    this.streakDays = 0,
+    this.level = 0,
+    this.levelProgress = 0.0,
   });
 
   @override
@@ -79,13 +85,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   List<LevelPathData> _levels = [];
 
+  String _displayName = '';
+  String? _imageUrl;
+  int _xp = 0;
+  int _streakDays = 0;
+  int _level = 0;
+  double _levelProgress = 0.0;
+
   static const List<IconData> _decorativeIcons = [
     Icons.auto_awesome_rounded,
-  //Icons.diamond_rounded,
-     Icons.menu_book_rounded,
-   // Icons.flight_takeoff_rounded,
-   Icons.record_voice_over_rounded, 
-    Icons.school_rounded,    
+    //Icons.diamond_rounded,
+    Icons.menu_book_rounded,
+    // Icons.flight_takeoff_rounded,
+    Icons.record_voice_over_rounded,
+    Icons.school_rounded,
     Icons.public_rounded,
     Icons.school_rounded,
   ];
@@ -95,9 +108,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   static const List<List<Color>> _availableGradients = [
     [Color(0xff4FACFE), Color(0xff2E6BE6)],
-    [Color(0xffB388FF), Color(0xff7C4DFF)], 
-    [Color(0xff36D1C4), Color(0xff1FA2A6)], 
-    [Color(0xffFF8FD9), Color(0xffD6409F)], 
+    [Color(0xffB388FF), Color(0xff7C4DFF)],
+    [Color(0xff36D1C4), Color(0xff1FA2A6)],
+    [Color(0xffFF8FD9), Color(0xffD6409F)],
   ];
 
   List<Color> _availableColorsFor(int availableIndex) =>
@@ -153,6 +166,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   void initState() {
     super.initState();
+    _xp = widget.xp;
+    _streakDays = widget.streakDays;
+    _level = widget.level;
+    _levelProgress = widget.levelProgress;
+    _displayName = widget.userName;
     _pathFlowController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -171,7 +189,61 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       if (cubit.state is StudentLevelsInitial) {
         cubit.fetchStudentLevels();
       }
+      _loadStudentIdentity();
+      StudentEntryNavigator.markOnboarded();
     });
+  }
+
+  Future<void> _loadStudentIdentity() async {
+    String name = widget.userName;
+    String? imageUrl;
+
+    try {
+      final auth = context.read<AuthRepository>();
+      final userRes = await auth.getCurrentUser();
+      if (userRes['success'] == true && userRes['data'] is Map) {
+        final u = Map<String, dynamic>.from(userRes['data'] as Map);
+        final first = (u['first_name'] ?? '').toString().trim();
+        if (first.isNotEmpty) name = first;
+      }
+    } catch (_) {}
+
+    int xp = widget.xp;
+    int streak = widget.streakDays;
+    try {
+      final profileRepo = context.read<ProfileRepository>();
+      final profileRes = await profileRepo.getStudentProfile();
+      if (profileRes['success'] == true &&
+          profileRes['data'] is StudentProfileModel) {
+        final pr = profileRes['data'] as StudentProfileModel;
+        if (pr.imageUrl != null && pr.imageUrl!.isNotEmpty) {
+          imageUrl = pr.imageUrl;
+        }
+        xp = pr.points;
+        streak = pr.streak;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _displayName = name.isNotEmpty ? name : _displayName;
+      _imageUrl = imageUrl;
+      _xp = xp;
+      _streakDays = streak;
+    });
+  }
+
+  String get _formalGreeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
+  Future<void> _openProfile() async {
+    HapticFeedback.selectionClick();
+    await Navigator.pushNamed(context, profileRoute);
+    if (mounted) _loadStudentIdentity();
   }
 
   @override
@@ -228,14 +300,41 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
                             if (state is StudentLevelsSuccess) {
                               _levels = _mapLevels(state.data);
+                              // Derive level badge from real enrollment
+                              final data = state.data;
+                              int derivedLevel = 0;
+                              if (data.currentLevel != null) {
+                                derivedLevel = data.currentLevel!.order;
+                              } else if (data.completedLevels.isNotEmpty) {
+                                derivedLevel = data.completedLevels
+                                    .map((l) => l.order)
+                                    .reduce((a, b) => a > b ? a : b);
+                              }
+                              if (derivedLevel != _level) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (mounted) {
+                                    setState(() {
+                                      _level = derivedLevel;
+                                      // Progress unknown from API — keep 0 or mild fill if enrolled
+                                      _levelProgress = data.currentLevel != null
+                                          ? 0.35
+                                          : (derivedLevel > 0 ? 1.0 : 0.0);
+                                    });
+                                  }
+                                });
+                              }
                               return _LevelsPath(
                                 levels: _levels,
                                 flowController: _pathFlowController,
-                                userName: widget.userName,
-                                xp: widget.xp,
-                                streakDays: widget.streakDays,
-                                level: widget.level,
-                                levelProgress: widget.levelProgress,
+                                userName: _displayName.isNotEmpty
+                                    ? _displayName
+                                    : widget.userName,
+                                xp: _xp,
+                                streakDays: _streakDays,
+                                level: _level,
+                                levelProgress: _levelProgress,
                               );
                             }
 
@@ -451,102 +550,115 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             children: [
               Row(
                 children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                            width: 60.w,
-                            height: 60.w,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const SweepGradient(
-                                colors: [
-                                  AppColors.yellow,
-                                  AppColors.orange,
-                                  AppColors.sky,
-                                  AppColors.yellow,
+                  GestureDetector(
+                    onTap: _openProfile,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                              width: 60.w,
+                              height: 60.w,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const SweepGradient(
+                                  colors: [
+                                    AppColors.yellow,
+                                    AppColors.orange,
+                                    AppColors.sky,
+                                    AppColors.yellow,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.yellow.withOpacity(.45),
+                                    blurRadius: 18,
+                                    spreadRadius: 1,
+                                  ),
                                 ],
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.yellow.withOpacity(.45),
-                                  blurRadius: 18,
-                                  spreadRadius: 1,
-                                ),
-                              ],
+                            )
+                            .animate(onPlay: (c) => c.repeat())
+                            .rotate(duration: 8.seconds, curve: Curves.linear),
+                        Container(
+                          width: 50.w,
+                          height: 50.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.sky.withOpacity(.25),
+                            border: Border.all(
+                              color: AppColors.dark,
+                              width: 2.5,
                             ),
-                          )
-                          .animate(onPlay: (c) => c.repeat())
-                          .rotate(duration: 8.seconds, curve: Curves.linear),
-                      Container(
-                        width: 50.w,
-                        height: 50.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.sky.withOpacity(.25),
-                          border: Border.all(color: AppColors.dark, width: 2.5),
-                        ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: 26.sp,
-                        ),
-                      ),
-                      Positioned(
-                        top: -10.h,
-                        child:
-                            Icon(
-                                  Icons.workspace_premium_rounded,
-                                  color: AppColors.yellow,
-                                  size: 18.sp,
-                                  shadows: [
-                                    Shadow(
-                                      color: AppColors.orange,
-                                      blurRadius: 10,
-                                    ),
-                                    Shadow(
-                                      color: AppColors.yellow.withOpacity(.6),
-                                      blurRadius: 18,
-                                    ),
-                                  ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _imageUrl != null
+                              ? Image.network(
+                                  _imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.person_rounded,
+                                    color: Colors.white,
+                                    size: 26.sp,
+                                  ),
                                 )
-                                .animate(onPlay: (c) => c.repeat(reverse: true))
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.12, 1.12),
-                                  duration: 1600.ms,
-                                  curve: Curves.easeInOut,
+                              : Icon(
+                                  Icons.person_rounded,
+                                  color: Colors.white,
+                                  size: 26.sp,
                                 ),
-                      ),
-                    ],
+                        ),
+                        Positioned(
+                          top: -10.h,
+                          child:
+                              Icon(
+                                    Icons.workspace_premium_rounded,
+                                    color: AppColors.yellow,
+                                    size: 18.sp,
+                                    shadows: [
+                                      Shadow(
+                                        color: AppColors.orange,
+                                        blurRadius: 10,
+                                      ),
+                                      Shadow(
+                                        color: AppColors.yellow.withOpacity(.6),
+                                        blurRadius: 18,
+                                      ),
+                                    ],
+                                  )
+                                  .animate(
+                                    onPlay: (c) => c.repeat(reverse: true),
+                                  )
+                                  .scale(
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.12, 1.12),
+                                    duration: 1600.ms,
+                                    curve: Curves.easeInOut,
+                                  ),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Text("👋", style: TextStyle(fontSize: 15.sp)),
-                            SizedBox(width: 6.w),
-                            Flexible(
-                              child: Text(
-                                "Good evening,",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.75),
-                                  fontSize: 13.sp,
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _formalGreeting,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(.75),
+                            fontSize: 13.sp,
+                          ),
                         ),
                         ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
                             colors: [Colors.white, AppColors.sky],
                           ).createShader(bounds),
                           child: Text(
-                            widget.userName,
+                            _displayName.isNotEmpty
+                                ? _displayName
+                                : widget.userName,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 21.sp,
@@ -558,10 +670,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       ],
                     ),
                   ),
-                  _circleIconButton(
-                    icon: Icons.notifications_rounded,
-                    badgeCount: 3,
-                    onTap: () {},
+                  BlocBuilder<NotificationCubit, NotificationState>(
+                    buildWhen: (p, c) => p.unreadCount != c.unreadCount,
+                    builder: (context, notifState) {
+                      return _circleIconButton(
+                        icon: Icons.notifications_rounded,
+                        badgeCount: notifState.unreadCount,
+                        onTap: () {
+                          Navigator.pushNamed(context, notificationsRoute);
+                        },
+                      );
+                    },
                   ),
                   SizedBox(width: 8.w),
                   _circleIconButton(icon: Icons.settings_rounded, onTap: () {}),
@@ -577,7 +696,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       icon: Icons.star_rounded,
                       iconColor: AppColors.yellow,
                       label: "XP",
-                      value: widget.xp,
+                      value: _xp,
                     ),
                   ),
                   SizedBox(width: 8.w),
@@ -586,7 +705,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       icon: Icons.local_fire_department_rounded,
                       iconColor: AppColors.orange,
                       label: "Streak",
-                      value: widget.streakDays,
+                      value: _streakDays,
                       suffix: "d",
                     ),
                   ),
@@ -783,7 +902,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Lvl ${widget.level}",
+                  "Lvl $_level",
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -802,7 +921,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         Container(color: Colors.white.withOpacity(.15)),
                         FractionallySizedBox(
                           alignment: Alignment.centerLeft,
-                          widthFactor: widget.levelProgress.clamp(0.0, 1.0),
+                          widthFactor: _levelProgress.clamp(0.0, 1.0),
                           child: Container(
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
@@ -814,7 +933,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment(
-                              widget.levelProgress.clamp(0.0, 1.0) - 0.5,
+                              _levelProgress.clamp(0.0, 1.0) - 0.5,
                               0,
                             ),
                             child:
@@ -1565,13 +1684,21 @@ Widget _leaderRow({
       child: AnimatedBuilder(
         animation: _borderFlowController,
         builder: (context, _) {
+          final rawRadius = 28.r;
+          final navRadius =
+              (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
+              ? rawRadius
+              : 28.0;
+          final rawAnim = _borderFlowController.value;
+          final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
+
           return CustomPaint(
             foregroundPainter: _AnimatedBorderPainter(
-              animationValue: _borderFlowController.value,
-              radius: 28.r,
+              animationValue: navAnim,
+              radius: navRadius,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(28.r),
+              borderRadius: BorderRadius.circular(navRadius),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
@@ -1585,7 +1712,7 @@ Widget _leaderRow({
                         AppColors.primary.withOpacity(.35),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(28.r),
+                    borderRadius: BorderRadius.circular(navRadius),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.sky.withOpacity(.25),
@@ -2068,78 +2195,133 @@ class _FloatingClouds extends StatelessWidget {
 }
 
 class _AnimatedBorderPainter extends CustomPainter {
-  final double animationValue; // 0..1 — بيدور 360° كل دورة
+  final double animationValue; // 0..1
   final double radius;
 
   _AnimatedBorderPainter({required this.animationValue, required this.radius});
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Guard: zero / non-finite sizes crash SweepGradient on Impeller.
+    if (!size.width.isFinite ||
+        !size.height.isFinite ||
+        size.width < 12 ||
+        size.height < 12) {
+      return;
+    }
+
+    final double safeRadius = () {
+      final r = radius.isFinite ? radius : 0.0;
+      final maxR = math.min(size.width, size.height) / 2;
+      if (!maxR.isFinite || maxR <= 0) return 0.0;
+      return r.clamp(0.0, maxR);
+    }();
+
     final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(safeRadius),
     );
-    final startAngle = animationValue * math.pi * 2;
 
-    final glowPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0x00FFD35B),
-          Color(0x88FFD35B),
-          Color(0x00F5A201),
-          Color(0x88A8E8F9),
-          Color(0x00B388FF),
-          Color(0x88FF6FB5),
-          Color(0x00FFD35B),
-        ],
-        stops: const [0.0, 0.14, 0.32, 0.5, 0.68, 0.86, 1.0],
-      ).createShader(rect.outerRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final t = animationValue.isFinite ? animationValue.clamp(0.0, 1.0) : 0.0;
+    final startAngle = t * math.pi * 2;
 
-    canvas.drawRRect(rect.deflate(4), glowPaint);
+    // Avoid aggressive deflate that can invert the rect.
+    final maxDeflate = (math.min(size.width, size.height) / 2 - 1.0).clamp(
+      0.0,
+      40.0,
+    );
 
-    final borderPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0xffA8E8F9), // sky
-          Color(0xffFFD35B), // yellow
-          Color(0xffF5A201), // orange
-          Color(0xffB388FF), // purple
-          Color(0xffA8E8F9), // sky
-        ],
-        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-      ).createShader(rect.outerRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    void drawStroke({
+      required double deflateBy,
+      required double strokeWidth,
+      required List<Color> colors,
+      required List<double> stops,
+      double angleOffset = 0,
+    }) {
+      final d = deflateBy.clamp(0.0, maxDeflate);
+      final inner = rect.deflate(d);
+      if (!inner.width.isFinite ||
+          !inner.height.isFinite ||
+          inner.width < 2 ||
+          inner.height < 2) {
+        return;
+      }
 
-    canvas.drawRRect(rect.deflate(0.75), borderPaint);
+      final shaderRect = inner.outerRect;
+      if (!shaderRect.width.isFinite ||
+          !shaderRect.height.isFinite ||
+          shaderRect.width <= 0 ||
+          shaderRect.height <= 0) {
+        return;
+      }
 
-    final innerGlowPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle + 0.3,
-        colors: const [
-          Color(0x00FFFFFF),
-          Color(0x44FFFFFF),
-          Color(0x00FFFFFF),
-          Color(0x33FFFFFF),
-          Color(0x00FFFFFF),
-        ],
-        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-      ).createShader(rect.outerRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      try {
+        final paint = Paint()
+          ..shader = SweepGradient(
+            startAngle: startAngle + angleOffset,
+            colors: colors,
+            stops: stops,
+          ).createShader(shaderRect)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..isAntiAlias = true;
 
-    canvas.drawRRect(rect.deflate(2), innerGlowPaint);
+        canvas.drawRRect(inner, paint);
+      } catch (_) {
+        // Never let a border animation crash the whole screen.
+      }
+    }
+
+    // Soft outer glow (no MaskFilter — Impeller can assert with blur+sweep)
+    drawStroke(
+      deflateBy: 3,
+      strokeWidth: 5,
+      colors: const [
+        Color(0x00FFD35B),
+        Color(0x66FFD35B),
+        Color(0x00F5A201),
+        Color(0x66A8E8F9),
+        Color(0x00B388FF),
+        Color(0x66FF6FB5),
+        Color(0x00FFD35B),
+      ],
+      stops: const [0.0, 0.14, 0.32, 0.5, 0.68, 0.86, 1.0],
+    );
+
+    // Main colored border
+    drawStroke(
+      deflateBy: 0.75,
+      strokeWidth: 1.5,
+      colors: const [
+        Color(0xffA8E8F9),
+        Color(0xffFFD35B),
+        Color(0xffF5A201),
+        Color(0xffB388FF),
+        Color(0xffA8E8F9),
+      ],
+      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+    );
+
+    // Subtle inner highlight
+    drawStroke(
+      deflateBy: 2,
+      strokeWidth: 2,
+      angleOffset: 0.3,
+      colors: const [
+        Color(0x00FFFFFF),
+        Color(0x33FFFFFF),
+        Color(0x00FFFFFF),
+        Color(0x22FFFFFF),
+        Color(0x00FFFFFF),
+      ],
+      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+    );
   }
 
   @override
   bool shouldRepaint(covariant _AnimatedBorderPainter oldDelegate) =>
-      oldDelegate.animationValue != animationValue;
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.radius != radius;
 }
 
 class _MountainsPainter extends CustomPainter {
@@ -2193,6 +2375,7 @@ class _MountainsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MountainsPainter old) => false;
 }
+
 class _LevelsPath extends StatelessWidget {
   final List<LevelPathData> levels;
   final AnimationController flowController;
@@ -2606,34 +2789,35 @@ class _LevelNode extends StatelessWidget {
   }
 
   void _showPurchaseSheet(BuildContext context) {
-  if (level.id == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Level ID is missing')),
+    if (level.id == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Level ID is missing')));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return BlocProvider(
+          create: (ctx) => PaymentCubit(ctx.read<PaymentRepository>()),
+          child: LevelPurchaseSheet(
+            levelId: level.id!,
+            levelTitle: level.title,
+            levelSubtitle: level.subtitle,
+            price: level.price,
+            colors: level.colors,
+            onSuccess: () {
+              context.read<StudentLevelsCubit>().fetchStudentLevels();
+            },
+          ),
+        );
+      },
     );
     return;
   }
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) {
-      return BlocProvider(
-        create: (ctx) => PaymentCubit(ctx.read<PaymentRepository>()),
-        child: LevelPurchaseSheet(
-          levelId: level.id!,
-          levelTitle: level.title,
-          levelSubtitle: level.subtitle,
-          price: level.price,
-          colors: level.colors,
-          onSuccess: () {
-            context.read<StudentLevelsCubit>().fetchStudentLevels();
-          },
-        ),
-      );
-    },
-  );
-}
 
   // void _showPurchaseSheet(BuildContext context) {
   //   final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];

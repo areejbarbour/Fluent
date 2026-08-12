@@ -1,7 +1,11 @@
- //const String baseUrl = 'http://192.168.1.5:8000';
+//  const String baseUrl = 'http://192.168.1.5:8000';
 //const String baseUrl = 'http://192.168.10.224:8000';
+
+//const String baseUrl = 'http://192.168.1.5:8000';
+const String baseUrl = 'http://192.168.10.224:8000';
+
 //const String baseUrl = 'http://172.20.10.2:8000';
-const String baseUrl = 'https://fluent.moayadismail.com';
+// const String baseUrl = 'https://fluent.moayadismail.com';
 
 // ✅ Routes
 const String onboardingRoute = '/';
@@ -24,6 +28,7 @@ const String wordBankRoute = '/word_bank';
 const String podcastsRoute = '/podcasts';
 const String aiConversationRoute = '/ai-conversation';
 const String levelExceptionsRoute = '/level-exceptions';
+const String notificationsRoute = '/notifications';
 
 // ✅ Teacher Question routes
 const String questionsListRoute = '/teacher/questions';
@@ -188,6 +193,25 @@ const String apiResetPassword = '/api/resetPassword';
 String apiCreateWord(int lessonId) => '/api/words/$lessonId/create';
 String apiUpdateWord(int wordId) => '/api/words/$wordId/update';
 String apiDeleteWord(int wordId) => '/api/words/$wordId/delete';
+
+// ✅ Content Review API Endpoints (Teacher)
+String apiSubmitLesson(int lessonId) => '/api/lessons/$lessonId/submit';
+String apiResubmitLesson(int lessonId) => '/api/lessons/$lessonId/resubmit';
+String apiSubmitTest(int testId) => '/api/tests/$testId/submit';
+String apiResubmitTest(int testId) => '/api/tests/$testId/resubmit';
+String apiLessonReviewHistory(int lessonId) => '/api/lessons/$lessonId/history';
+String apiTestReviewHistory(int testId) => '/api/tests/$testId/history';
+
+// ✅ Notifications API Endpoints (Teacher + Student)
+const String apiFirebaseToken = '/api/firebase/token';
+const String apiNotifications = '/api/notifications';
+const String apiNotificationsUnread = '/api/notifications/unread';
+const String apiNotificationsUnreadCount = '/api/notifications/unreadcount';
+String apiNotificationMarkAsRead(String notificationId) =>
+    '/api/notifications/$notificationId/markAsRead';
+const String apiNotificationsMarkAllAsRead = '/api/notifications/markAllAsRead';
+String apiNotificationDelete(String notificationId) =>
+    '/api/notifications/$notificationId/delete';
 
 // ✅ OTP Types
 class OtpType {

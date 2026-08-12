@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
+import '../../../../helper/notification_bootstrap.dart';
 import 'verify_otp_state.dart';
 
 class VerifyOtpCubit extends Cubit<VerifyOtpState> {
@@ -59,7 +60,10 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
           print(" [VerifyOtpCubit] Token saved: $token");
 
           await setupDio();
-          print(" [VerifyOtpCubit] Dio re-initialized");
+          print("⚙️ [VerifyOtpCubit] Dio re-initialized");
+
+          // Register FCM token immediately after successful registration
+          await NotificationBootstrap.registerAfterAuth();
         }
 
         print(" [VerifyOtpCubit] Account verified successfully");

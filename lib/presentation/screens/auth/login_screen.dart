@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
+import 'package:fluent/helper/notification_bootstrap.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
@@ -117,36 +119,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   );
 
-                  // ✅ التوجيه حسب الدور
-                  // - الطالب: يروح على StreakScreen أولاً
-                  // - الأستاذ: يروح مباشرة على TeacherHome (بدون streak)
-                  final roles = state.roles;
-                  String targetRoute = homeRoute; // default
+                  // Register FCM token + refresh unread badge (non-blocking)
+                  NotificationBootstrap.registerFromContext(context);
+                  NotificationBootstrap.refreshUnread(context);
 
+                  final roles = state.roles;
+                  String roleName = '';
                   if (roles.isNotEmpty) {
                     final role = roles.first;
-                    String roleName = '';
-
                     if (role is Map) {
-                      roleName = role['name'] ?? role['title'] ?? '';
+                      roleName = (role['name'] ?? role['title'] ?? '')
+                          .toString();
                     } else {
                       roleName = role.toString();
                     }
-
-                    if (roleName == 'teacher') {
-                      // ✅ الأستاذ يروح مباشرة للوحة حالات الدروس
-                      targetRoute = teacherHomeRoute;
-                    } else {
-                      // ✅ الطالب يروح على StreakScreen أولاً
-                      targetRoute = streakRoute;
-                    }
                   }
 
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    targetRoute,
-                    (route) => false,
-                  );
+                  if (roleName == 'teacher') {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      teacherHomeRoute,
+                      (route) => false,
+                    );
+                  } else {
+                    // طالب: placement إن لزم، وإلا streak للعائدين فقط
+                    StudentEntryNavigator.goAfterLogin(context);
+                  }
                 } else if (state is LoginFailure) {
                   // ✅ عرض رسالة الخطأ العامة
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -685,34 +683,30 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // ✅ استخراج roles من state
-          final roles = state.roles;
-          String targetRoute = homeRoute;
+          // Register FCM token + refresh unread badge (non-blocking)
+          NotificationBootstrap.registerFromContext(context);
+          NotificationBootstrap.refreshUnread(context);
 
+          final roles = state.roles;
+          String roleName = '';
           if (roles.isNotEmpty) {
             final role = roles.first;
-            String roleName = '';
-
             if (role is Map) {
-              roleName = role['name'] ?? role['title'] ?? '';
+              roleName = (role['name'] ?? role['title'] ?? '').toString();
             } else {
               roleName = role.toString();
             }
-
-            if (roleName == 'teacher') {
-              // ✅ الأستاذ يروح مباشرة للوحة حالات الدروس
-              targetRoute = teacherHomeRoute;
-            } else {
-              // ✅ الطالب يروح على StreakScreen أولاً
-              targetRoute = streakRoute;
-            }
           }
 
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            targetRoute,
-            (route) => false,
-          );
+          if (roleName == 'teacher') {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              teacherHomeRoute,
+              (route) => false,
+            );
+          } else {
+            StudentEntryNavigator.goAfterLogin(context);
+          }
         } else if (state is GoogleLoginFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
