@@ -14,11 +14,7 @@ import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/data/network/dio_client.dart';
-import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
-import 'package:fluent/data/repository/profile_repository.dart';
-import 'package:fluent/data/services/attempt_service.dart';
-import 'package:fluent/data/services/profile_service.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
@@ -57,6 +53,7 @@ import 'package:fluent/data/services/word_service.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/data/services/level_exception_service.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/cubit/student/levels/level_exception_cubit.dart';
 import 'package:fluent/data/services/words_bank_service.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'package:fluent/data/services/lesson_word_service.dart';
@@ -134,9 +131,7 @@ Future<void> main() async {
   final lessonDetailRepository = LessonDetailRepository(lessonDetailService);
 
   final levelExceptionService = LevelExceptionService(dioInstance);
-  final levelExceptionRepository = LevelExceptionRepository(
-    levelExceptionService,
-  );
+  final levelExceptionRepository = LevelExceptionRepository(levelExceptionService,);
 
   final wordService = WordService(dioInstance);
   final wordRepository = WordRepository(wordService);
@@ -153,11 +148,11 @@ Future<void> main() async {
   final wordQuizService = WordQuizService(dioInstance);
   final wordQuizRepository = WordQuizRepository(wordQuizService);
 
-  final profileService = ProfileService(dioInstance);
-  final profileRepository = ProfileRepository(profileService);
+  final podcastService = PodcastService(dioInstance);
+  final podcastRepository = PodcastRepository(podcastService);
 
-  final attemptService = AttemptService(dioInstance);
-  final attemptRepository = AttemptRepository(attemptService);
+  final paymentService = PaymentService(dioInstance);
+  final paymentRepository = PaymentRepository(paymentService);
 
   final contentReviewService = ContentReviewService(dioInstance);
   final contentReviewRepository = ContentReviewRepository(contentReviewService);

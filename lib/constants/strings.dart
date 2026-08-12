@@ -19,7 +19,6 @@ const String homeRoute = '/home';
 const String streakRoute = '/streak';
 const String placementTestDialogRoute = '/placement-test-dialog';
 const String placementTestRoute = '/placement-test';
-const String studentTestRoute = '/student-test';
 const String studentHomeRoute = '/student/home';
 const String teacherHomeRoute = '/teacher/home';
 const String levelCoursesRoute = '/level-courses';
@@ -113,25 +112,6 @@ String apiWordQuizCheck(int wordId) => '/api/words/$wordId/quiz_check';
 // ✅ Student Rate API (course must be completed — backend RateServiece)
 String apiRateCourse(int courseId) => '/api/rate/$courseId';
 String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
-
-// ✅ Student / Teacher Profile API
-const String apiStudentProfile = '/api/student/profile';
-const String apiTeacherProfile = '/api/teacher/profile';
-
-// ── Student attempts (tests / placement) ─────────────────────
-
-const String apiStartPlacementTest = '/api/startPlacementTest';
-String apiTestStart(int testId) => '/api/tests/$testId/start';
-
-/// CRITICAL: backend path is `submit-answer`, NOT `answer`.
-String apiAttemptSubmitAnswer(int attemptId, int questionId) =>
-    '/api/attempts/$attemptId/questions/$questionId/submit-answer';
-
-String apiAttemptFinish(int attemptId) => '/api/attempts/$attemptId/finish';
-
-String apiAttemptLeave(int attemptId) => '/api/attempts/$attemptId/leave';
-
-String apiAttemptReview(int attemptId) => '/api/attempts/$attemptId/review';
 
 // ✅ Course API
 String apiGetStudentCourses(int levelId) => '/api/getStudentcourses/$levelId';
