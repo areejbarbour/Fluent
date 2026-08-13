@@ -10,18 +10,14 @@ class ProfileService {
     validateStatus: (status) => status != null && status < 500,
   );
 
-  // ── Student ──────────────────────────────────────────────
 
   Future<Response> getStudentProfile() async {
     return await dio.get(apiStudentProfile, options: _opts);
   }
 
-  /// Backend expects POST multipart: optional `bio`, optional `image` file.
   Future<Response> updateStudentProfile(FormData formData) async {
     return await dio.post(apiStudentProfile, data: formData, options: _opts);
   }
-
-  // ── Teacher ──────────────────────────────────────────────
 
   Future<Response> getTeacherProfile() async {
     return await dio.get(apiTeacherProfile, options: _opts);

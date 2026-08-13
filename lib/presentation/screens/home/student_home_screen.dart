@@ -1,3 +1,5 @@
+
+
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -29,6 +31,8 @@ import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:fluent/cubit/student/payment/payment_cubit.dart';
 import 'package:fluent/data/repository/payment_repository.dart';
 import 'package:fluent/presentation/screens/home/level_purchase_sheet.dart';
+import 'package:fluent/cubit/profile/profile_cubit.dart';  
+import 'package:fluent/cubit/profile/profile_state.dart';
 
 enum LevelStatus { completed, current, locked, boss, available }
 
@@ -96,9 +100,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   static const List<IconData> _decorativeIcons = [
     Icons.auto_awesome_rounded,
-    //Icons.diamond_rounded,
     Icons.menu_book_rounded,
-    // Icons.flight_takeoff_rounded,
     Icons.record_voice_over_rounded,
     Icons.school_rounded,
     Icons.public_rounded,
@@ -235,6 +237,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       _streakDays = streak;
     });
   }
+
+  Future<void> _refreshPointsOnly() async {
+  try {
+    final profileRes =
+        await context.read<ProfileRepository>().getStudentProfile();
+    if (!mounted) return;
+    if (profileRes['success'] == true &&
+        profileRes['data'] is StudentProfileModel) {
+      final pr = profileRes['data'] as StudentProfileModel;
+      setState(() {
+        _xp = pr.points;
+        _streakDays = pr.streak;
+      });
+    }
+  } catch (_) {}
+}
 
   String get _formalGreeting {
     final hour = DateTime.now().hour;
@@ -522,6 +540,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
+  
+
   Widget _buildHeroGreetingCard() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(26.r),
@@ -644,14 +664,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: Column(
+                    child: 
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _formalGreeting,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(.75),
-                            fontSize: 13.sp,
+                          style: GoogleFonts.cinzelDecorative(
+                            color: Colors.white,
+                            fontSize: 16.sp,
                           ),
                         ),
                         ShaderMask(
@@ -664,8 +685,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                 : widget.userName,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
-                              fontSize: 21.sp,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: .3,
                             ),
                           ),
@@ -973,11 +994,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
+
+
   Widget _buildDailyChallengeAndLeaders() {
-    return Row(
+    return IntrinsicHeight(
+      child : Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ===== Daily Challenge =====
         Expanded(
           flex: 11,
           child: _glassContainer(
@@ -1011,28 +1034,37 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     ),
                     SizedBox(width: 6.w),
                     Expanded(
-                      child: Text(
-                        "Daily Challenge",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.sp,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Daily Challenge",
+                          maxLines: 1,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.sp,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 8.h),
-                Text(
-                  "Complete 10 new words",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 10.5.sp,
-                  ),
-                ),
-                SizedBox(height: 10.h),
+                SizedBox(
+                   height: 32.h,
+                    child: Text(
+    "Complete 10 new words",
+    maxLines: 2,
+    overflow: TextOverflow.visible,
+    style: GoogleFonts.poppins(
+      color: Colors.white.withOpacity(.7),
+      fontSize: 10.5.sp,
+      height: 1.35,
+    ),
+  ),
+),
+SizedBox(height: 10.h),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8.r),
                   child: LinearProgressIndicator(
@@ -1089,10 +1121,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         ),
 
         SizedBox(width: 10.w),
-
-        // ===== Top Leaders =====
         Expanded(
-          flex: 10,
+          flex: 12,
           child: _glassContainer(
             padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
             radius: 20.r,
@@ -1125,21 +1155,24 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     ),
                     SizedBox(width: 5.w),
                     Expanded(
-                      child: Text(
-                        "Top Leaders",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.5.sp,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Top Leaders",
+                          maxLines: 1,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11.5.sp,
+                          ),
                         ),
                       ),
                     ),
+                    SizedBox(width: 4.w),
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        // TODO: navigate to full leaderboard
                       },
                       child: Text(
                         "View all",
@@ -1154,8 +1187,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                 ),
 
                 SizedBox(height: 10.h),
-
-                // Leaders list
                 _leaderRow(
                   rank: 1,
                   name: "Omar",
@@ -1181,7 +1212,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           ),
         ),
       ],
-    ).animate().fadeIn(delay: 150.ms, duration: 450.ms);
+    )
+    )
+    .animate().fadeIn(delay: 150.ms, duration: 450.ms);
   }
 
   Widget _leaderRow({
@@ -1216,17 +1249,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         ),
         SizedBox(width: 7.w),
         Expanded(
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 11.sp,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              name,
+              maxLines: 1,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 11.sp,
+              ),
             ),
           ),
         ),
+        SizedBox(width: 4.w),
         Text(
           "$xp XP",
           style: GoogleFonts.poppins(
@@ -1693,264 +1730,561 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Widget _buildBottomNav() {
-    final items = [
-      (Icons.home_rounded, "HOME", Icons.refresh_rounded),
-      (Icons.menu_book_rounded, "WORD BANK", null),
-      (Icons.mic_rounded, "PODCASTS", null),
-      (Icons.headset_rounded, "AI CONVERSATION", null),
-      (Icons.person_rounded, "PROFILE", null),
-    ];
+  final items = [
+    (Icons.home_rounded, "HOME", Icons.refresh_rounded),
+    (Icons.menu_book_rounded, "WORD BANK", null),
+    (Icons.mic_rounded, "PODCASTS", null),
+    (Icons.headset_rounded, "AI CONVERSATION", null),
+    (Icons.person_rounded, "PROFILE", null),
+  ];
 
-    return Container(
-      margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
-      child: AnimatedBuilder(
-        animation: _borderFlowController,
-        builder: (context, _) {
-          final rawRadius = 28.r;
-          final navRadius =
-              (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
-              ? rawRadius
-              : 28.0;
-          final rawAnim = _borderFlowController.value;
-          final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
+  final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-          return CustomPaint(
-            foregroundPainter: _AnimatedBorderPainter(
-              animationValue: navAnim,
-              radius: navRadius,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(navRadius),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  height: 76.h,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.dark.withOpacity(.55),
-                        AppColors.primary.withOpacity(.35),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(navRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.sky.withOpacity(.25),
-                        blurRadius: 25,
-                        spreadRadius: -3,
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.4),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
+  return Container(
+    margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 0),
+    padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 12.h),
+    child: AnimatedBuilder(
+      animation: _borderFlowController,
+      builder: (context, _) {
+        final rawRadius = 28.r;
+        final navRadius =
+            (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
+                ? rawRadius
+                : 28.0;
+        final rawAnim = _borderFlowController.value;
+        final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
+
+        return CustomPaint(
+          foregroundPainter: _AnimatedBorderPainter(
+            animationValue: navAnim,
+            radius: navRadius,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(navRadius),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+              child: Container(
+                height: 68.h, 
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.dark.withOpacity(.55),
+                      AppColors.primary.withOpacity(.35),
                     ],
                   ),
-                  child: Stack(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: List.generate(items.length, (i) {
-                          final selected = i == _selectedNavIndex;
-                          final (icon, label, badge) = items[i];
+                  borderRadius: BorderRadius.circular(navRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.sky.withOpacity(.25),
+                      blurRadius: 25,
+                      spreadRadius: -3,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(.4),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: List.generate(items.length, (i) {
+                        final selected = i == _selectedNavIndex;
+                        final (icon, label, badge) = items[i];
 
-                          return Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedNavIndex = i);
+                        return Expanded(
+                          child: GestureDetector(
+                            // onTap: () async {
+                            //   HapticFeedback.selectionClick();
+                            //   setState(() => _selectedNavIndex = i);
 
-                                if (i == 0) return;
+                            //   if (i == 0) return;
 
-                                Future<void>? navigationFuture;
-                                switch (i) {
-                                  case 1: // WORD BANK
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      wordBankRoute,
-                                    );
-                                    break;
-                                  case 2: // PODCASTS
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      podcastsRoute,
-                                    );
-                                    break;
-                                  case 3: // AI CONVERSATION
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      aiConversationRoute,
-                                    );
-                                    break;
-                                  case 4: // PROFILE
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      profileRoute,
-                                    );
-                                    break;
-                                }
+                            //   Future<void>? navigationFuture;
+                            //   switch (i) {
+                            //     case 1:
+                            //       navigationFuture = Navigator.pushNamed(
+                            //           context, wordBankRoute);
+                            //       break;
+                            //     case 2:
+                            //       navigationFuture = Navigator.pushNamed(
+                            //           context, podcastsRoute);
+                            //       break;
+                            //     case 3:
+                            //       navigationFuture = Navigator.pushNamed(
+                            //           context, aiConversationRoute);
+                            //       break;
+                            //     case 4:
+                            //       navigationFuture = Navigator.pushNamed(
+                            //           context, profileRoute);
+                            //       break;
+                            //   }
 
-                                await navigationFuture;
-                                if (mounted) {
-                                  setState(() => _selectedNavIndex = 0);
-                                }
-                              },
+                            //   await navigationFuture;
+                            //   if (mounted) {
+                            //     setState(() => _selectedNavIndex = 0);
+                            //   }
+                            // },
+                            onTap: () async {
+  HapticFeedback.selectionClick();
+  setState(() => _selectedNavIndex = i);
 
-                              behavior: HitTestBehavior.opaque,
-                              child: AnimatedContainer(
-                                duration: 250.ms,
-                                curve: Curves.easeOut,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 10.h,
-                                  horizontal: 2.w,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        AnimatedScale(
-                                          scale: selected ? 1.12 : 1.0,
-                                          duration: 300.ms,
-                                          curve: Curves.easeOutBack,
-                                          child: Container(
-                                            padding: EdgeInsets.all(6.r),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              gradient: selected
-                                                  ? RadialGradient(
-                                                      colors: [
-                                                        AppColors.yellow
-                                                            .withOpacity(.35),
-                                                        AppColors.orange
-                                                            .withOpacity(.15),
-                                                        Colors.transparent,
-                                                      ],
-                                                    )
-                                                  : null,
-                                              boxShadow: selected
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: AppColors.yellow
-                                                            .withOpacity(.5),
-                                                        blurRadius: 14,
-                                                        spreadRadius: 1,
-                                                      ),
-                                                    ]
-                                                  : null,
-                                            ),
-                                            child: Icon(
-                                              icon,
-                                              color: selected
-                                                  ? AppColors.yellow
-                                                  : Colors.white.withOpacity(
-                                                      .75,
+  if (i == 0) {
+    await _refreshPointsOnly();
+    return;
+  }
+
+  Future<void>? navigationFuture;
+  switch (i) {
+    case 1:
+      navigationFuture =
+          Navigator.pushNamed(context, wordBankRoute);
+      break;
+    case 2:
+      navigationFuture =
+          Navigator.pushNamed(context, podcastsRoute);
+      break;
+    case 3:
+      navigationFuture =
+          Navigator.pushNamed(context, aiConversationRoute);
+      break;
+    case 4:
+      navigationFuture =
+          Navigator.pushNamed(context, profileRoute);
+      break;
+  }
+
+  await navigationFuture;
+
+  if (mounted) {
+    setState(() => _selectedNavIndex = 0);
+    await _refreshPointsOnly(); 
+  }
+},
+                            behavior: HitTestBehavior.opaque,
+                            child: AnimatedContainer(
+                              duration: 250.ms,
+                              curve: Curves.easeOut,
+                              padding: EdgeInsets.symmetric(
+                                vertical: 8.h, // صغّرنا الـ padding العمودي
+                                horizontal: 2.w,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      AnimatedScale(
+                                        scale: selected ? 1.12 : 1.0,
+                                        duration: 300.ms,
+                                        curve: Curves.easeOutBack,
+                                        child: Container(
+                                          padding: EdgeInsets.all(5.r),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: selected
+                                                ? RadialGradient(
+                                                    colors: [
+                                                      AppColors.yellow
+                                                          .withOpacity(.35),
+                                                      AppColors.orange
+                                                          .withOpacity(.15),
+                                                      Colors.transparent,
+                                                    ],
+                                                  )
+                                                : null,
+                                            boxShadow: selected
+                                                ? [
+                                                    BoxShadow(
+                                                      color: AppColors.yellow
+                                                          .withOpacity(.5),
+                                                      blurRadius: 14,
+                                                      spreadRadius: 1,
                                                     ),
-                                              size: 22.sp,
-                                              shadows: selected
-                                                  ? [
-                                                      Shadow(
-                                                        color: AppColors.yellow
-                                                            .withOpacity(.8),
-                                                        blurRadius: 10,
-                                                      ),
-                                                    ]
-                                                  : null,
-                                            ),
+                                                  ]
+                                                : null,
                                           ),
-                                        ),
-                                        if (badge != null)
-                                          Positioned(
-                                            top: -2,
-                                            right: -4,
-                                            child: Container(
-                                              padding: EdgeInsets.all(2.5.r),
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                gradient: const LinearGradient(
-                                                  colors: [
-                                                    AppColors.yellow,
-                                                    AppColors.orange,
-                                                  ],
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: AppColors.yellow
-                                                        .withOpacity(.6),
-                                                    blurRadius: 6,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Icon(
-                                                badge,
-                                                size: 7.sp,
-                                                color: Colors.black,
-                                              ),
-                                            ),
+                                          child: Icon(
+                                            icon,
+                                            color: selected
+                                                ? AppColors.yellow
+                                                : Colors.white
+                                                    .withOpacity(.75),
+                                            size: 22.sp,
+                                            shadows: selected
+                                                ? [
+                                                    Shadow(
+                                                      color: AppColors.yellow
+                                                          .withOpacity(.8),
+                                                      blurRadius: 10,
+                                                    ),
+                                                  ]
+                                                : null,
                                           ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: AnimatedDefaultTextStyle(
-                                        duration: 250.ms,
-                                        style: GoogleFonts.poppins(
-                                          color: selected
-                                              ? AppColors.yellow
-                                              : Colors.white.withOpacity(.7),
-                                          fontSize: selected ? 9.sp : 8.5.sp,
-                                          fontWeight: selected
-                                              ? FontWeight.w800
-                                              : FontWeight.w500,
-                                          letterSpacing: .3,
-                                        ),
-                                        child: Text(
-                                          label,
-                                          textAlign: TextAlign.center,
                                         ),
                                       ),
+                                      if (badge != null)
+                                        Positioned(
+                                          top: -2,
+                                          right: -4,
+                                          child: Container(
+                                            padding: EdgeInsets.all(2.5.r),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient:
+                                                  const LinearGradient(
+                                                colors: [
+                                                  AppColors.yellow,
+                                                  AppColors.orange,
+                                                ],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: AppColors.yellow
+                                                      .withOpacity(.6),
+                                                  blurRadius: 6,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              badge,
+                                              size: 7.sp,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 3.h),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: 250.ms,
+                                      style: GoogleFonts.poppins(
+                                        color: selected
+                                            ? AppColors.yellow
+                                            : Colors.white
+                                                .withOpacity(.7),
+                                        fontSize:
+                                            selected ? 9.sp : 8.5.sp,
+                                        fontWeight: selected
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                        letterSpacing: .3,
+                                      ),
+                                      child: Text(
+                                        label,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1, // مهم جداً
+                                      ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        }),
-                      ),
-                      Positioned(
-                        right: 10,
-                        top: 8,
-                        child:
-                            Icon(
-                                  Icons.auto_awesome_rounded,
-                                  color: AppColors.sky.withOpacity(.55),
-                                  size: 9.sp,
-                                )
-                                .animate(onPlay: (c) => c.repeat(reverse: true))
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.6, 1.6),
-                                  duration: 1500.ms,
-                                  curve: Curves.easeInOut,
-                                )
-                                .fade(begin: .3, end: .8, duration: 1500.ms),
-                      ),
-                    ],
-                  ),
+                          ),
+                        );
+                      }),
+                    ),
+                    // الـ sparkle الصغير
+                    Positioned(
+                      right: 10,
+                      top: 8,
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: AppColors.sky.withOpacity(.55),
+                        size: 9.sp,
+                      )
+                          .animate(
+                              onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
+                            begin: const Offset(1, 1),
+                            end: const Offset(1.6, 1.6),
+                            duration: 1500.ms,
+                            curve: Curves.easeInOut,
+                          )
+                          .fade(
+                              begin: .3,
+                              end: .8,
+                              duration: 1500.ms),
+                    ),
+                  ],
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ),
+  );
+}
+
+  // Widget _buildBottomNav() {
+  //   final items = [
+  //     (Icons.home_rounded, "HOME", Icons.refresh_rounded),
+  //     (Icons.menu_book_rounded, "WORD BANK", null),
+  //     (Icons.mic_rounded, "PODCASTS", null),
+  //     (Icons.headset_rounded, "AI CONVERSATION", null),
+  //     (Icons.person_rounded, "PROFILE", null),
+  //   ];
+
+  //   return Container(
+  //     margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
+  //     child: AnimatedBuilder(
+  //       animation: _borderFlowController,
+  //       builder: (context, _) {
+  //         final rawRadius = 28.r;
+  //         final navRadius =
+  //             (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
+  //             ? rawRadius
+  //             : 28.0;
+  //         final rawAnim = _borderFlowController.value;
+  //         final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
+
+  //         return CustomPaint(
+  //           foregroundPainter: _AnimatedBorderPainter(
+  //             animationValue: navAnim,
+  //             radius: navRadius,
+  //           ),
+  //           child: ClipRRect(
+  //             borderRadius: BorderRadius.circular(navRadius),
+  //             child: BackdropFilter(
+  //               filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+  //               child: Container(
+  //                 height: 76.h,
+  //                 decoration: BoxDecoration(
+  //                   gradient: LinearGradient(
+  //                     begin: Alignment.topLeft,
+  //                     end: Alignment.bottomRight,
+  //                     colors: [
+  //                       AppColors.dark.withOpacity(.55),
+  //                       AppColors.primary.withOpacity(.35),
+  //                     ],
+  //                   ),
+  //                   borderRadius: BorderRadius.circular(navRadius),
+  //                   boxShadow: [
+  //                     BoxShadow(
+  //                       color: AppColors.sky.withOpacity(.25),
+  //                       blurRadius: 25,
+  //                       spreadRadius: -3,
+  //                     ),
+  //                     BoxShadow(
+  //                       color: Colors.black.withOpacity(.4),
+  //                       blurRadius: 30,
+  //                       offset: const Offset(0, 10),
+  //                     ),
+  //                   ],
+  //                 ),
+  //                 child: Stack(
+  //                   children: [
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceAround,
+  //                       crossAxisAlignment: CrossAxisAlignment.center,
+  //                       children: List.generate(items.length, (i) {
+  //                         final selected = i == _selectedNavIndex;
+  //                         final (icon, label, badge) = items[i];
+
+  //                         return Expanded(
+  //                           child: GestureDetector(
+  //                             onTap: () async {
+  //                               HapticFeedback.selectionClick();
+  //                               setState(() => _selectedNavIndex = i);
+
+  //                               if (i == 0) return;
+
+  //                               Future<void>? navigationFuture;
+  //                               switch (i) {
+  //                                 case 1: // WORD BANK
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     wordBankRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 2: // PODCASTS
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     podcastsRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 3: // AI CONVERSATION
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     aiConversationRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 4: // PROFILE
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     profileRoute,
+  //                                   );
+  //                                   break;
+  //                               }
+
+  //                               await navigationFuture;
+  //                               if (mounted) {
+  //                                 setState(() => _selectedNavIndex = 0);
+  //                               }
+  //                             },
+
+  //                             behavior: HitTestBehavior.opaque,
+  //                             child: AnimatedContainer(
+  //                               duration: 250.ms,
+  //                               curve: Curves.easeOut,
+  //                               padding: EdgeInsets.symmetric(
+  //                                 vertical: 10.h,
+  //                                 horizontal: 2.w,
+  //                               ),
+  //                               child: Column(
+  //                                 mainAxisSize: MainAxisSize.min,
+  //                                 mainAxisAlignment: MainAxisAlignment.center,
+  //                                 children: [
+  //                                   Stack(
+  //                                     clipBehavior: Clip.none,
+  //                                     children: [
+  //                                       AnimatedScale(
+  //                                         scale: selected ? 1.12 : 1.0,
+  //                                         duration: 300.ms,
+  //                                         curve: Curves.easeOutBack,
+  //                                         child: Container(
+  //                                           padding: EdgeInsets.all(6.r),
+  //                                           decoration: BoxDecoration(
+  //                                             shape: BoxShape.circle,
+  //                                             gradient: selected
+  //                                                 ? RadialGradient(
+  //                                                     colors: [
+  //                                                       AppColors.yellow
+  //                                                           .withOpacity(.35),
+  //                                                       AppColors.orange
+  //                                                           .withOpacity(.15),
+  //                                                       Colors.transparent,
+  //                                                     ],
+  //                                                   )
+  //                                                 : null,
+  //                                             boxShadow: selected
+  //                                                 ? [
+  //                                                     BoxShadow(
+  //                                                       color: AppColors.yellow
+  //                                                           .withOpacity(.5),
+  //                                                       blurRadius: 14,
+  //                                                       spreadRadius: 1,
+  //                                                     ),
+  //                                                   ]
+  //                                                 : null,
+  //                                           ),
+  //                                           child: Icon(
+  //                                             icon,
+  //                                             color: selected
+  //                                                 ? AppColors.yellow
+  //                                                 : Colors.white.withOpacity(
+  //                                                     .75,
+  //                                                   ),
+  //                                             size: 22.sp,
+  //                                             shadows: selected
+  //                                                 ? [
+  //                                                     Shadow(
+  //                                                       color: AppColors.yellow
+  //                                                           .withOpacity(.8),
+  //                                                       blurRadius: 10,
+  //                                                     ),
+  //                                                   ]
+  //                                                 : null,
+  //                                           ),
+  //                                         ),
+  //                                       ),
+  //                                       if (badge != null)
+  //                                         Positioned(
+  //                                           top: -2,
+  //                                           right: -4,
+  //                                           child: Container(
+  //                                             padding: EdgeInsets.all(2.5.r),
+  //                                             decoration: BoxDecoration(
+  //                                               shape: BoxShape.circle,
+  //                                               gradient: const LinearGradient(
+  //                                                 colors: [
+  //                                                   AppColors.yellow,
+  //                                                   AppColors.orange,
+  //                                                 ],
+  //                                               ),
+  //                                               boxShadow: [
+  //                                                 BoxShadow(
+  //                                                   color: AppColors.yellow
+  //                                                       .withOpacity(.6),
+  //                                                   blurRadius: 6,
+  //                                                 ),
+  //                                               ],
+  //                                             ),
+  //                                             child: Icon(
+  //                                               badge,
+  //                                               size: 7.sp,
+  //                                               color: Colors.black,
+  //                                             ),
+  //                                           ),
+  //                                         ),
+  //                                     ],
+  //                                   ),
+  //                                   SizedBox(height: 4.h),
+  //                                   FittedBox(
+  //                                     fit: BoxFit.scaleDown,
+  //                                     child: AnimatedDefaultTextStyle(
+  //                                       duration: 250.ms,
+  //                                       style: GoogleFonts.poppins(
+  //                                         color: selected
+  //                                             ? AppColors.yellow
+  //                                             : Colors.white.withOpacity(.7),
+  //                                         fontSize: selected ? 9.sp : 8.5.sp,
+  //                                         fontWeight: selected
+  //                                             ? FontWeight.w800
+  //                                             : FontWeight.w500,
+  //                                         letterSpacing: .3,
+  //                                       ),
+  //                                       child: Text(
+  //                                         label,
+  //                                         textAlign: TextAlign.center,
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         );
+  //                       }),
+  //                     ),
+  //                     Positioned(
+  //                       right: 10,
+  //                       top: 8,
+  //                       child:
+  //                           Icon(
+  //                                 Icons.auto_awesome_rounded,
+  //                                 color: AppColors.sky.withOpacity(.55),
+  //                                 size: 9.sp,
+  //                               )
+  //                               .animate(onPlay: (c) => c.repeat(reverse: true))
+  //                               .scale(
+  //                                 begin: const Offset(1, 1),
+  //                                 end: const Offset(1.6, 1.6),
+  //                                 duration: 1500.ms,
+  //                                 curve: Curves.easeInOut,
+  //                               )
+  //                               .fade(begin: .3, end: .8, duration: 1500.ms),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 
   Widget _glassContainer({
     required Widget child,
@@ -2423,14 +2757,14 @@ class _LevelsPath extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final double nodeSpacing = 165.h;
+    final double nodeSpacing = 195.h;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final totalHeight = levels.length * nodeSpacing + 80.h;
 
-        final double edgeFraction = (60.w / width).clamp(0.10, 0.22);
+        final double edgeFraction = (68.w / width).clamp(0.10, 0.22);
         final double minFraction = edgeFraction;
         final double maxFraction = 1 - edgeFraction;
 
@@ -2465,7 +2799,7 @@ class _LevelsPath extends StatelessWidget {
                 return Positioned(
                   left: 0,
                   right: 0,
-                  top: point.dy - 60.h,
+                  top: point.dy - 68.h,
                   child: _LevelRow(
                     level: level,
                     nodeDx: point.dx,
@@ -2506,12 +2840,26 @@ class _PathPainter extends CustomPainter {
       final p0 = points[i];
       final p1 = points[i + 1];
 
+      // Catmull-Rom inspired control points so consecutive segments share a
+      // continuous tangent at each node instead of kinking — this is what
+      // makes the whole ribbon read as one smooth, flowing line.
+      final pPrev = i > 0 ? points[i - 1] : p0;
+      final pNext = i + 2 < points.length ? points[i + 2] : p1;
+
+      const double smoothing = 0.22;
+      final cp1 = Offset(
+        p0.dx + (p1.dx - pPrev.dx) * smoothing,
+        p0.dy + (p1.dy - pPrev.dy) * smoothing,
+      );
+      final cp2 = Offset(
+        p1.dx - (pNext.dx - p0.dx) * smoothing,
+        p1.dy - (pNext.dy - p0.dy) * smoothing,
+      );
+
       final segmentPath = Path()..moveTo(p0.dx, p0.dy);
-      final cp1 = Offset(p0.dx, (p0.dy + p1.dy) / 2);
-      final cp2 = Offset(p1.dx, (p0.dy + p1.dy) / 2);
       segmentPath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p1.dx, p1.dy);
 
-      final bounds = Rect.fromPoints(p0, p1).inflate(40);
+      final bounds = Rect.fromPoints(p0, p1).inflate(50);
 
       final isLocked =
           levels[i].status == LevelStatus.locked ||
@@ -2533,37 +2881,45 @@ class _PathPainter extends CustomPainter {
   }) {
     final gradientColors = [AppColors.orange, AppColors.yellow, AppColors.sky];
 
+    // Soft wide outer glow
     canvas.drawPath(
       path,
       Paint()
         ..shader = LinearGradient(colors: gradientColors).createShader(bounds)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 28.w
+        ..strokeWidth = 38.w
         ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
+        ..strokeJoin = StrokeJoin.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
     );
 
+    // Wider, softer core ribbon
     canvas.drawPath(
       path,
       Paint()
         ..shader = LinearGradient(colors: gradientColors).createShader(bounds)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 14.w
-        ..strokeCap = StrokeCap.round,
+        ..strokeWidth = 20.w
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true,
     );
 
+    // Gentle inner sheen for a smooth, glossy look
     canvas.drawPath(
       path,
       Paint()
-        ..color = Colors.white.withOpacity(.6)
+        ..color = Colors.white.withOpacity(.5)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4.w
-        ..strokeCap = StrokeCap.round,
+        ..strokeWidth = 6.w
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true,
     );
 
     final metrics = path.computeMetrics().toList();
     for (final metric in metrics) {
-      final double spacing = 28.w;
+      final double spacing = 30.w;
       final baseOffset = (flowValue * spacing) % spacing;
       double distance = baseOffset;
       while (distance < metric.length) {
@@ -2571,14 +2927,14 @@ class _PathPainter extends CustomPainter {
         if (tangent != null) {
           canvas.drawCircle(
             tangent.position,
-            5.w,
+            5.5.w,
             Paint()
               ..color = Colors.white.withOpacity(.35)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
           );
           canvas.drawCircle(
             tangent.position,
-            2.5.w,
+            2.8.w,
             Paint()..color = Colors.white,
           );
         }
@@ -2616,6 +2972,17 @@ class _PathPainter extends CustomPainter {
       oldDelegate.flowValue != flowValue || oldDelegate.points != points;
 }
 
+double _levelNodeSizeFor(LevelStatus status) {
+  switch (status) {
+    case LevelStatus.boss:
+      return 106.w.clamp(80.0, 120.0);
+    case LevelStatus.current:
+      return 100.w.clamp(78.0, 118.0);
+    default:
+      return 96.w.clamp(76.0, 115.0);
+  }
+}
+
 class _LevelRow extends StatelessWidget {
   final LevelPathData level;
   final double nodeDx;
@@ -2641,38 +3008,41 @@ class _LevelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double cardWidth = (containerWidth * 0.42).clamp(130.w, 175.w);
-    final double nodeHalf = 39.w;
-    final double gap = 12.w;
+    final double size = _levelNodeSizeFor(level.status);
+    final double nodeHalf = size / 2;
+    final double gap = 10.w;
     final double edgePadding = 4.w;
 
-    final spaceOnRight = containerWidth - nodeDx;
-    final spaceOnLeft = nodeDx;
-    final placeOnRight = spaceOnRight >= spaceOnLeft;
+    // المساحة الفاضية على كل جنب بعد حواف الدائرة
+    final double rightSpace = containerWidth - (nodeDx + nodeHalf) - gap;
+    final double leftSpace = (nodeDx - nodeHalf) - gap;
+    final bool placeOnRight = rightSpace >= leftSpace;
+    final double available = placeOnRight ? rightSpace : leftSpace;
 
-    double desiredLeft = placeOnRight
-        ? nodeDx + nodeHalf + gap
-        : nodeDx - nodeHalf - gap - cardWidth;
+    // عرض البطاقة = المساحة المتاحة → مستحيل يحصل تداخل
+    final double cardWidth = available.clamp(95.w, 190.w);
 
-    final maxLeft = containerWidth - cardWidth - edgePadding;
-    final clampedLeft = desiredLeft.clamp(
-      edgePadding,
-      maxLeft < edgePadding ? edgePadding : maxLeft,
-    );
+    final double left = placeOnRight
+        ? (nodeDx + nodeHalf + gap)
+            .clamp(edgePadding, containerWidth - cardWidth - edgePadding)
+        : (nodeDx - nodeHalf - gap - cardWidth)
+            .clamp(edgePadding, containerWidth - cardWidth - edgePadding);
+
+    final double nodeBox = size + 34.w;
 
     return SizedBox(
-      height: 165.h,
+      height: 195.h,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           if (level.status == LevelStatus.current)
             Positioned(
               left: (nodeDx - 35.w).clamp(0.0, containerWidth - 70.w),
-              top: -2.h,
+              top: -6.h,
               child: const _CurrentRibbon(),
             ),
           Positioned(
-            left: nodeDx - 40.w,
+            left: nodeDx - nodeBox / 2, // متمركزة Exactly على نقطة المسار
             top: 24.h,
             child: _LevelNode(
               level: level,
@@ -2685,8 +3055,8 @@ class _LevelRow extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: clampedLeft,
-            top: 28.h,
+            left: left,
+            top: 30.h,
             child: _LevelInfoCard(
               level: level,
               width: cardWidth,
@@ -2834,6 +3204,7 @@ class _LevelNode extends StatelessWidget {
             colors: level.colors,
             onSuccess: () {
               context.read<StudentLevelsCubit>().fetchStudentLevels();
+              ///Navigator.of(context).pop();
             },
           ),
         );
@@ -2841,364 +3212,259 @@ class _LevelNode extends StatelessWidget {
     );
   }
 
-  // void _showPurchaseSheet(BuildContext context) {
-  //   final sheetColors = level.colors ?? [AppColors.sky, AppColors.primary];
-  //   showModalBottomSheet(
-  //     context: context,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (_) => ClipRRect(
-  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-  //       child: BackdropFilter(
-  //         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-  //         child: Container(
-  //           padding: EdgeInsets.all(20.w),
-  //           decoration: BoxDecoration(
-  //             color: AppColors.dark.withOpacity(.9),
-  //             border: Border.all(color: Colors.white.withOpacity(.15)),
-  //             borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-  //           ),
-  //           child: Column(
-  //             mainAxisSize: MainAxisSize.min,
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               Container(
-  //                 width: 40.w,
-  //                 height: 4.h,
-  //                 margin: EdgeInsets.only(bottom: 14.h),
-  //                 decoration: BoxDecoration(
-  //                   color: Colors.white.withOpacity(.3),
-  //                   borderRadius: BorderRadius.circular(10.r),
-  //                 ),
-  //               ),
-  //               Row(
-  //                 children: [
-  //                   Icon(
-  //                     Icons.lock_open_rounded,
-  //                     color: sheetColors.first,
-  //                     size: 20.sp,
-  //                   ),
-  //                   SizedBox(width: 8.w),
-  //                   Expanded(
-  //                     child: Text(
-  //                       level.title,
-  //                       style: GoogleFonts.poppins(
-  //                         color: Colors.white,
-  //                         fontWeight: FontWeight.w800,
-  //                         fontSize: 16.sp,
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //               SizedBox(height: 4.h),
-  //               Text(
-  //                 level.subtitle,
-  //                 style: GoogleFonts.poppins(
-  //                   color: Colors.white.withOpacity(.7),
-  //                   fontSize: 12.sp,
-  //                 ),
-  //               ),
-  //               SizedBox(height: 18.h),
-  //               GestureDetector(
-  //                 onTap: () {
-  //                   Navigator.pop(context);
-  //                 },
-  //                 child: Container(
-  //                   padding: EdgeInsets.symmetric(vertical: 14.h),
-  //                   width: double.infinity,
-  //                   decoration: BoxDecoration(
-  //                     gradient: LinearGradient(colors: sheetColors),
-  //                     borderRadius: BorderRadius.circular(16.r),
-  //                     boxShadow: [
-  //                       BoxShadow(
-  //                         color: sheetColors.first.withOpacity(.5),
-  //                         blurRadius: 14,
-  //                       ),
-  //                     ],
-  //                   ),
-  //                   child: Center(
-  //                     child: Text(
-  //                       "Unlock for \$${level.price?.toStringAsFixed(0) ?? '-'}",
-  //                       style: GoogleFonts.poppins(
-  //                         color: Colors.white,
-  //                         fontWeight: FontWeight.w800,
-  //                         fontSize: 13.sp,
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ),
-  //               SizedBox(height: 8.h),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
   @override
-  Widget build(BuildContext context) {
-    final isCurrent = level.status == LevelStatus.current;
-    final isLocked = level.status == LevelStatus.locked;
-    final isBoss = level.status == LevelStatus.boss;
-    final isCompleted = level.status == LevelStatus.completed;
-    final isAvailable = level.status == LevelStatus.available;
+Widget build(BuildContext context) {
+  final isCurrent = level.status == LevelStatus.current;
+  final isLocked = level.status == LevelStatus.locked;
+  final isBoss = level.status == LevelStatus.boss;
+  final isCompleted = level.status == LevelStatus.completed;
+  final isAvailable = level.status == LevelStatus.available;
 
-    final double size = (isBoss ? 82.w : (isCurrent ? 80.w : 72.w)).clamp(
-      58.0,
-      92.0,
-    );
+  final double size = _levelNodeSizeFor(level.status);
 
-    List<Color> gradientColors;
-    if (isLocked) {
-      gradientColors = [
-        Colors.white.withOpacity(.12),
-        Colors.white.withOpacity(.04),
-      ];
-    } else if (isBoss) {
-      gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
-    } else if (isCurrent) {
-      gradientColors = [AppColors.orange, AppColors.yellow];
-    } else if (isAvailable) {
-      gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
-    } else {
-      // completed
-      gradientColors = [const Color(0xFF4ADE80), const Color(0xFF22C55E)];
-    }
+  List<Color> gradientColors;
+  if (isLocked) {
+    gradientColors = [Colors.white.withOpacity(.12), Colors.white.withOpacity(.05)];
+  } else if (isBoss) {
+    gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
+  } else if (isCurrent) {
+    gradientColors = [AppColors.yellow, AppColors.orange];
+  } else if (isAvailable) {
+    gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
+  } else {
+    gradientColors = [const Color(0xFF3BCF7E), const Color(0xFF1C9E58)];
+  }
 
-    Widget aura = const SizedBox.shrink();
-    if (isCurrent) {
-      aura =
-          Container(
-                width: size + 30.w,
-                height: size + 30.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.yellow.withOpacity(.5),
-                      AppColors.yellow.withOpacity(0),
-                    ],
-                  ),
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.15, 1.15),
-                duration: 1400.ms,
-                curve: Curves.easeInOut,
-              );
-    }
+  // حلقة خارجية فاتحة مشتقة من لون الدائرة نفسه
+  final Color ringColor = isLocked
+      ? Colors.white.withOpacity(.18)
+      : Color.lerp(gradientColors.first, Colors.white, 0.45)!;
 
-    Widget rotatingRing = const SizedBox.shrink();
-    if (isCurrent) {
-      rotatingRing =
-          Container(
-                width: size + 18.w,
-                height: size + 18.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.yellow.withOpacity(.4),
-                    width: 1.5,
-                  ),
-                  gradient: const SweepGradient(
-                    colors: [
-                      AppColors.yellow,
-                      Colors.transparent,
-                      AppColors.orange,
-                      Colors.transparent,
-                      AppColors.yellow,
-                    ],
-                    stops: [0.0, 0.3, 0.5, 0.8, 1.0],
-                  ),
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat())
-              .rotate(duration: 6.seconds, curve: Curves.linear);
-    }
-
-    Widget bossCrown = const SizedBox.shrink();
-    if (isBoss) {
-      bossCrown = Positioned(
-        top: -8.h,
-        child:
-            Icon(
-                  Icons.workspace_premium_rounded,
-                  color: const Color(0xFFFFD35B),
-                  size: 18.sp,
-                  shadows: const [
-                    Shadow(color: Color(0xffB861F5), blurRadius: 12),
-                    Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
-                  ],
-                )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
-                  begin: const Offset(1, 1),
-                  end: const Offset(1.15, 1.15),
-                  duration: 1400.ms,
-                ),
-      );
-    }
-
-    Widget node = Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: isLocked
-            ? []
-            : [
-                BoxShadow(
-                  color: gradientColors.first.withOpacity(.6),
-                  blurRadius: 24,
-                  spreadRadius: 2,
-                ),
-              ],
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.dark.withOpacity(.4),
-          border: Border.all(color: Colors.white.withOpacity(.4), width: 2),
-        ),
-        child: Center(
-          child: isLocked
-              ? Icon(Icons.lock_rounded, color: Colors.white54, size: 28.sp)
-              : Icon(
-                  level.icon,
-                  color: Colors.white,
-                  size: isBoss ? 34.sp : (isCurrent ? 32.sp : 28.sp),
-                ),
-        ),
-      ),
-    );
-
-    if (isCompleted) {
-      node = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          node,
-          Positioned(
-            bottom: -2.h,
-            right: -2.w,
-            child: Container(
-              padding: EdgeInsets.all(3.r),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.dark, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF4ADE80).withOpacity(.6),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                size: 12.sp,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (isAvailable && level.price != null) {
-      final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
-      node = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          node,
-          Positioned(
-            bottom: -2.h,
-            right: -2.w,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: badgeColors),
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: AppColors.dark, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: badgeColors.first.withOpacity(.6),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.lock_open_rounded,
-                    size: 9.sp,
-                    color: Colors.white,
-                  ),
-                  SizedBox(width: 2.w),
-                  Text(
-                    "\$${level.price!.toStringAsFixed(0)}",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 9.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (isCurrent || isBoss) {
-      node = node
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.06, 1.06),
-            duration: 1400.ms,
-            curve: Curves.easeInOut,
-          );
-    }
-
-    return GestureDetector(
-          onTap: () => _handleTap(context),
-          child: SizedBox(
-            width: size + 30.w,
-            height: size + 30.w,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                aura,
-                rotatingRing,
-                if (isBoss) bossCrown else const SizedBox.shrink(),
-                node,
+  Widget aura = const SizedBox.shrink();
+  if (isCurrent) {
+    aura = Container(
+          width: size + 34.w,
+          height: size + 34.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                AppColors.yellow.withOpacity(.5),
+                AppColors.yellow.withOpacity(0),
               ],
             ),
           ),
         )
-        .animate()
-        .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
+        .animate(onPlay: (c) => c.repeat(reverse: true))
         .scale(
-          begin: const Offset(.7, .7),
-          end: const Offset(1, 1),
-          curve: Curves.easeOutBack,
+          begin: const Offset(1, 1),
+          end: const Offset(1.15, 1.15),
+          duration: 1400.ms,
+          curve: Curves.easeInOut,
         );
   }
+
+  Widget rotatingRing = const SizedBox.shrink();
+  if (isCurrent) {
+    rotatingRing = Container(
+          width: size + 20.w,
+          height: size + 20.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.yellow.withOpacity(.4),
+              width: 1.5,
+            ),
+            gradient: const SweepGradient(
+              colors: [
+                AppColors.yellow,
+                Colors.transparent,
+                AppColors.orange,
+                Colors.transparent,
+                AppColors.yellow,
+              ],
+              stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+            ),
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat())
+        .rotate(duration: 6.seconds, curve: Curves.linear);
+  }
+
+  Widget bossCrown = const SizedBox.shrink();
+  if (isBoss) {
+    bossCrown = Positioned(
+      top: -8.h,
+      child: Icon(
+            Icons.workspace_premium_rounded,
+            color: const Color(0xFFFFD35B),
+            size: 20.sp,
+            shadows: const [
+              Shadow(color: Color(0xffB861F5), blurRadius: 12),
+              Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+            ],
+          )
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(
+            begin: const Offset(1, 1),
+            end: const Offset(1.15, 1.15),
+            duration: 1400.ms,
+          ),
+    );
+  }
+
+  Widget node = Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: gradientColors,
+      ),
+      border: Border.all(color: ringColor, width: 3.w),
+      boxShadow: isLocked
+          ? []
+          : [
+              BoxShadow(
+                color: gradientColors.first.withOpacity(.55),
+                blurRadius: 26,
+                spreadRadius: 2,
+              ),
+            ],
+    ),
+    child: Container(
+      margin: EdgeInsets.all(5.w),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withOpacity(.35),
+          width: 1.2,
+        ),
+      ),
+      child: Center(
+        child: isLocked
+            ? Icon(Icons.lock_rounded, color: Colors.white54, size: 32.sp)
+            : Icon(
+                level.icon,
+                color: Colors.white,
+                size: isBoss ? 40.sp : (isCurrent ? 38.sp : 36.sp),
+              ),
+      ),
+    ),
+  );
+
+  if (isCompleted) {
+    node = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        node,
+        Positioned(
+          bottom: -2.h,
+          right: -2.w,
+          child: Container(
+            width: 34.w,
+            height: 34.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+              ),
+              border: Border.all(color: AppColors.dark, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4ADE80).withOpacity(.6),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Icon(Icons.check_rounded, size: 16.sp, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  if (isAvailable && level.price != null) {
+    final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
+    node = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        node,
+        Positioned(
+          bottom: -2.h,
+          right: -2.w,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: badgeColors),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: AppColors.dark, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: badgeColors.first.withOpacity(.6),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_open_rounded, size: 10.sp, color: Colors.white),
+                SizedBox(width: 2.w),
+                Text(
+                  "\$${level.price!.toStringAsFixed(0)}",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 9.5.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  if (isCurrent || isBoss) {
+    node = node
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scale(
+          begin: const Offset(1, 1),
+          end: const Offset(1.06, 1.06),
+          duration: 1400.ms,
+          curve: Curves.easeInOut,
+        );
+  }
+
+  return GestureDetector(
+        onTap: () => _handleTap(context),
+        child: SizedBox(
+          width: size + 34.w,
+          height: size + 34.w,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              aura,
+              rotatingRing,
+              if (isBoss) bossCrown else const SizedBox.shrink(),
+              node,
+            ],
+          ),
+        ),
+      )
+      .animate()
+      .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
+      .scale(
+        begin: const Offset(.7, .7),
+        end: const Offset(1, 1),
+        curve: Curves.easeOutBack,
+      );
+}
 
   void _showCreateExceptionSheet(BuildContext context) {
     if (level.id == null) {
@@ -3355,129 +3621,148 @@ class _LevelInfoCard extends StatelessWidget {
                         ]
                       : null,
                 ),
+
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isBoss)
-                      ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-                        ).createShader(bounds),
-                        child: Text(
-                          "🔥 Boss Level",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13.sp,
-                            letterSpacing: .3,
-                          ),
-                        ),
-                      )
-                    else
-                      Text(
-                        level.title,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.sp,
-                          letterSpacing: .2,
-                        ),
-                      ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      level.subtitle,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.72),
-                        fontSize: 10.5.sp,
-                      ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    if (isBoss)
+      ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+        ).createShader(bounds),
+        child: Text(
+          "🔥 Boss Level",
+          maxLines: null,
+          overflow: TextOverflow.visible,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 11.5.sp,
+            letterSpacing: .3,
+            height: 1.3,
+          ),
+        ),
+      )
+    else
+      Text(
+        level.title,
+        maxLines: null,               // يلتف كامل بدون نقاط
+        overflow: TextOverflow.visible,
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 11.5.sp,
+          letterSpacing: .2,
+          height: 1.3,
+        ),
+      ),
+    SizedBox(height: 2.h),
+    Text(
+      level.subtitle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.poppins(
+        color: Colors.white.withOpacity(.72),
+        fontSize: 10.sp,
+      ),
+    ),
+    SizedBox(height: 8.h),
+    Row(
+      children: [
+        Icon(statusIcon, size: 13.sp, color: statusColor),
+        SizedBox(width: 4.w),
+        Expanded(
+          child: Text(
+            statusText,
+            maxLines: 2,
+            overflow: TextOverflow.visible,
+            style: GoogleFonts.poppins(
+              color: statusColor,
+              fontSize: 9.5.sp,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    ),
+    if (isCurrent) ...[
+      SizedBox(height: 10.h),
+      GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              Navigator.pushNamed(
+                context,
+                levelCoursesRoute,
+                arguments: {
+                  'userName': userName,
+                  'xp': xp,
+                  'streakDays': streakDays,
+                  'level': level.order ?? 8,
+                  'levelProgress': levelProgress,
+                  'levelTitle': level.title,
+                  'levelSubtitle': level.subtitle,
+                  'levelId': level.id,
+                  'testId': level.testId,
+                },
+              );
+            },
+            child: SizedBox(
+              width: double.infinity, 
+              child: Container(
+                alignment: Alignment.center,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10.w,
+                  vertical: 7.h,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.orange, AppColors.yellow],
+                  ),
+                  borderRadius: BorderRadius.circular(20.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(.6),
+                      blurRadius: 14,
+                      spreadRadius: .5,
                     ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusIcon, size: 13.sp, color: statusColor),
-                        SizedBox(width: 4.w),
-                        Flexible(
-                          child: Text(
-                            statusText,
-                            style: GoogleFonts.poppins(
-                              color: statusColor,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isCurrent) ...[
-                      SizedBox(height: 10.h),
-                      GestureDetector(
-                            onTap: () {
-                              HapticFeedback.mediumImpact();
-                              Navigator.pushNamed(
-                                context,
-                                levelCoursesRoute,
-                                arguments: {
-                                  'userName': userName,
-                                  'xp': xp,
-                                  'streakDays': streakDays,
-                                  'level': level.order ?? 8,
-                                  'levelProgress': levelProgress,
-                                  'levelTitle': level.title,
-                                  'levelSubtitle': level.subtitle,
-                                  'levelId': level.id,
-                                  'testId': level.testId,
-                                },
-                              );
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 14.w,
-                                vertical: 7.h,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.orange, AppColors.yellow],
-                                ),
-                                borderRadius: BorderRadius.circular(20.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.yellow.withOpacity(.6),
-                                    blurRadius: 14,
-                                    spreadRadius: .5,
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "Continue",
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11.sp,
-                                    ),
-                                  ),
-                                  SizedBox(width: 4.w),
-                                  Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: Colors.black,
-                                    size: 14.sp,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .animate(onPlay: (c) => c.repeat(reverse: true))
-                          .shimmer(
-                            duration: 1800.ms,
-                            color: Colors.white.withOpacity(.7),
-                          ),
-                    ],
                   ],
                 ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        "Continue",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11.sp,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.black,
+                      size: 14.sp,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .shimmer(
+            duration: 1800.ms,
+            color: Colors.white.withOpacity(.7),
+          ),
+    ],
+  ],
+),
               ),
             ),
           ),

@@ -1,5 +1,3 @@
-
-
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -19,6 +17,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
 
 
 enum PodcastLevel { beginner, intermediate, advanced }
@@ -327,10 +327,6 @@ List<PodcastItem> _mapTopicPodcasts(TopicPodcastsModel data) {
   return list;
 }
 
-// ─────────────────────────────────────────────
-// PodcastsScreen
-// ─────────────────────────────────────────────
-
 class PodcastsScreen extends StatefulWidget {
   const PodcastsScreen({super.key});
 
@@ -339,8 +335,43 @@ class PodcastsScreen extends StatefulWidget {
 }
 
 class _PodcastsScreenState extends State<PodcastsScreen> {
-  int _userPoints = 450;
 
+int _userPoints = 0;
+  bool _pointsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserPoints();
+    });
+  }
+  Future<void> _loadUserPoints() async {
+    try {
+      final result =
+          await context.read<ProfileRepository>().getStudentProfile();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        final profile = result['data'] as StudentProfileModel;
+        setState(() {
+          _userPoints = profile.points;
+          _pointsLoading = false;
+        });
+      } else {
+        setState(() {
+          _pointsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _pointsLoading = false;
+        });
+      }
+    }
+    }
   Future<void> _openCategory(PodcastCategory category) async {
     if (category.id == null) return;
     HapticFeedback.selectionClick();
@@ -507,12 +538,12 @@ class _PodcastsScreenState extends State<PodcastsScreen> {
         ),
         Expanded(
           child: Text(
-            "Podcasts",
+            'Podcast',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.cinzelDecorative(
               color: Colors.white,
-              fontSize: 17.sp,
-              fontWeight: FontWeight.w700,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -1433,14 +1464,14 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
         ),
         Expanded(
           child: Text(
-            widget.category.title,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+  widget.category.title,
+  textAlign: TextAlign.center,
+  style: GoogleFonts.cinzelDecorative(
+    color: Colors.white,
+    fontSize: 16.sp,
+    fontWeight: FontWeight.w600,
+  ),
+),
         ),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
@@ -1821,5 +1852,4 @@ Stack(
         .animate()
         .fadeIn(delay: (100 + index * 70).ms, duration: 400.ms)
         .moveX(begin: 12, end: 0, curve: Curves.easeOutCubic);
-  }
-}
+  }}

@@ -103,6 +103,7 @@ class _WordBankScreenState extends State<WordBankScreen>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) HapticFeedback.selectionClick();
     });
+
     _searchFocus.addListener(() => setState(() {}));
   }
 
@@ -440,53 +441,52 @@ class _WordBankScreenState extends State<WordBankScreen>
   }
 
   Widget _buildTopBar() {
-    final total = _words.length;
-    final mastered = _words.where((w) => w.status == WordStatus.mastered).length;
-    final percent = total == 0 ? 0.0 : mastered / total;
+  final total = _words.length;
+  final mastered =
+      _words.where((w) => w.status == WordStatus.mastered).length;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Row(
-        children: [
-          _circleIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onTap: () => Navigator.pop(context),
+  return Padding(
+    padding: EdgeInsets.symmetric(horizontal: 20.w),
+    child: Row(
+      children: [
+        _circleIconButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          onTap: () => Navigator.pop(context),
+        ),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Word Bank',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cinzelDecorative(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                total == 0
+                    ? 'Your personal vocabulary'
+                    : '$mastered of $total words know',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(.6),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Word Bank",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .3,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  total == 0
-                      ? "Your personal vocabulary"
-                      : "$mastered of $total words know",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withOpacity(.6),
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-           ),
-          // SizedBox(width: 10.w),
-          // if (total > 0) _MasteryRing(percent: percent),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms).moveY(begin: -10, end: 0);
-  }
+        ),
+        SizedBox(width: 44.w),
+      ],
+    ),
+  ).animate().fadeIn(duration: 400.ms).moveY(begin: -10, end: 0);
+}
+
 
   Widget _circleIconButton({
     required IconData icon,
@@ -595,6 +595,28 @@ class _WordBankScreenState extends State<WordBankScreen>
       ),
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
+
+Widget _tabCountBadge(String value, Color color, bool selected) {
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 1.5.h),
+    decoration: BoxDecoration(
+      color: selected ? Colors.black.withOpacity(.22) : color.withOpacity(.20),
+      borderRadius: BorderRadius.circular(10.r),
+      border: Border.all(
+        color: selected ? Colors.transparent : color.withOpacity(.4),
+      ),
+    ),
+    child: Text(
+      value,
+      style: GoogleFonts.poppins(
+        color: selected ? Colors.black : color,
+        fontSize: 9.sp,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
 
   Widget _buildTabBar() {
     final learningCount = _words

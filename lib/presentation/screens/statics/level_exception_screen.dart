@@ -481,13 +481,14 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
         Expanded(
           child: Center(
             child: Text(
-              'Level Exceptions',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w700,
+                'Level Exceptions',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cinzelDecorative(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
           ),
         ),
         SizedBox(width: 44.w),

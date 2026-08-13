@@ -19,6 +19,8 @@ import 'package:fluent/presentation/screens/lessons/lessons_scrssn.dart';
 import 'package:fluent/presentation/widgets/rate_course_sheet.dart';
 import 'package:fluent/cubit/student/lessons/lesson_cubit.dart';
 import 'package:fluent/data/repository/student_lesson_repository.dart';
+import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
 
 class LevelCoursesScreen extends StatefulWidget {
   final int? levelId;
@@ -54,8 +56,9 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     with TickerProviderStateMixin {
   int _selectedNavIndex = 0;
   int? _tappedIndex;
+  late int _xp;
+late int _streakDays;
 
-  /// Owned by this screen so State.context can use it without Provider lookup.
   RateCubit? _rateCubit;
 
   late final AnimationController _borderFlowController;
@@ -152,21 +155,57 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     return list;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _borderFlowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _borderFlowController = AnimationController(
+  //     vsync: this,
+  //     duration: const Duration(seconds: 6),
+  //   )..repeat();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cubit = context.read<StudentCoursesCubit>();
-      if (cubit.state is StudentCoursesInitial) {
-        cubit.fetchStudentCourses(widget.levelId ?? 0);
-      }
-    });
-  }
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     final cubit = context.read<StudentCoursesCubit>();
+  //     if (cubit.state is StudentCoursesInitial) {
+  //       cubit.fetchStudentCourses(widget.levelId ?? 0);
+  //     }
+  //   });
+  // }
+
+  @override
+void initState() {
+  super.initState();
+  _xp = widget.xp;
+  _streakDays = widget.streakDays;
+
+  _borderFlowController = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  )..repeat();
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final cubit = context.read<StudentCoursesCubit>();
+    if (cubit.state is StudentCoursesInitial) {
+      cubit.fetchStudentCourses(widget.levelId ?? 0);
+    }
+    _refreshPointsOnly(); // جلب من الباك
+  });
+}
+
+Future<void> _refreshPointsOnly() async {
+  try {
+    final profileRes =
+        await context.read<ProfileRepository>().getStudentProfile();
+    if (!mounted) return;
+    if (profileRes['success'] == true &&
+        profileRes['data'] is StudentProfileModel) {
+      final pr = profileRes['data'] as StudentProfileModel;
+      setState(() {
+        _xp = pr.points;
+        _streakDays = pr.streak;
+      });
+    }
+  } catch (_) {}
+}
 
   @override
   void dispose() {
@@ -193,8 +232,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
       );
       return;
     }
-
-    // Use the screen-owned cubit (not State.context lookup above BlocProvider).
     _rateCubit ??= RateCubit(context.read<RateRepository>());
     final existing = _rateCubit!.rateForCourse(courseId);
 
@@ -223,7 +260,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
             SafeArea(
               child: Column(
                 children: [
-                  // TOP BAR
                   Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: 20.w,
@@ -232,7 +268,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                     child: _buildTopBar(),
                   ),
 
-                  // COURSES LIST + HERO HEADER
                   Expanded(
                     child:
                         BlocBuilder<StudentCoursesCubit, StudentCoursesState>(
@@ -262,7 +297,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
             ),
           ],
         ),
-        bottomNavigationBar: _buildBottomNav(),
+        //bottomNavigationBar: _buildBottomNav(),
       ),
     );
   }
@@ -465,7 +500,6 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                         teacherName: course.teacher,
                         userName: widget.userName,
                         xp: widget.xp,
-                        streakDays: widget.streakDays,
                         courseProgress: course.progress,
                         onLessonTap: (lesson) {},
                       ),
@@ -477,6 +511,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                     widget.levelId!,
                   );
                 }
+                await _refreshPointsOnly();
               }
             },
             borderAnimation: _borderFlowController,
@@ -509,6 +544,7 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     if (widget.levelId != null) {
       context.read<StudentCoursesCubit>().fetchStudentCourses(widget.levelId!);
     }
+    await _refreshPointsOnly(); 
     if (result is Map &&
         result['passed'] == true &&
         result['goToLevels'] == true) {
@@ -591,12 +627,14 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "👋 Good evening,",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.75),
-                  fontSize: 12.sp,
-                ),
-              ),
+            'Good Progress',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzelDecorative(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.white, AppColors.sky],
@@ -605,20 +643,15 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                   widget.userName,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        _circleIconButton(
-          icon: Icons.notifications_rounded,
-          badgeCount: 3,
-          onTap: () {},
-          iconSize: iconSize.w,
-        ),
+        
       ],
     ).animate().fadeIn(duration: 500.ms).moveY(begin: -10, end: 0);
   }
@@ -781,12 +814,12 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
                                 _heroStatChip(
                                   icon: Icons.star_rounded,
                                   color: AppColors.yellow,
-                                  value: _formatNumber(widget.xp),
+                                  value: _formatNumber(_xp),
                                 ),
                                 _heroStatChip(
                                   icon: Icons.local_fire_department_rounded,
                                   color: AppColors.orange,
-                                  value: "${widget.streakDays}d",
+                                  value: "${_streakDays}d",
                                 ),
                                 _heroStatChip(
                                   icon: Icons.military_tech_rounded,
@@ -896,245 +929,245 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
     ).animate().fadeIn(delay: 250.ms, duration: 500.ms);
   }
 
-  Widget _buildBottomNav() {
-    final items = [
-      (Icons.home_rounded, "HOME", Icons.refresh_rounded),
-      (Icons.menu_book_rounded, "WORD BANK", null),
-      (Icons.mic_rounded, "PODCASTS", null),
-      (Icons.headset_rounded, "AI CONVERSATION", null),
-      (Icons.person_rounded, "PROFILE", null),
-    ];
+  // Widget _buildBottomNav() {
+  //   final items = [
+  //     (Icons.home_rounded, "HOME", Icons.refresh_rounded),
+  //     (Icons.menu_book_rounded, "WORD BANK", null),
+  //     (Icons.mic_rounded, "PODCASTS", null),
+  //     (Icons.headset_rounded, "AI CONVERSATION", null),
+  //     (Icons.person_rounded, "PROFILE", null),
+  //   ];
 
-    return Container(
-      margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
-      child: AnimatedBuilder(
-        animation: _borderFlowController,
-        builder: (context, _) {
-          return CustomPaint(
-            foregroundPainter: _AnimatedBorderPainter(
-              animationValue: _borderFlowController.value,
-              radius: 28.r,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  height: 72.h, // ↓ كان 76 وعم يعمل overflow
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.dark.withOpacity(.55),
-                        AppColors.primary.withOpacity(.35),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(28.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.sky.withOpacity(.25),
-                        blurRadius: 25,
-                        spreadRadius: -3,
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.4),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: List.generate(items.length, (i) {
-                          final selected = i == _selectedNavIndex;
-                          final (icon, label, badge) = items[i];
+  //   return Container(
+  //     margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
+  //     child: AnimatedBuilder(
+  //       animation: _borderFlowController,
+  //       builder: (context, _) {
+  //         return CustomPaint(
+  //           foregroundPainter: _AnimatedBorderPainter(
+  //             animationValue: _borderFlowController.value,
+  //             radius: 28.r,
+  //           ),
+  //           child: ClipRRect(
+  //             borderRadius: BorderRadius.circular(28.r),
+  //             child: BackdropFilter(
+  //               filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+  //               child: Container(
+  //                 height: 72.h, // ↓ كان 76 وعم يعمل overflow
+  //                 decoration: BoxDecoration(
+  //                   gradient: LinearGradient(
+  //                     begin: Alignment.topLeft,
+  //                     end: Alignment.bottomRight,
+  //                     colors: [
+  //                       AppColors.dark.withOpacity(.55),
+  //                       AppColors.primary.withOpacity(.35),
+  //                     ],
+  //                   ),
+  //                   borderRadius: BorderRadius.circular(28.r),
+  //                   boxShadow: [
+  //                     BoxShadow(
+  //                       color: AppColors.sky.withOpacity(.25),
+  //                       blurRadius: 25,
+  //                       spreadRadius: -3,
+  //                     ),
+  //                     BoxShadow(
+  //                       color: Colors.black.withOpacity(.4),
+  //                       blurRadius: 30,
+  //                       offset: const Offset(0, 10),
+  //                     ),
+  //                   ],
+  //                 ),
+  //                 child: Stack(
+  //                   children: [
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceAround,
+  //                       crossAxisAlignment: CrossAxisAlignment.center,
+  //                       children: List.generate(items.length, (i) {
+  //                         final selected = i == _selectedNavIndex;
+  //                         final (icon, label, badge) = items[i];
 
-                          return Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedNavIndex = i);
+  //                         return Expanded(
+  //                           child: GestureDetector(
+  //                             onTap: () async {
+  //                               HapticFeedback.selectionClick();
+  //                               setState(() => _selectedNavIndex = i);
 
-                                if (i == 0) return;
+  //                               if (i == 0) return;
 
-                                Future<void>? navigationFuture;
-                                switch (i) {
-                                  case 1:
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      wordBankRoute,
-                                    );
-                                    break;
-                                  case 2:
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      podcastsRoute,
-                                    );
-                                    break;
-                                  case 3:
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      aiConversationRoute,
-                                    );
-                                    break;
-                                  case 4:
-                                    navigationFuture = Navigator.pushNamed(
-                                      context,
-                                      profileRoute,
-                                    );
-                                    break;
-                                }
+  //                               Future<void>? navigationFuture;
+  //                               switch (i) {
+  //                                 case 1:
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     wordBankRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 2:
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     podcastsRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 3:
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     aiConversationRoute,
+  //                                   );
+  //                                   break;
+  //                                 case 4:
+  //                                   navigationFuture = Navigator.pushNamed(
+  //                                     context,
+  //                                     profileRoute,
+  //                                   );
+  //                                   break;
+  //                               }
 
-                                await navigationFuture;
-                                if (mounted) {
-                                  setState(() => _selectedNavIndex = 0);
-                                }
-                              },
-                              behavior: HitTestBehavior.opaque,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
-                                        width: selected ? 42.w : 36.w,
-                                        height: selected ? 42.w : 36.w,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: selected
-                                              ? RadialGradient(
-                                                  colors: [
-                                                    AppColors.yellow
-                                                        .withOpacity(.25),
-                                                    Colors.transparent,
-                                                  ],
-                                                )
-                                              : null,
-                                          boxShadow: selected
-                                              ? [
-                                                  BoxShadow(
-                                                    color: AppColors.yellow
-                                                        .withOpacity(.5),
-                                                    blurRadius: 14,
-                                                    spreadRadius: 1,
-                                                  ),
-                                                ]
-                                              : null,
-                                        ),
-                                        child: Icon(
-                                          icon,
-                                          color: selected
-                                              ? AppColors.yellow
-                                              : Colors.white.withOpacity(.75),
-                                          size: 20.sp, // ↓ صغّرته شوي
-                                          shadows: selected
-                                              ? [
-                                                  Shadow(
-                                                    color: AppColors.yellow
-                                                        .withOpacity(.8),
-                                                    blurRadius: 10,
-                                                  ),
-                                                ]
-                                              : null,
-                                        ),
-                                      ),
-                                      if (badge != null)
-                                        Positioned(
-                                          top: -2,
-                                          right: -4,
-                                          child: Container(
-                                            padding: EdgeInsets.all(2.5.r),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              gradient: const LinearGradient(
-                                                colors: [
-                                                  AppColors.yellow,
-                                                  AppColors.orange,
-                                                ],
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: AppColors.yellow
-                                                      .withOpacity(.6),
-                                                  blurRadius: 6,
-                                                ),
-                                              ],
-                                            ),
-                                            child: Icon(
-                                              badge,
-                                              size: 7.sp,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 3.h),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: AnimatedDefaultTextStyle(
-                                      duration: 250.ms,
-                                      style: GoogleFonts.poppins(
-                                        color: selected
-                                            ? AppColors.yellow
-                                            : Colors.white.withOpacity(.7),
-                                        fontSize: selected
-                                            ? 8.5.sp
-                                            : 8.sp, // ↓ صغّرت الخط
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w500,
-                                        letterSpacing: .2,
-                                      ),
-                                      child: Text(
-                                        label,
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      Positioned(
-                        right: 10,
-                        top: 8,
-                        child:
-                            Icon(
-                                  Icons.auto_awesome_rounded,
-                                  color: AppColors.sky.withOpacity(.55),
-                                  size: 9.sp,
-                                )
-                                .animate(onPlay: (c) => c.repeat(reverse: true))
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.6, 1.6),
-                                  duration: 1500.ms,
-                                  curve: Curves.easeInOut,
-                                )
-                                .fade(begin: .3, end: .8, duration: 1500.ms),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+  //                               await navigationFuture;
+  //                               if (mounted) {
+  //                                 setState(() => _selectedNavIndex = 0);
+  //                               }
+  //                             },
+  //                             behavior: HitTestBehavior.opaque,
+  //                             child: Column(
+  //                               mainAxisAlignment: MainAxisAlignment.center,
+  //                               children: [
+  //                                 Stack(
+  //                                   clipBehavior: Clip.none,
+  //                                   children: [
+  //                                     AnimatedContainer(
+  //                                       duration: const Duration(
+  //                                         milliseconds: 250,
+  //                                       ),
+  //                                       width: selected ? 42.w : 36.w,
+  //                                       height: selected ? 42.w : 36.w,
+  //                                       decoration: BoxDecoration(
+  //                                         shape: BoxShape.circle,
+  //                                         gradient: selected
+  //                                             ? RadialGradient(
+  //                                                 colors: [
+  //                                                   AppColors.yellow
+  //                                                       .withOpacity(.25),
+  //                                                   Colors.transparent,
+  //                                                 ],
+  //                                               )
+  //                                             : null,
+  //                                         boxShadow: selected
+  //                                             ? [
+  //                                                 BoxShadow(
+  //                                                   color: AppColors.yellow
+  //                                                       .withOpacity(.5),
+  //                                                   blurRadius: 14,
+  //                                                   spreadRadius: 1,
+  //                                                 ),
+  //                                               ]
+  //                                             : null,
+  //                                       ),
+  //                                       child: Icon(
+  //                                         icon,
+  //                                         color: selected
+  //                                             ? AppColors.yellow
+  //                                             : Colors.white.withOpacity(.75),
+  //                                         size: 20.sp, // ↓ صغّرته شوي
+  //                                         shadows: selected
+  //                                             ? [
+  //                                                 Shadow(
+  //                                                   color: AppColors.yellow
+  //                                                       .withOpacity(.8),
+  //                                                   blurRadius: 10,
+  //                                                 ),
+  //                                               ]
+  //                                             : null,
+  //                                       ),
+  //                                     ),
+  //                                     if (badge != null)
+  //                                       Positioned(
+  //                                         top: -2,
+  //                                         right: -4,
+  //                                         child: Container(
+  //                                           padding: EdgeInsets.all(2.5.r),
+  //                                           decoration: BoxDecoration(
+  //                                             shape: BoxShape.circle,
+  //                                             gradient: const LinearGradient(
+  //                                               colors: [
+  //                                                 AppColors.yellow,
+  //                                                 AppColors.orange,
+  //                                               ],
+  //                                             ),
+  //                                             boxShadow: [
+  //                                               BoxShadow(
+  //                                                 color: AppColors.yellow
+  //                                                     .withOpacity(.6),
+  //                                                 blurRadius: 6,
+  //                                               ),
+  //                                             ],
+  //                                           ),
+  //                                           child: Icon(
+  //                                             badge,
+  //                                             size: 7.sp,
+  //                                             color: Colors.black,
+  //                                           ),
+  //                                         ),
+  //                                       ),
+  //                                   ],
+  //                                 ),
+  //                                 SizedBox(height: 3.h),
+  //                                 FittedBox(
+  //                                   fit: BoxFit.scaleDown,
+  //                                   child: AnimatedDefaultTextStyle(
+  //                                     duration: 250.ms,
+  //                                     style: GoogleFonts.poppins(
+  //                                       color: selected
+  //                                           ? AppColors.yellow
+  //                                           : Colors.white.withOpacity(.7),
+  //                                       fontSize: selected
+  //                                           ? 8.5.sp
+  //                                           : 8.sp, // ↓ صغّرت الخط
+  //                                       fontWeight: selected
+  //                                           ? FontWeight.w800
+  //                                           : FontWeight.w500,
+  //                                       letterSpacing: .2,
+  //                                     ),
+  //                                     child: Text(
+  //                                       label,
+  //                                       textAlign: TextAlign.center,
+  //                                       maxLines: 1,
+  //                                     ),
+  //                                   ),
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                           ),
+  //                         );
+  //                       }),
+  //                     ),
+  //                     Positioned(
+  //                       right: 10,
+  //                       top: 8,
+  //                       child:
+  //                           Icon(
+  //                                 Icons.auto_awesome_rounded,
+  //                                 color: AppColors.sky.withOpacity(.55),
+  //                                 size: 9.sp,
+  //                               )
+  //                               .animate(onPlay: (c) => c.repeat(reverse: true))
+  //                               .scale(
+  //                                 begin: const Offset(1, 1),
+  //                                 end: const Offset(1.6, 1.6),
+  //                                 duration: 1500.ms,
+  //                                 curve: Curves.easeInOut,
+  //                               )
+  //                               .fade(begin: .3, end: .8, duration: 1500.ms),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 
   String _formatNumber(int n) {
     final s = n.toString();
@@ -1642,94 +1675,6 @@ class AnimatedCourseCard extends StatelessWidget {
     );
   }
 
-  // Widget _buildAvatar(double avatarSize) {
-  //   return Stack(
-  //     clipBehavior: Clip.none,
-  //     children: [
-  //       SizedBox(
-  //         width: avatarSize,
-  //         height: avatarSize,
-  //         child: Stack(
-  //           alignment: Alignment.center,
-  //           children: [
-  //             SizedBox.expand(
-  //               child: CircularProgressIndicator(
-  //                 value: 1,
-  //                 strokeWidth: 3.w,
-  //                 valueColor:
-  //                     AlwaysStoppedAnimation(Colors.white.withOpacity(.10)),
-  //               ),
-  //             ),
-  //             if (!course.isLocked)
-  //               SizedBox.expand(
-  //                 child: CircularProgressIndicator(
-  //                   value: course.progress.clamp(0.0, 1.0),
-  //                   strokeWidth: 3.w,
-  //                   strokeCap: StrokeCap.round,
-  //                   valueColor: AlwaysStoppedAnimation(course.accentColor),
-  //                   backgroundColor: Colors.transparent,
-  //                 ),
-  //               ),
-  //             Container(
-  //               width: avatarSize - 15.w,
-  //               height: avatarSize - 15.w,
-  //               decoration: BoxDecoration(
-  //                 shape: BoxShape.circle,
-  //                 gradient: LinearGradient(
-  //                   begin: Alignment.topLeft,
-  //                   end: Alignment.bottomRight,
-  //                   colors: course.isLocked
-  //                       ? [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)]
-  //                       : [
-  //                           course.accentColor.withOpacity(.85),
-  //                           course.accentColor.withOpacity(.45),
-  //                         ],
-  //                 ),
-  //               ),
-  //               child: Icon(
-  //                 course.isLocked
-  //                     ? Icons.lock_rounded
-  //                     : (course.isCompleted
-  //                         ? Icons.check_rounded
-  //                         : _getCourseIcon(index)),
-  //                 color: Colors.white,
-  //                 size: 20.sp,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-
-  //       Positioned(
-  //         top: -4.h,
-  //         left: -4.w,
-  //         child: Container(
-  //           padding: EdgeInsets.all(4.r),
-  //           constraints: BoxConstraints(minWidth: 18.w, minHeight: 18.w),
-  //           decoration: BoxDecoration(
-  //             shape: BoxShape.circle,
-  //             color: AppColors.dark,
-  //             border: Border.all(
-  //               color: course.isLocked
-  //                   ? Colors.white24
-  //                   : course.accentColor.withOpacity(.8),
-  //               width: 1.2,
-  //             ),
-  //           ),
-  //           alignment: Alignment.center,
-  //           child: Text(
-  //             "${index + 1}",
-  //             style: GoogleFonts.poppins(
-  //               fontSize: 8.5.sp,
-  //               fontWeight: FontWeight.w800,
-  //               color: course.isLocked ? Colors.white38 : Colors.white,
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
 
   Widget _buildInfo() {
     return Column(
@@ -1947,7 +1892,6 @@ class _CardBorderPainter extends CustomPainter {
     );
     final startAngle = animationValue * math.pi * 2;
 
-    // Outer glow
     final glowPaint = Paint()
       ..shader = SweepGradient(
         startAngle: startAngle,
@@ -1966,7 +1910,6 @@ class _CardBorderPainter extends CustomPainter {
 
     canvas.drawRRect(rect, glowPaint);
 
-    // Inner border
     final borderPaint = Paint()
       ..shader = SweepGradient(
         startAngle: startAngle + 0.3,

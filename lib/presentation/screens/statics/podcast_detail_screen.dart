@@ -205,12 +205,12 @@ class _PodcastDetailScreenState extends State<PodcastDetailScreen> {
         ),
         Expanded(
           child: Text(
-            "Podcast",
+            'Podcast Video',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.cinzelDecorative(
               color: Colors.white,
-              fontSize: 17.sp,
-              fontWeight: FontWeight.w700,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -861,7 +861,9 @@ class _FullscreenPodcastPlayerState extends State<_FullscreenPodcastPlayer> {
   @override
   void initState() {
     super.initState();
+    // خلي الشاشة تدعم الاتجاهين — الفيديو بياخد الارتفاع الكامل بالعمودي
     SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
@@ -900,6 +902,10 @@ class _FullscreenPodcastPlayerState extends State<_FullscreenPodcastPlayer> {
     final progress = duration.inMilliseconds == 0
         ? 0.0
         : position.inMilliseconds / duration.inMilliseconds;
+    final aspect =
+        value.aspectRatio == 0 || !value.aspectRatio.isFinite
+            ? 16 / 9
+            : value.aspectRatio;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -909,55 +915,57 @@ class _FullscreenPodcastPlayerState extends State<_FullscreenPodcastPlayer> {
           if (_showControls) _scheduleHide();
         },
         child: Stack(
-          alignment: Alignment.center,
           children: [
-            Center(
-              child: AspectRatio(
-                aspectRatio:
-                    value.aspectRatio == 0 ? 16 / 9 : value.aspectRatio,
-                child: VideoPlayer(widget.controller),
-              ),
+            // ── الفيديو: بياخد كامل الشاشة بالطول ─────────────
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black),
             ),
-            if (_showControls) ...[
-              // play
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  if (value.isPlaying) {
-                    widget.controller.pause();
-                  } else {
-                    widget.controller.play();
-                    _scheduleHide();
-                  }
-                  setState(() {});
-                },
-                child: Container(
-                  width: 68.w,
-                  height: 68.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.orange, AppColors.yellow],
+            Positioned.fill(
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: aspect,
+                  child: FittedBox(
+                    fit: BoxFit.contain, // ← يتمدد بدون اقتصاص
+                    child: SizedBox(
+                      width: value.size.width == 0
+                          ? 16
+                          : value.size.width,
+                      height: value.size.height == 0
+                          ? 9
+                          : value.size.height,
+                      child: VideoPlayer(widget.controller),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.yellow.withOpacity(.5),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    value.isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    color: Colors.black,
-                    size: 36.sp,
                   ),
                 ),
               ),
-              // close
+            ),
+
+            // ── Controls ──────────────────────────────────────
+            if (_showControls) ...[
+              // Gradient علوي + سفلي
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(.55),
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withOpacity(.75),
+                        ],
+                        stops: const [0, 0.25, 0.7, 1],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // زر الإغلاق
               Positioned(
-                top: 24.h,
+                top: 28.h,
                 left: 20.w,
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
@@ -965,7 +973,7 @@ class _FullscreenPodcastPlayerState extends State<_FullscreenPodcastPlayer> {
                     padding: EdgeInsets.all(10.r),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(.5),
+                      color: Colors.black.withOpacity(.55),
                       border: Border.all(color: Colors.white24),
                     ),
                     child: Icon(Icons.close_rounded,
@@ -973,69 +981,154 @@ class _FullscreenPodcastPlayerState extends State<_FullscreenPodcastPlayer> {
                   ),
                 ),
               ),
-              // bottom bar
+
+              // زر Play/Pause بالمنتصف
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    if (value.isPlaying) {
+                      widget.controller.pause();
+                    } else {
+                      widget.controller.play();
+                      _scheduleHide();
+                    }
+                    setState(() {});
+                  },
+                  child: Container(
+                    width: 72.w,
+                    height: 72.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [AppColors.orange, AppColors.yellow],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.yellow.withOpacity(.55),
+                          blurRadius: 24,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      color: Colors.black,
+                      size: 38.sp,
+                    ),
+                  ),
+                ),
+              ),
+
+              // شريط التحكم السفلي
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 18.h,
+                bottom: 28.h,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 22.w),
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        _formatDuration(position),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 3.5,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 7,
+                      // الأوقات + Slider
+                      Row(
+                        children: [
+                          Text(
+                            _formatDuration(position),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
                             ),
-                            activeTrackColor: AppColors.yellow,
-                            inactiveTrackColor: Colors.white24,
-                            thumbColor: AppColors.yellow,
                           ),
-                          child: Slider(
-                            value: progress.clamp(0.0, 1.0),
-                            onChanged: (v) {
-                              widget.controller.seekTo(
-                                Duration(
-                                  milliseconds:
-                                      (duration.inMilliseconds * v).round(),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 3.5,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 7,
                                 ),
-                              );
-                            },
+                                activeTrackColor: AppColors.yellow,
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: AppColors.yellow,
+                              ),
+                              child: Slider(
+                                value: progress.clamp(0.0, 1.0),
+                                onChanged: (v) {
+                                  widget.controller.seekTo(
+                                    Duration(
+                                      milliseconds:
+                                          (duration.inMilliseconds * v)
+                                              .round(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
-                        ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            _formatDuration(duration),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        _formatDuration(duration),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() => _isMuted = !_isMuted);
-                          widget.controller.setVolume(_isMuted ? 0 : 1);
-                          widget.onMuteChanged(_isMuted);
-                        },
-                        child: Icon(
-                          _isMuted
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                          color: Colors.white,
-                          size: 22.sp,
-                        ),
+                      SizedBox(height: 10.h),
+                      // أزرار جانبية: الصوت + الخروج من التكبير
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => _isMuted = !_isMuted);
+                              widget.controller.setVolume(_isMuted ? 0 : 1);
+                              widget.onMuteChanged(_isMuted);
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(10.r),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(.55),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: Icon(
+                                _isMuted
+                                    ? Icons.volume_off_rounded
+                                    : Icons.volume_up_rounded,
+                                color: Colors.white,
+                                size: 20.sp,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 14.w),
+                          // زر تصغير (الرجوع للعرض العادي)
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(10.r),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(.55),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: Icon(
+                                Icons.fullscreen_exit_rounded,
+                                color: Colors.white,
+                                size: 20.sp,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

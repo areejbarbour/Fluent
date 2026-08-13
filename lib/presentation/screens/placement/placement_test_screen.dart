@@ -20,8 +20,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Placement test — same visual language as Word Pulse quiz.
-/// Flow: startPlacementTest → sequential submit-answer → finish → review(if passed).
 class PlacementTestScreen extends StatelessWidget {
   final bool showIntro;
 
@@ -268,8 +266,6 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
                     showErr(state.inlineError!);
                   }
                   if (state is PlacementAttemptLeft) {
-                    // إذا عامل تحديد مستوى سابقاً (عنده مستوى) → الهوم مباشرة
-                    // وإلا → شاشة الاختيار
                     _goAfterLeave(context);
                   }
                 },
