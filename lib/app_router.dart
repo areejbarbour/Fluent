@@ -1,6 +1,7 @@
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
+import 'package:fluent/cubit/student/chat/chat_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/all/teacher_courses_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/courses/details/teacher_course_detail_cubit.dart';
@@ -11,6 +12,7 @@ import 'package:fluent/cubit/teacher/words/create/word_create_cubit.dart';
 import 'package:fluent/cubit/teacher/words/update/word_update_cubit.dart';
 import 'package:fluent/cubit/teacher/words/delete/word_delete_cubit.dart';
 import 'package:fluent/data/models/level_exception_model.dart';
+import 'package:fluent/data/repository/chat_repository.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'package:fluent/cubit/teacher/questions/list/question_list_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_cubit.dart';
@@ -26,6 +28,7 @@ import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'package:fluent/data/repository/content_review_repository.dart';
+import 'package:fluent/presentation/screens/chat/chat_entry_screen.dart';
 import 'package:fluent/presentation/screens/notifications/notifications_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
@@ -90,6 +93,7 @@ import 'package:fluent/cubit/student/podcasts/topic_podcasts_cubit.dart';
 import 'package:fluent/data/repository/podcast_repository.dart';
 import 'package:fluent/cubit/student/podcasts/podcast_detail_cubit.dart';
 import 'package:fluent/presentation/screens/statics/podcast_detail_screen.dart';
+
 class AppRouter {
   final AuthRepository authRepository;
 
@@ -218,33 +222,40 @@ class AppRouter {
             child: const WordBankScreen(),
           ),
         );
-        
-        case podcastsRoute:
-  return MaterialPageRoute(
-    builder: (_) => BlocProvider(
-      create: (ctx) =>
-          PodcastTopicsCubit(ctx.read<PodcastRepository>())..fetchTopics(),
-      child: const PodcastsScreen(),
-    ),
-  );
-case podcastDetailRoute:
-  final args = settings.arguments as Map<String, dynamic>;
-  final int podcastId = args['podcastId'] as int;
-  final String podcastTitle = args['title'] as String? ?? '';
 
-  return MaterialPageRoute(
-    builder: (_) => BlocProvider(
-      create: (ctx) => PodcastDetailCubit(ctx.read<PodcastRepository>())
-        ..fetchDetails(podcastId),
-      child: PodcastDetailScreen(
-        podcastId: podcastId,
-        podcastTitle: podcastTitle,
-      ),
-    ),
-  );
+      case podcastsRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                PodcastTopicsCubit(ctx.read<PodcastRepository>())
+                  ..fetchTopics(),
+            child: const PodcastsScreen(),
+          ),
+        );
+      case podcastDetailRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        final int podcastId = args['podcastId'] as int;
+        final String podcastTitle = args['title'] as String? ?? '';
+
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                PodcastDetailCubit(ctx.read<PodcastRepository>())
+                  ..fetchDetails(podcastId),
+            child: PodcastDetailScreen(
+              podcastId: podcastId,
+              podcastTitle: podcastTitle,
+            ),
+          ),
+        );
 
       case aiConversationRoute:
-        return MaterialPageRoute(builder: (_) => const AIConversationScreen());
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => ChatCubit(ctx.read<ChatRepository>())..bootstrap(),
+            child: const ChatEntryScreen(),
+          ),
+        );
 
       case teacherHomeRoute:
         return MaterialPageRoute(
@@ -255,10 +266,10 @@ case podcastDetailRoute:
                   ctx.read<LessonRepository>(),
                   ctx.read<QuestionRepository>(),
                   ctx.read<TestRepository>(),
-                )..loadDashboardData(), 
+                )..loadDashboardData(),
               ),
             ],
-            child: const TeacherHomeScreen(), 
+            child: const TeacherHomeScreen(),
           ),
         );
 
@@ -357,7 +368,7 @@ case podcastDetailRoute:
               BlocProvider(
                 create: (ctx) =>
                     QuestionFilterCubit(ctx.read<QuestionRepository>()),
-              ), 
+              ),
             ],
             child: const QuestionsListScreen(),
           ),
@@ -400,7 +411,7 @@ case podcastDetailRoute:
             builder: (_) => BlocProvider(
               create: (ctx) => TeacherCourseDetailCubit(
                 ctx.read<LessonRepository>(),
-                ctx.read<TestRepository>(), 
+                ctx.read<TestRepository>(),
                 args,
               )..loadLessons(),
               child: TeacherCourseDetailScreen(course: args),

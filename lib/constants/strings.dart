@@ -233,6 +233,19 @@ const String apiNotificationsMarkAllAsRead = '/api/notifications/markAllAsRead';
 String apiNotificationDelete(String notificationId) =>
     '/api/notifications/$notificationId/delete';
 
+// ✅ Chat API (مطابق routes/api.php)
+const String apiChatActiveSession = '/api/chat/sessions/active';
+const String apiChatSessions = '/api/chat/sessions';
+const String apiChatHistory = '/api/chat/sessions/history';
+const String apiChatTopics = '/api/chat/topics';
+
+String apiChatSendMessage(int sessionId) =>
+    '/api/chat/sessions/$sessionId/messages';
+
+String apiChatEndSession(int sessionId) => '/api/chat/sessions/$sessionId/end';
+
+String apiChatSessionDetails(int sessionId) => '/api/chat/sessions/$sessionId';
+
 // ✅ OTP Types
 class OtpType {
   static const String register = 'register';

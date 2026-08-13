@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:fluent/data/repository/chat_repository.dart';
+import 'package:fluent/data/services/chat_service.dart';
 
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -168,6 +170,9 @@ Future<void> main() async {
   final podcastService = PodcastService(dioInstance);
   final podcastRepository = PodcastRepository(podcastService);
 
+  final chatService = ChatService(dioInstance);
+  final chatRepository = ChatRepository(chatService);
+
   final paymentService = PaymentService(dioInstance);
   final paymentRepository = PaymentRepository(paymentService);
 
@@ -211,6 +216,7 @@ Future<void> main() async {
 
       podcastRepository: podcastRepository,
       paymentRepository: paymentRepository,
+      chatRepository: chatRepository,
 
       initialRoute: initialRoute,
       isUserLoggedIn: isUserLoggedIn,
@@ -245,7 +251,7 @@ class MyApp extends StatefulWidget {
 
   final PodcastRepository podcastRepository;
   final PaymentRepository paymentRepository;
-
+  final ChatRepository chatRepository;
   late final AppRouter appRouter;
 
   MyApp({
@@ -271,7 +277,7 @@ class MyApp extends StatefulWidget {
     required this.contentReviewRepository,
     required this.notificationRepository,
     this.isUserLoggedIn = false,
-
+    required this.chatRepository,
     required this.podcastRepository,
     required this.paymentRepository,
   }) {
@@ -466,6 +472,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             ),
             RepositoryProvider<PaymentRepository>.value(
               value: widget.paymentRepository,
+            ),
+            RepositoryProvider<ChatRepository>.value(
+              value: widget.chatRepository,
             ),
           ],
           child: MultiBlocProvider(
