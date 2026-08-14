@@ -14,7 +14,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
-  final String? email; // ✅ إضافة parameter اختياري
+  final String? email; 
 
   const LoginScreen({super.key, this.email});
 
@@ -32,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ ملء الإيميل تلقائياً إذا تم تمريره
     if (widget.email != null && widget.email!.isNotEmpty) {
       _emailController.text = widget.email!;
       print("📧 [LoginScreen] Email pre-filled: ${widget.email}");
@@ -46,7 +45,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ✅ جلب أول خطأ من الباك اند لـ field معين
   String? _getError(LoginState state, String field) {
     if (state is LoginFailure && state.errors != null) {
       final fieldErrors = state.errors![field];
@@ -146,7 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     StudentEntryNavigator.goAfterLogin(context);
                   }
                 } else if (state is LoginFailure) {
-                  // ✅ عرض رسالة الخطأ العامة
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(state.error),
@@ -163,7 +160,6 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (context, state) {
                 final isLoading = state is LoginLoading;
 
-                // ✅ جلب الأخطاء من الباك اند
                 final emailError = _getError(state, 'email');
                 final passwordError = _getError(state, 'password');
 
@@ -576,7 +572,6 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
         ),
-        // ✅ عرض الخطأ تحت الحقل - يتكيف مع عرض الشاشة
         if (hasError)
           Padding(
             padding: EdgeInsets.only(top: 8.h, left: 8.w, right: 8.w),
@@ -683,7 +678,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // Register FCM token + refresh unread badge (non-blocking)
           NotificationBootstrap.registerFromContext(context);
           NotificationBootstrap.refreshUnread(context);
 

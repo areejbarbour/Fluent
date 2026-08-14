@@ -33,6 +33,8 @@ import 'package:fluent/data/repository/payment_repository.dart';
 import 'package:fluent/presentation/screens/home/level_purchase_sheet.dart';
 import 'package:fluent/cubit/profile/profile_cubit.dart';  
 import 'package:fluent/cubit/profile/profile_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 enum LevelStatus { completed, current, locked, boss, available }
 
@@ -198,6 +200,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       StudentEntryNavigator.markOnboarded();
     });
   }
+
 
   Future<void> _loadStudentIdentity() async {
     String name = widget.userName;
@@ -539,8 +542,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       ),
     );
   }
-
-  
 
   Widget _buildHeroGreetingCard() {
     return ClipRRect(
@@ -993,8 +994,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       ),
     );
   }
-
-
 
   Widget _buildDailyChallengeAndLeaders() {
     return IntrinsicHeight(
@@ -1799,37 +1798,7 @@ SizedBox(height: 10.h),
 
                         return Expanded(
                           child: GestureDetector(
-                            // onTap: () async {
-                            //   HapticFeedback.selectionClick();
-                            //   setState(() => _selectedNavIndex = i);
-
-                            //   if (i == 0) return;
-
-                            //   Future<void>? navigationFuture;
-                            //   switch (i) {
-                            //     case 1:
-                            //       navigationFuture = Navigator.pushNamed(
-                            //           context, wordBankRoute);
-                            //       break;
-                            //     case 2:
-                            //       navigationFuture = Navigator.pushNamed(
-                            //           context, podcastsRoute);
-                            //       break;
-                            //     case 3:
-                            //       navigationFuture = Navigator.pushNamed(
-                            //           context, aiConversationRoute);
-                            //       break;
-                            //     case 4:
-                            //       navigationFuture = Navigator.pushNamed(
-                            //           context, profileRoute);
-                            //       break;
-                            //   }
-
-                            //   await navigationFuture;
-                            //   if (mounted) {
-                            //     setState(() => _selectedNavIndex = 0);
-                            //   }
-                            // },
+                           
                             onTap: () async {
   HapticFeedback.selectionClick();
   setState(() => _selectedNavIndex = i);
@@ -1871,7 +1840,7 @@ SizedBox(height: 10.h),
                               duration: 250.ms,
                               curve: Curves.easeOut,
                               padding: EdgeInsets.symmetric(
-                                vertical: 8.h, // صغّرنا الـ padding العمودي
+                                vertical: 8.h, 
                                 horizontal: 2.w,
                               ),
                               child: Column(
@@ -1982,7 +1951,7 @@ SizedBox(height: 10.h),
                                       child: Text(
                                         label,
                                         textAlign: TextAlign.center,
-                                        maxLines: 1, // مهم جداً
+                                        maxLines: 1,
                                       ),
                                     ),
                                   ),
@@ -1993,7 +1962,6 @@ SizedBox(height: 10.h),
                         );
                       }),
                     ),
-                    // الـ sparkle الصغير
                     Positioned(
                       right: 10,
                       top: 8,
@@ -2025,267 +1993,7 @@ SizedBox(height: 10.h),
     ),
   );
 }
-
-  // Widget _buildBottomNav() {
-  //   final items = [
-  //     (Icons.home_rounded, "HOME", Icons.refresh_rounded),
-  //     (Icons.menu_book_rounded, "WORD BANK", null),
-  //     (Icons.mic_rounded, "PODCASTS", null),
-  //     (Icons.headset_rounded, "AI CONVERSATION", null),
-  //     (Icons.person_rounded, "PROFILE", null),
-  //   ];
-
-  //   return Container(
-  //     margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
-  //     child: AnimatedBuilder(
-  //       animation: _borderFlowController,
-  //       builder: (context, _) {
-  //         final rawRadius = 28.r;
-  //         final navRadius =
-  //             (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
-  //             ? rawRadius
-  //             : 28.0;
-  //         final rawAnim = _borderFlowController.value;
-  //         final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
-
-  //         return CustomPaint(
-  //           foregroundPainter: _AnimatedBorderPainter(
-  //             animationValue: navAnim,
-  //             radius: navRadius,
-  //           ),
-  //           child: ClipRRect(
-  //             borderRadius: BorderRadius.circular(navRadius),
-  //             child: BackdropFilter(
-  //               filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-  //               child: Container(
-  //                 height: 76.h,
-  //                 decoration: BoxDecoration(
-  //                   gradient: LinearGradient(
-  //                     begin: Alignment.topLeft,
-  //                     end: Alignment.bottomRight,
-  //                     colors: [
-  //                       AppColors.dark.withOpacity(.55),
-  //                       AppColors.primary.withOpacity(.35),
-  //                     ],
-  //                   ),
-  //                   borderRadius: BorderRadius.circular(navRadius),
-  //                   boxShadow: [
-  //                     BoxShadow(
-  //                       color: AppColors.sky.withOpacity(.25),
-  //                       blurRadius: 25,
-  //                       spreadRadius: -3,
-  //                     ),
-  //                     BoxShadow(
-  //                       color: Colors.black.withOpacity(.4),
-  //                       blurRadius: 30,
-  //                       offset: const Offset(0, 10),
-  //                     ),
-  //                   ],
-  //                 ),
-  //                 child: Stack(
-  //                   children: [
-  //                     Row(
-  //                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //                       crossAxisAlignment: CrossAxisAlignment.center,
-  //                       children: List.generate(items.length, (i) {
-  //                         final selected = i == _selectedNavIndex;
-  //                         final (icon, label, badge) = items[i];
-
-  //                         return Expanded(
-  //                           child: GestureDetector(
-  //                             onTap: () async {
-  //                               HapticFeedback.selectionClick();
-  //                               setState(() => _selectedNavIndex = i);
-
-  //                               if (i == 0) return;
-
-  //                               Future<void>? navigationFuture;
-  //                               switch (i) {
-  //                                 case 1: // WORD BANK
-  //                                   navigationFuture = Navigator.pushNamed(
-  //                                     context,
-  //                                     wordBankRoute,
-  //                                   );
-  //                                   break;
-  //                                 case 2: // PODCASTS
-  //                                   navigationFuture = Navigator.pushNamed(
-  //                                     context,
-  //                                     podcastsRoute,
-  //                                   );
-  //                                   break;
-  //                                 case 3: // AI CONVERSATION
-  //                                   navigationFuture = Navigator.pushNamed(
-  //                                     context,
-  //                                     aiConversationRoute,
-  //                                   );
-  //                                   break;
-  //                                 case 4: // PROFILE
-  //                                   navigationFuture = Navigator.pushNamed(
-  //                                     context,
-  //                                     profileRoute,
-  //                                   );
-  //                                   break;
-  //                               }
-
-  //                               await navigationFuture;
-  //                               if (mounted) {
-  //                                 setState(() => _selectedNavIndex = 0);
-  //                               }
-  //                             },
-
-  //                             behavior: HitTestBehavior.opaque,
-  //                             child: AnimatedContainer(
-  //                               duration: 250.ms,
-  //                               curve: Curves.easeOut,
-  //                               padding: EdgeInsets.symmetric(
-  //                                 vertical: 10.h,
-  //                                 horizontal: 2.w,
-  //                               ),
-  //                               child: Column(
-  //                                 mainAxisSize: MainAxisSize.min,
-  //                                 mainAxisAlignment: MainAxisAlignment.center,
-  //                                 children: [
-  //                                   Stack(
-  //                                     clipBehavior: Clip.none,
-  //                                     children: [
-  //                                       AnimatedScale(
-  //                                         scale: selected ? 1.12 : 1.0,
-  //                                         duration: 300.ms,
-  //                                         curve: Curves.easeOutBack,
-  //                                         child: Container(
-  //                                           padding: EdgeInsets.all(6.r),
-  //                                           decoration: BoxDecoration(
-  //                                             shape: BoxShape.circle,
-  //                                             gradient: selected
-  //                                                 ? RadialGradient(
-  //                                                     colors: [
-  //                                                       AppColors.yellow
-  //                                                           .withOpacity(.35),
-  //                                                       AppColors.orange
-  //                                                           .withOpacity(.15),
-  //                                                       Colors.transparent,
-  //                                                     ],
-  //                                                   )
-  //                                                 : null,
-  //                                             boxShadow: selected
-  //                                                 ? [
-  //                                                     BoxShadow(
-  //                                                       color: AppColors.yellow
-  //                                                           .withOpacity(.5),
-  //                                                       blurRadius: 14,
-  //                                                       spreadRadius: 1,
-  //                                                     ),
-  //                                                   ]
-  //                                                 : null,
-  //                                           ),
-  //                                           child: Icon(
-  //                                             icon,
-  //                                             color: selected
-  //                                                 ? AppColors.yellow
-  //                                                 : Colors.white.withOpacity(
-  //                                                     .75,
-  //                                                   ),
-  //                                             size: 22.sp,
-  //                                             shadows: selected
-  //                                                 ? [
-  //                                                     Shadow(
-  //                                                       color: AppColors.yellow
-  //                                                           .withOpacity(.8),
-  //                                                       blurRadius: 10,
-  //                                                     ),
-  //                                                   ]
-  //                                                 : null,
-  //                                           ),
-  //                                         ),
-  //                                       ),
-  //                                       if (badge != null)
-  //                                         Positioned(
-  //                                           top: -2,
-  //                                           right: -4,
-  //                                           child: Container(
-  //                                             padding: EdgeInsets.all(2.5.r),
-  //                                             decoration: BoxDecoration(
-  //                                               shape: BoxShape.circle,
-  //                                               gradient: const LinearGradient(
-  //                                                 colors: [
-  //                                                   AppColors.yellow,
-  //                                                   AppColors.orange,
-  //                                                 ],
-  //                                               ),
-  //                                               boxShadow: [
-  //                                                 BoxShadow(
-  //                                                   color: AppColors.yellow
-  //                                                       .withOpacity(.6),
-  //                                                   blurRadius: 6,
-  //                                                 ),
-  //                                               ],
-  //                                             ),
-  //                                             child: Icon(
-  //                                               badge,
-  //                                               size: 7.sp,
-  //                                               color: Colors.black,
-  //                                             ),
-  //                                           ),
-  //                                         ),
-  //                                     ],
-  //                                   ),
-  //                                   SizedBox(height: 4.h),
-  //                                   FittedBox(
-  //                                     fit: BoxFit.scaleDown,
-  //                                     child: AnimatedDefaultTextStyle(
-  //                                       duration: 250.ms,
-  //                                       style: GoogleFonts.poppins(
-  //                                         color: selected
-  //                                             ? AppColors.yellow
-  //                                             : Colors.white.withOpacity(.7),
-  //                                         fontSize: selected ? 9.sp : 8.5.sp,
-  //                                         fontWeight: selected
-  //                                             ? FontWeight.w800
-  //                                             : FontWeight.w500,
-  //                                         letterSpacing: .3,
-  //                                       ),
-  //                                       child: Text(
-  //                                         label,
-  //                                         textAlign: TextAlign.center,
-  //                                       ),
-  //                                     ),
-  //                                   ),
-  //                                 ],
-  //                               ),
-  //                             ),
-  //                           ),
-  //                         );
-  //                       }),
-  //                     ),
-  //                     Positioned(
-  //                       right: 10,
-  //                       top: 8,
-  //                       child:
-  //                           Icon(
-  //                                 Icons.auto_awesome_rounded,
-  //                                 color: AppColors.sky.withOpacity(.55),
-  //                                 size: 9.sp,
-  //                               )
-  //                               .animate(onPlay: (c) => c.repeat(reverse: true))
-  //                               .scale(
-  //                                 begin: const Offset(1, 1),
-  //                                 end: const Offset(1.6, 1.6),
-  //                                 duration: 1500.ms,
-  //                                 curve: Curves.easeInOut,
-  //                               )
-  //                               .fade(begin: .3, end: .8, duration: 1500.ms),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     ),
-  //   );
-  // }
-
+ 
   Widget _glassContainer({
     required Widget child,
     EdgeInsetsGeometry? padding,
@@ -2482,7 +2190,6 @@ class _FloatingClouds extends StatelessWidget {
     return IgnorePointer(
       child: Stack(
         children: [
-          // سحابة 1
           Positioned(
             top: 140.h,
             left: -40.w,
@@ -2495,7 +2202,6 @@ class _FloatingClouds extends StatelessWidget {
                   curve: Curves.easeInOut,
                 ),
           ),
-          // سحابة 2
           Positioned(
             top: 600.h,
             right: -30.w,
@@ -2839,10 +2545,6 @@ class _PathPainter extends CustomPainter {
     for (int i = 0; i < points.length - 1; i++) {
       final p0 = points[i];
       final p1 = points[i + 1];
-
-      // Catmull-Rom inspired control points so consecutive segments share a
-      // continuous tangent at each node instead of kinking — this is what
-      // makes the whole ribbon read as one smooth, flowing line.
       final pPrev = i > 0 ? points[i - 1] : p0;
       final pNext = i + 2 < points.length ? points[i + 2] : p1;
 

@@ -23,6 +23,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -235,6 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ] else ...[
                                   _buildTeacherBadgeRow(profile),
                                   SizedBox(height: 26.h),
+<<<<<<< HEAD
                                   // Account box — teachers only
                                   _buildSectionHeader(
                                     title: 'Account',
@@ -245,6 +247,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _buildAccountInfoCard(profile),
                                   SizedBox(height: 14.h),
                                   _buildChangePasswordCard(profile),
+=======
+                                ],
+                                _buildSectionHeader(
+                                  title: 'Account',
+                                  icon: Icons.person_rounded,
+                                  color: AppColors.sky,
+                                ),
+                                SizedBox(height: 12.h),
+                                _buildAccountInfoCard(profile),
+                                SizedBox(height: 14.h),
+                                _buildChangePasswordCard(profile),
+                                SizedBox(height: 14.h),
+                                if (!profile.isTeacher) ...[
+                                  _buildLevelExceptionsCard(),
+>>>>>>> main
                                   SizedBox(height: 14.h),
                                 ],
                                 SizedBox(height: 12.h),
