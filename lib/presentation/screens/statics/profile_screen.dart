@@ -240,6 +240,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
+void _onNavTap(int index) {
+  HapticFeedback.selectionClick();
+  switch (index) {
+    case 0: // Home
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        studentHomeRoute, // أو homeRoute حسب اسمك
+        (route) => false,
+      );
+      break;
+    case 1: // Word Bank
+      Navigator.pushNamed(context, wordBankRoute);
+      break;
+    case 2: // Podcasts
+      Navigator.pushNamed(context, podcastsRoute);
+      break;
+    case 3: // AI Conversation
+      Navigator.pushNamed(context, aiConversationRoute);
+      break;
+    case 4: // Profile — already here
+      break;
+  }
+}
+
   Widget _buildErrorState(String message) {
     return Center(
       child: Padding(
@@ -286,28 +311,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── Background ─────────────────────────────────────────────
+  // Widget _buildBackground() {
+  //   return Container(
+  //     decoration: const BoxDecoration(
+  //       gradient: LinearGradient(
+  //         begin: Alignment.topCenter,
+  //         end: Alignment.bottomCenter,
+  //         colors: [
+  //           Color(0xff020B18),
+  //           Color(0xff072238),
+  //           AppColors.primary,
+  //           Color(0xff01344F),
+  //           Color(0xff020B18),
+  //         ],
+  //         stops: [0.0, 0.22, 0.55, 0.8, 1.0],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xff020B18),
-            Color(0xff072238),
-            AppColors.primary,
-            Color(0xff01344F),
-            Color(0xff020B18),
-          ],
-          stops: [0.0, 0.22, 0.55, 0.8, 1.0],
+  return Stack(
+    children: [
+      Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xff011826),
+              AppColors.dark,
+              AppColors.primary,
+              Color(0xff01466A),
+              AppColors.dark,
+            ],
+            stops: [0.0, 0.2, 0.55, 0.8, 1.0],
+          ),
         ),
       ),
-    );
-  }
-
-  // ── Top bar ────────────────────────────────────────────────
+      // توهج أصفر فوق يمين (متل الهوم)
+      Positioned(
+        top: -100.h,
+        right: -70.w,
+        child: Container(
+          width: 260.w,
+          height: 260.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.yellow.withOpacity(0.10),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.yellow.withOpacity(0.28),
+                blurRadius: 140,
+                spreadRadius: 35,
+              ),
+            ],
+          ),
+        ),
+      ),
+      // توهج سماوي وسط يسار
+      Positioned(
+        top: 320.h,
+        left: -90.w,
+        child: Container(
+          width: 240.w,
+          height: 240.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.sky.withOpacity(0.12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.sky.withOpacity(0.25),
+                blurRadius: 130,
+                spreadRadius: 30,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildTopBar() {
     return Row(
@@ -360,8 +444,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // ── Hero ───────────────────────────────────────────────────
 
   Widget _buildHeroProfile(ProfileViewData profile) {
     final hasImage =
@@ -542,8 +624,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── Student stats (points + streak from API) ───────────────
-
   Widget _buildStudentStatsRow(ProfileViewData profile) {
     return Row(
       children: [
@@ -633,18 +713,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
+      // decoration: BoxDecoration(
+      //   borderRadius: BorderRadius.circular(18.r),
+      //   gradient: LinearGradient(
+      //     begin: Alignment.topLeft,
+      //     end: Alignment.bottomRight,
+      //     colors: [
+      //       Colors.white.withOpacity(0.10),
+      //       Colors.white.withOpacity(0.04),
+      //     ],
+      //   ),
+      //   border: Border.all(color: Colors.white.withOpacity(0.12)),
+      // ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(0.10),
-            Colors.white.withOpacity(0.04),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
-      ),
+  borderRadius: BorderRadius.circular(18.r),
+  gradient: LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Colors.white.withOpacity(0.12),
+      Colors.white.withOpacity(0.04),
+    ],
+  ),
+  border: Border.all(color: Colors.white.withOpacity(0.14)),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.18),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
+    ),
+  ],
+),
       child: Row(
         children: [
           Container(
@@ -710,11 +809,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAccountInfoCard(ProfileViewData profile) {
     return Container(
+      // decoration: BoxDecoration(
+      //   borderRadius: BorderRadius.circular(22.r),
+      //   color: Colors.white.withOpacity(0.06),
+      //   border: Border.all(color: Colors.white.withOpacity(0.10)),
+      // ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.r),
-        color: Colors.white.withOpacity(0.06),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
-      ),
+  borderRadius: BorderRadius.circular(22.r),
+  gradient: LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Colors.white.withOpacity(0.10),
+      Colors.white.withOpacity(0.04),
+    ],
+  ),
+  border: Border.all(color: Colors.white.withOpacity(0.12)),
+),
       child: Column(
         children: [
           _infoTile(
@@ -1124,7 +1235,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── Logout confirm ─────────────────────────────────────────
 
   void _showLogoutConfirmDialog() {
     showDialog<void>(
@@ -1248,11 +1358,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
-// ── Change Password bottom sheet (OTP → verify → reset) ──
-// Backend requires password_reset_verified cache after OTP.
-// Flow: forgotPassword → verifyOtp(forgot_password) → resetPassword
-
 class _ChangePasswordSheet extends StatefulWidget {
   final String email;
   const _ChangePasswordSheet({required this.email});
@@ -1262,7 +1367,6 @@ class _ChangePasswordSheet extends StatefulWidget {
 }
 
 class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
-  /// 0 = send OTP, 1 = enter OTP, 2 = new password
   int _step = 0;
 
   final _otpCtrl = TextEditingController();
@@ -1841,7 +1945,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   }
 }
 
-// ── Edit Profile bottom sheet (owns TextEditingController) ──
 
 class _EditProfileSheet extends StatefulWidget {
   final ProfileViewData profile;
@@ -2067,7 +2170,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 }
 
-// ── Bottom sheet shell ───────────────────────────────────────
 
 class _BottomSheetShell extends StatelessWidget {
   final String title;
@@ -2120,7 +2222,6 @@ class _BottomSheetShell extends StatelessWidget {
   }
 }
 
-// ── Gradient ring painter ────────────────────────────────────
 
 class _GradientRingPainter extends CustomPainter {
   final double progress;
@@ -2165,7 +2266,6 @@ class _GradientRingPainter extends CustomPainter {
   }
 }
 
-// ── Twinkling stars ──────────────────────────────────────────
 
 class _TwinklingStars extends StatelessWidget {
   final int count;

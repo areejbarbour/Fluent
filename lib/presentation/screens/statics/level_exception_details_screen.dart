@@ -227,14 +227,14 @@ class _LevelExceptionDetailsScreenState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Request Details',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
+                'Request Details',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cinzelDecorative(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
                 Container(
                   margin: EdgeInsets.only(top: 2.h),
                   width: 28.w,

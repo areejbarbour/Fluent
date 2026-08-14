@@ -20,13 +20,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Placement test — same visual language as Word Pulse quiz.
-/// Flow: POST /tests/{id}/start → confirm(submit+feedback) → next → finish → review(if passed).
 class StudentTestScreen extends StatelessWidget {
   final int testId;
   final String? title;
 
-  /// XP granted by backend on pass (from lesson.xp_points).
   final int xpPoints;
 
   const StudentTestScreen({
@@ -58,14 +55,12 @@ class _StudentTestView extends StatefulWidget {
 class _StudentTestViewState extends State<_StudentTestView> {
   bool _introVisible = false;
 
-  /// Prevents double-pop (listener + WillPop) which briefly reveals the route under the test.
   bool _isExiting = false;
   int? _selectedMcqId;
   List<int> _arrangeOrder = [];
   Map<int, int> _pairMap = {};
   final _fillKey = GlobalKey<FillAnswerWidgetState>();
 
-  /// Local confirm only — API submit happens on Next (backend forbids re-submit).
   bool _confirmed = false;
 
   @override
@@ -99,8 +94,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
     }
   }
 
-  /// Confirm = submit to API immediately and show correction (is_correct / score).
-  /// Backend forbids re-submit — answer is locked after success.
   Future<void> _onConfirm(StudentAttemptInProgress state) async {
     if (_confirmed || state.submitting) return;
 
@@ -143,7 +136,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
     }
 
     if (!ok) {
-      // Stay editable so user can fix.
       return;
     }
 
@@ -151,12 +143,10 @@ class _StudentTestViewState extends State<_StudentTestView> {
     if (mounted) setState(() => _confirmed = true);
   }
 
-  /// Next = advance only after a successful confirm/submit. No re-submit.
   Future<void> _onNext(StudentAttemptInProgress state) async {
     if (!_confirmed) {
       await _onConfirm(state);
       if (!_confirmed) return;
-      // After first confirm, stay so user sees the correction feedback.
       return;
     }
 
@@ -187,7 +177,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
 
     final state = context.read<StudentAttemptCubit>().state;
 
-    // Finished → single pop with result
     if (state is StudentAttemptFinished) {
       _isExiting = true;
       final r = state.result;
@@ -203,7 +192,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
       return false;
     }
 
-    // Not in an active attempt → pop once, no intermediate UI
     if (state is! StudentAttemptInProgress) {
       _isExiting = true;
       Navigator.of(
@@ -413,7 +401,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
   }
 }
 
-// ── Intro (Word Pulse style) ───────────────────────────────
 
 class _IntroView extends StatelessWidget {
   final bool loading;
@@ -531,8 +518,6 @@ class _IntroView extends StatelessWidget {
     );
   }
 }
-
-// ── In progress ────────────────────────────────────────────
 
 class _InProgressView extends StatelessWidget {
   final StudentAttemptInProgress state;

@@ -17,8 +17,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 
-/// Student lesson flow: Video → Words → Test
-/// Comments available on every step via chat icon.
 enum _LessonStep { video, words, test }
 
 String _formatDuration(Duration d) {
@@ -447,13 +445,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                               final passed = result['passed'] == true;
                               final goToLessons = result['goToLessons'] == true;
 
-                              // Success + Continue learning → back to course lessons list
                               if (completed && passed && goToLessons) {
                                 Navigator.of(context).pop(true);
                                 return;
                               }
 
-                              // Failed or closed result → stay, refresh, guide to video
                               if (widget.lessonId != null) {
                                 context
                                     .read<LessonDetailCubit>()
@@ -512,10 +508,10 @@ class _TopBar extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.cinzelDecorative(
                     color: Colors.white,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
