@@ -2,6 +2,7 @@ import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fluent/helper/auth_session.dart';
 
 import '../../../data/network/dio_client.dart';
 import '../../../data/repository/auth_repository.dart';
@@ -49,46 +50,57 @@ class GoogleLoginCubit extends Cubit<GoogleLoginState> {
         final userMap = response['user'] as Map<String, dynamic>?;
         final roles = response['roles'] as List<dynamic>? ?? [];
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setBool('is_logged_in', true);
-        await prefs.setString('login_method', 'google');
-
+        String roleName = 'student';
         if (roles.isNotEmpty) {
           final role = roles.first;
-          String roleName = '';
-
           if (role is Map) {
             roleName = role['name'] ?? role['title'] ?? 'student';
           } else {
             roleName = role.toString();
           }
-
-          await prefs.setString('user_role', roleName);
-          print(" [GoogleLoginCubit] Role saved: $roleName");
         }
 
-        await _saveUserId(prefs, userMap);
-        if (prefs.getInt('user_id') == null || prefs.getInt('user_id') == 0) {
+        int? uid;
+        final rawId = userMap?['id'];
+        if (rawId is int) {
+          uid = rawId;
+        } else if (rawId != null) {
+          uid = int.tryParse(rawId.toString());
+        }
+
+        await AuthSession.saveSession(
+          token: token.toString(),
+          role: roleName,
+          userId: uid,
+          loginMethod: 'google',
+        );
+
+        if (await AuthSession.userId() == null) {
           try {
             final me = await authRepository.getCurrentUser();
             if (me['success'] == true) {
               final u = me['user'];
+              Map<String, dynamic>? um;
               if (u is Map<String, dynamic>) {
-                await _saveUserId(prefs, u);
+                um = u;
               } else if (u is Map) {
-                await _saveUserId(prefs, Map<String, dynamic>.from(u));
+                um = Map<String, dynamic>.from(u);
+              }
+              final rid = um?['id'];
+              final id = rid is int ? rid : int.tryParse('$rid');
+              if (id != null && id > 0) {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt(AuthSession.userIdKey, id);
+                print('👤 [GoogleLoginCubit] user_id saved (fallback): $id');
               }
             }
           } catch (e) {
-            print(" [GoogleLoginCubit] getCurrentUser fallback failed: $e");
+            print(' [GoogleLoginCubit] getCurrentUser fallback failed: $e');
           }
         }
 
         await setupDio();
-        print(" Token stored in SharedPreferences: $token");
-
-        // Register FCM token immediately after Google login
+        print('✅ [GoogleLoginCubit] Session saved via AuthSession');
         await NotificationBootstrap.registerAfterAuth();
 
         emit(GoogleLoginSuccess(token: token, roles: roles, user: userMap));

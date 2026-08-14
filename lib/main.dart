@@ -50,6 +50,7 @@ import 'package:fluent/data/services/course_service.dart';
 import 'package:fluent/data/repository/course_repository.dart';
 import 'app_router.dart';
 import 'package:fluent/helper/student_entry_navigator.dart';
+import 'package:fluent/helper/auth_session.dart';
 import 'constants/strings.dart';
 import 'package:fluent/data/services/student_lesson_service.dart';
 import 'package:fluent/data/repository/student_lesson_repository.dart';
@@ -99,9 +100,9 @@ Future<void> main() async {
 
   await setupDio();
 
-  final prefs = await SharedPreferences.getInstance();
-  final bool isUserLoggedIn = prefs.getBool('is_logged_in') ?? false;
-  final String? userRole = prefs.getString('user_role');
+  // Strict session check (token + is_logged_in). Never trust flag alone.
+  final bool isUserLoggedIn = await AuthSession.isLoggedIn();
+  final String? userRole = await AuthSession.role();
 
   print("🔍 [main] isUserLoggedIn: $isUserLoggedIn");
   print("🔍 [main] userRole: $userRole");
@@ -173,11 +174,14 @@ Future<void> main() async {
   final paymentService = PaymentService(dioInstance);
   final paymentRepository = PaymentRepository(paymentService);
 
-  String initialRoute = onboardingRoute;
+  // Logged OUT → always login (never auto-enter app content).
+  // Logged IN  → teacher home / student placement-or-home — never login UI.
+  String initialRoute = loginRoute;
   if (isUserLoggedIn) {
     if (userRole == 'teacher') {
       initialRoute = teacherHomeRoute;
     } else {
+      // student (default if role missing but session valid)
       final placed =
           await StudentEntryNavigator.hasCompletedPlacementStandalone(
             levelRepository,
@@ -185,6 +189,8 @@ Future<void> main() async {
       initialRoute = placed ? studentHomeRoute : placementTestDialogRoute;
       print('🔍 [main] student placed=$placed → $initialRoute');
     }
+  } else {
+    print('🔍 [main] no session → loginRoute');
   }
 
   runApp(
@@ -286,7 +292,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-
   @override
   void initState() {
     super.initState();

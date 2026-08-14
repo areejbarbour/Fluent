@@ -1,9 +1,8 @@
-// lib/presentation/cubits/auth/logout/logout_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
+import '../../../../helper/auth_session.dart';
 import '../../../../helper/notification_bootstrap.dart';
 import 'logout_state.dart';
 
@@ -12,42 +11,43 @@ class LogoutCubit extends Cubit<LogoutState> {
 
   LogoutCubit(this.authRepository) : super(LogoutInitial());
 
+  /// Explicit logout: always wipe local session so the user cannot re-enter
+  /// the app without signing in again — even if the API call fails.
   Future<void> logout() async {
     emit(LogoutLoading());
-    print(" [LogoutCubit] Logging out...");
+    print('🟡 [LogoutCubit] Logging out...');
 
+    String message = 'Logged out';
     try {
       final data = await authRepository.logout();
-
       final success = data['success'] as bool? ?? false;
-      final message = data['message'] as String? ?? '';
-
-      if (success) {
-        // Invalidate FCM token so this device stops receiving pushes
-        await NotificationBootstrap.clearOnLogout();
-
-        // ✅ مسح SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('token');
-        await prefs.remove('is_logged_in');
-        await prefs.remove('login_method');
-        await prefs.remove('user_role'); 
-        await prefs.remove('user_id'); 
-        print(" [LogoutCubit] SharedPreferences cleared");
-
-        await setupDio();
-        print(" [LogoutCubit] Dio re-initialized without token");
-
-        print(" [LogoutCubit] Logout successful");
-        emit(LogoutSuccess(message));
+      message = data['message']?.toString() ?? message;
+      if (!success) {
+        print(
+          '⚠️ [LogoutCubit] Server logout failed: $message — clearing local anyway',
+        );
       } else {
-        print(" [LogoutCubit] Logout failed: $message");
-        emit(LogoutFailure(message));
+        print('✅ [LogoutCubit] Server logout OK');
       }
     } catch (e) {
-      print(" [LogoutCubit] Exception: $e");
-      emit(LogoutFailure(e.toString()));
+      print(
+        '⚠️ [LogoutCubit] Server logout exception: $e — clearing local anyway',
+      );
+      message = 'Logged out';
     }
+
+    // Always clear local session + FCM + Dio auth header
+    try {
+      await NotificationBootstrap.clearOnLogout();
+    } catch (e) {
+      print('⚠️ [LogoutCubit] FCM clear: $e');
+    }
+
+    await AuthSession.clear();
+    await setupDio(); // rebuild interceptors without token
+
+    print('✅ [LogoutCubit] Local session wiped — user must login');
+    emit(LogoutSuccess(message));
   }
 
   void reset() => emit(LogoutInitial());

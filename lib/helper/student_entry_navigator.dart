@@ -56,9 +56,8 @@ class StudentEntryNavigator {
       final res = await levelRepository.getStudentLevels();
       if (res['success'] == true && res['data'] is StudentLevelsModel) {
         final d = res['data'] as StudentLevelsModel;
-        return d.currentLevel != null ||
-            d.completedLevels.isNotEmpty ||
-            d.availableLevels.isNotEmpty;
+        // Only real enrollment — NOT the catalog of available levels.
+        return d.currentLevel != null || d.completedLevels.isNotEmpty;
       }
     } catch (_) {}
     return false;
