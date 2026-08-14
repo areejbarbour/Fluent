@@ -346,6 +346,7 @@ int _userPoints = 0;
       _loadUserPoints();
     });
   }
+
   Future<void> _loadUserPoints() async {
     try {
       final result =

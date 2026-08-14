@@ -72,7 +72,6 @@ import 'package:fluent/data/repository/podcast_repository.dart';
 import 'package:fluent/data/services/payment_service.dart';
 import 'package:fluent/data/repository/payment_repository.dart';
 
-/// Handler للإشعارات عندما التطبيق في الخلفية أو مغلق.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -86,11 +85,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Firebase init (يجب قبل أي استخدام لـ FCM) ──
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // طلب إذن الإشعارات مبكراً (Android 13+ / iOS)
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
@@ -289,8 +286,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  // Uses the shared global `navigatorKey` from helper/nav_key.dart so
-  // LocalNotificationsService can also navigate from outside the widget tree.
 
   @override
   void initState() {
@@ -309,7 +304,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // رجع من الخلفية → حدّث فوراً + تأكيد تسجيل التوكن
       _refreshNotifications();
       _ensureFcmRegistered();
     }
@@ -319,11 +313,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final ctx = navigatorKey.currentContext;
     if (ctx == null) return;
 
-    // Listen for FCM token rotation for the whole app lifetime
     NotificationBootstrap.listenTokenRefresh();
 
     if (widget.isUserLoggedIn) {
-      // تسجيل FCM token عند فتح التطبيق (جلسة سابقة)
       await NotificationBootstrap.registerFromContext(ctx);
       await NotificationBootstrap.refreshUnread(ctx);
     }
@@ -340,27 +332,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  /// استماع الإشعارات والتطبيق مفتوح (Foreground)
   void _setupForegroundMessaging() {
-    // التطبيق مفتوح → إشعار جديد
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print('📩 [FG] ${message.notification?.title}');
 
-      // إشعار حقيقي أعلى الشاشة (اسم التطبيق + أيقونة)
       await LocalNotificationsService.instance.showFromFirebase(message);
 
-      // تحديث العداد والقائمة
       _refreshNotifications();
     });
 
-    // ضغط على الإشعار من الخلفية
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('📩 [Opened] ${message.messageId}');
       _refreshNotifications();
       _openFromMessage(message);
     });
 
-    // فتح التطبيق من إشعار وهو كان مغلقاً
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message == null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -370,8 +356,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
-  /// يفتح الصفحة المناسبة حسب نوع وبيانات الإشعار (نفس منطق التوجيه
-  /// المستخدم داخل شاشة الإشعارات وعند الضغط من شريط النظام).
   void _openFromMessage(RemoteMessage message) {
     final ctx = navigatorKey.currentContext;
     if (ctx == null) return;

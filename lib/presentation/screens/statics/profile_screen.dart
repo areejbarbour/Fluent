@@ -22,6 +22,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -202,7 +203,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 SizedBox(height: 14.h),
                                 _buildChangePasswordCard(profile),
                                 SizedBox(height: 14.h),
-                                // Exception requests — students only
                                 if (!profile.isTeacher) ...[
                                   _buildLevelExceptionsCard(),
                                   SizedBox(height: 14.h),
