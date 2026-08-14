@@ -155,4 +155,35 @@ class ProfileRepository {
       return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }
+
+  Future<Map<String, dynamic>> getWeeklyActivity() async {
+    try {
+      final response = await profileService.getWeeklyActivity();
+      print('✅ GetWeeklyActivity Status: ${response.statusCode}');
+      print('✅ GetWeeklyActivity Data: ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = response.data;
+        final Map<String, dynamic> map;
+        if (body is Map<String, dynamic>) {
+          map = body;
+        } else if (body is Map) {
+          map = Map<String, dynamic>.from(body);
+        } else {
+          map = <String, dynamic>{};
+        }
+        return {'success': true, 'data': WeeklyActivityModel.fromJson(map)};
+      }
+      return ApiErrorHelper.failure(
+        response.data,
+        'Failed to load weekly activity',
+      );
+    } on DioException catch (e) {
+      print('❌ GetWeeklyActivity DioException: ${e.response?.data}');
+      return ApiErrorHelper.fromDio(e, 'Failed to load weekly activity');
+    } catch (e) {
+      print('❌ GetWeeklyActivity Unexpected: $e');
+      return {'success': false, 'message': 'An unexpected error occurred'};
+    }
+  }
 }

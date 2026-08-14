@@ -194,7 +194,11 @@ class PlacementAttemptCubit extends Cubit<PlacementAttemptState> {
     final finishData = result['data'] as FinishAttemptResult;
     print(
       '🎉 [PlacementAttemptCubit] score=${finishData.scorePercent}% '
-      'passed=${finishData.passed}',
+      'passed=${finishData.passed} '
+      'streak=${finishData.streak.current} '
+      'increased=${finishData.streak.increased} '
+      'reward=${finishData.reward.points} '
+      'awarded=${finishData.reward.pointsAwarded}',
     );
 
     ReviewAttemptResult? review;

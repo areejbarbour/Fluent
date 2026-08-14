@@ -224,16 +224,6 @@ class _DialogContent extends StatelessWidget {
             glowColor: AppColors.sky,
           ),
           const SizedBox(height: 22),
-          Text(
-            'You can change this later in Settings.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: AppColors.sky.withOpacity(0.7),
-              height: 1.4,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
         ],
       ),
     );

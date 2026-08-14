@@ -1,109 +1,177 @@
+import 'dart:math' as math;
 import 'dart:ui';
-import 'package:fluent/constants/app_colors.dart';
-import 'package:fluent/constants/strings.dart';
-import 'package:fluent/helper/student_entry_navigator.dart';
-import 'package:fluent/presentation/widgets/applogo.dart';
-import 'package:flutter/material.dart';
 
+import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/cubit/student/streak/streak_cubit.dart';
+import 'package:fluent/cubit/student/streak/streak_state.dart';
+import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/helper/student_entry_navigator.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// Finch-inspired streak celebration screen.
+/// Data: profile.streak + GET /api/student/weeklyActivity
 class StreakScreen extends StatelessWidget {
   const StreakScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (ctx) =>
+          StreakCubit(profileRepository: ctx.read<ProfileRepository>())..load(),
+      child: const _StreakView(),
+    );
+  }
+}
+
+class _StreakView extends StatelessWidget {
+  const _StreakView();
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/background/stars.png', fit: BoxFit.cover),
-
-          Container(
+          // Soft Finch-like gradient (Fluent palette)
+          const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AppColors.lightOrange,
-                  AppColors.primary.withOpacity(0.58),
-                  AppColors.dark.withOpacity(0.96),
+                  Color(0xFFE8F7FC), // soft sky tint
+                  Color(0xFFB8E4F2),
+                  AppColors.sky,
+                  Color(0xFF7BC4D9),
+                  AppColors.primary,
                 ],
+                stops: [0.0, 0.22, 0.45, 0.72, 1.0],
               ),
             ),
           ),
 
-          // Soft ambient glows
+          // Ambient orbs
           Positioned(
-            top: -60,
-            left: -50,
-            child: _GlowBlob(size: 180, color: AppColors.sky.withOpacity(0.12)),
+            top: size.height * 0.08,
+            right: -40,
+            child: _SoftOrb(
+              diameter: 160,
+              color: AppColors.yellow.withOpacity(0.28),
+            ),
           ),
           Positioned(
-            bottom: 120,
-            right: -40,
-            child: _GlowBlob(
-              size: 160,
-              color: AppColors.orange.withOpacity(0.12),
+            top: size.height * 0.35,
+            left: -50,
+            child: _SoftOrb(
+              diameter: 140,
+              color: AppColors.orange.withOpacity(0.18),
+            ),
+          ),
+          Positioned(
+            bottom: size.height * 0.18,
+            right: -30,
+            child: _SoftOrb(
+              diameter: 120,
+              color: Colors.white.withOpacity(0.22),
             ),
           ),
 
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  const SizedBox(height: 18),
+            child: BlocBuilder<StreakCubit, StreakState>(
+              builder: (context, state) {
+                if (state is StreakLoading || state is StreakInitial) {
+                  return const _LoadingBody();
+                }
 
-                  const AppLogo(size: 90),
-                  const SizedBox(height: 18),
+                if (state is StreakFailure && state.weeklyActivity == null) {
+                  return _ErrorBody(
+                    message: state.message,
+                    onRetry: () => context.read<StreakCubit>().load(),
+                  );
+                }
 
-                  const Text(
-                    'STREAK!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 8,
-                      color: AppColors.sky,
-                      shadows: [
-                        Shadow(color: AppColors.yellow, blurRadius: 22),
-                      ],
-                    ),
+                final streak = state is StreakLoaded
+                    ? state.streak
+                    : (state is StreakFailure ? (state.streak ?? 0) : 0);
+
+                final weekly = state is StreakLoaded
+                    ? state.weeklyActivity
+                    : (state is StreakFailure
+                          ? state.weeklyActivity!
+                          : WeeklyActivityModel.fromJson(const {}));
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      // Top label — Finch style
+                      Text(
+                        'YOUR STREAK',
+                        style: TextStyle(
+                          fontSize: 13,
+                          letterSpacing: 2.4,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark.withOpacity(0.55),
+                        ),
+                      ),
+                      const Spacer(flex: 2),
+
+                      // Big flame / streak badge
+                      _FinchStreakBadge(streak: streak).animateEntrance(),
+
+                      const SizedBox(height: 22),
+
+                      Text(
+                        streak > 0
+                            ? (streak == 1
+                                  ? 'Day 1 — you showed up!'
+                                  : '$streak days in a row')
+                            : 'Start your streak today',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        streak > 0
+                            ? 'Keep learning a little every day.\nYour consistency is building something real.'
+                            : 'Complete a lesson today and light your first day.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: AppColors.dark.withOpacity(0.62),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      const Spacer(flex: 2),
+
+                      // Week strip — Finch day circles
+                      _FinchWeekStrip(days: weekly.days),
+
+                      const Spacer(flex: 2),
+
+                      // Continue button
+                      _FinchContinueButton(
+                        onPressed: () {
+                          StudentEntryNavigator.goAfterStreak(context);
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-
-                  const Text(
-                    'Your progress is looking cosmic!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      fontSize: 15,
-                      height: 1.35,
-                      color: AppColors.lightOrange,
-                    ),
-                  ),
-
-                  const Spacer(flex: 2),
-
-                  const CentralDiamond(days: '42'),
-
-                  const Spacer(flex: 2),
-
-                  const _SectionLabel(text: 'THIS WEEK'),
-                  const SizedBox(height: 14),
-
-                  const WeeklyProgress(),
-
-                  const Spacer(flex: 1),
-
-                  _ActionButton(
-                    label: 'CONTINUE TO YOUR JOURNEY',
-                    onPressed: () {
-                      StudentEntryNavigator.goAfterStreak(context);
-                    },
-                  ),
-
-                  const SizedBox(height: 18),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -112,296 +180,242 @@ class StreakScreen extends StatelessWidget {
   }
 }
 
-class CentralDiamond extends StatelessWidget {
-  final String days;
-  const CentralDiamond({super.key, required this.days});
+// ─── Finch-style big streak badge ─────────────────────────────
+
+class _FinchStreakBadge extends StatelessWidget {
+  final int streak;
+  const _FinchStreakBadge({required this.streak});
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Outer rings
-        Container(
-          width: 300,
-          height: 300,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.sky.withOpacity(0.08),
-              width: 1,
+    return SizedBox(
+      width: 210,
+      height: 210,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer soft ring
+          Container(
+            width: 210,
+            height: 210,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.28),
             ),
           ),
-        ),
-        Container(
-          width: 250,
-          height: 250,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.orange.withOpacity(0.10),
-              width: 1,
+          Container(
+            width: 178,
+            height: 178,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppColors.yellow.withOpacity(0.55),
+                  AppColors.orange.withOpacity(0.35),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.55, 1.0],
+              ),
             ),
           ),
-        ),
-
-        // Main glass shape
-        ClipPath(
-          clipper: HexagonClipper(),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              width: 230,
-              height: 260,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.sky.withOpacity(0.38),
-                    AppColors.dark.withOpacity(0.58),
-                  ],
+          // Main card circle
+          Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFF6D8), AppColors.yellow, AppColors.orange],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.orange.withOpacity(0.45),
+                  blurRadius: 28,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 10),
                 ),
-                border: Border.all(
-                  color: AppColors.sky.withOpacity(0.22),
-                  width: 1.2,
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.65),
+                  blurRadius: 12,
+                  offset: const Offset(-4, -4),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.sky.withOpacity(0.10),
-                    blurRadius: 30,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    right: 16,
-                    child: Container(
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.sky.withOpacity(0.0),
-                            AppColors.sky.withOpacity(0.30),
-                            AppColors.sky.withOpacity(0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
-                    child: Container(
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.orange.withOpacity(0.0),
-                            AppColors.orange.withOpacity(0.25),
-                            AppColors.orange.withOpacity(0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => LinearGradient(
-                            colors: [AppColors.sky, AppColors.yellow],
-                          ).createShader(bounds),
-                          child: Text(
-                            days,
-                            style: const TextStyle(
-                              fontSize: 76,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'DAYS',
-                          style: TextStyle(
-                            fontSize: 22,
-                            letterSpacing: 7,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.lightOrange,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 42,
-                          height: 1,
-                          color: AppColors.yellow.withOpacity(0.55),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'CONSECUTIVE\nDAILY LOG-INS',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            height: 1.5,
-                            letterSpacing: 1.3,
-                            color: AppColors.sky,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.75),
+                width: 3,
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class WeeklyProgress extends StatelessWidget {
-  const WeeklyProgress({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final days = ['M', 'T', 'W', 'T', 'F', 'S', ''];
-    final totalDays = days.length;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // العرض المتاح بالكامل
-        final availableWidth = constraints.maxWidth;
-
-        // نطرح المسافات بين العناصر: (عدد العناصر - 1) × 8
-        final totalSpacing = (totalDays - 1) * 8.0;
-        // عرض كل مربع
-        final boxWidth = (availableWidth - totalSpacing) / totalDays;
-        // ارتفاع المربع (نسبة 1.14 تقريباً)
-        final boxHeight = boxWidth * 1.14;
-
-        // حجم الخط يتناسب مع حجم المربع
-        final fontSize = boxWidth * 0.33;
-        // حجم الخط للـ label (M, T, W...)
-        final labelFontSize = boxWidth * 0.33;
-        // عرض الخط الفاصل بين الأيام
-        final separatorWidth = boxWidth * 0.24;
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: List.generate(totalDays, (index) {
-            final day = days[index];
-            final isLast = day.isEmpty;
-            final isActive = index <= 4; // غيّريها حسب التقدم الحقيقي
-
-            return Padding(
-              padding: EdgeInsets.only(right: index == totalDays - 1 ? 0 : 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    width: boxWidth,
-                    height: boxHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(boxWidth * 0.33),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isLast
-                            ? [
-                                AppColors.dark.withOpacity(0.72),
-                                AppColors.primary.withOpacity(0.45),
-                              ]
-                            : isActive
-                            ? [
-                                AppColors.sky.withOpacity(0.38),
-                                AppColors.primary.withOpacity(0.48),
-                              ]
-                            : [
-                                AppColors.sky.withOpacity(0.28),
-                                AppColors.dark.withOpacity(0.58),
-                              ],
-                      ),
-                      border: Border.all(
-                        color: isActive
-                            ? AppColors.sky.withOpacity(0.30)
-                            : AppColors.sky.withOpacity(0.16),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isActive
-                              ? AppColors.sky.withOpacity(0.12)
-                              : Colors.transparent,
-                          blurRadius: boxHeight * 0.37,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        day,
-                        style: TextStyle(
-                          color: AppColors.sky.withOpacity(isLast ? 0.45 : 1),
-                          fontWeight: FontWeight.w800,
-                          fontSize: labelFontSize,
-                        ),
-                      ),
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 36,
+                  color: AppColors.dark.withOpacity(0.85),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$streak',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                    color: AppColors.dark,
                   ),
-                  if (index != totalDays - 1)
-                    Container(
-                      width: separatorWidth,
-                      height: 2,
-                      margin: EdgeInsets.only(top: boxHeight * 0.21),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: AppColors.sky.withOpacity(0.15),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.lightOrange,
-        fontSize: 12,
-        letterSpacing: 4,
-        fontWeight: FontWeight.w700,
+                ),
+                Text(
+                  streak == 1 ? 'day' : 'days',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.dark.withOpacity(0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Sparkles
+          const Positioned(top: 18, right: 28, child: _Sparkle(size: 10)),
+          const Positioned(top: 40, left: 22, child: _Sparkle(size: 7)),
+          const Positioned(bottom: 30, right: 20, child: _Sparkle(size: 8)),
+        ],
       ),
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
+// ─── Finch week circles ───────────────────────────────────────
 
-  const _ActionButton({required this.label, required this.onPressed});
+class _FinchWeekStrip extends StatelessWidget {
+  final List<WeeklyActivityDay> days;
+  const _FinchWeekStrip({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = days.isEmpty
+        ? List.generate(7, (i) {
+            final now = DateTime.now();
+            final sunday = now.subtract(Duration(days: now.weekday % 7));
+            return WeeklyActivityDay(
+              date: DateTime(sunday.year, sunday.month, sunday.day + i),
+              completedLessons: 0,
+            );
+          })
+        : days;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.42),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.65)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.dark.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'This week',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark.withOpacity(0.55),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(items.length, (index) {
+              final day = items[index];
+              final now = DateTime.now();
+              final isToday =
+                  day.date.year == now.year &&
+                  day.date.month == now.month &&
+                  day.date.day == now.day;
+              final active = day.isActive;
+
+              return Expanded(
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutBack,
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: active
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [AppColors.yellow, AppColors.orange],
+                              )
+                            : null,
+                        color: active
+                            ? null
+                            : Colors.white.withOpacity(isToday ? 0.9 : 0.55),
+                        border: Border.all(
+                          color: isToday
+                              ? AppColors.primary
+                              : (active
+                                    ? Colors.white.withOpacity(0.8)
+                                    : AppColors.dark.withOpacity(0.08)),
+                          width: isToday ? 2.2 : 1.2,
+                        ),
+                        boxShadow: active
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.orange.withOpacity(0.4),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: active
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 20,
+                              color: AppColors.dark,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      day.shortLabel,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+                        color: isToday
+                            ? AppColors.primary
+                            : AppColors.dark.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Continue CTA ─────────────────────────────────────────────
+
+class _FinchContinueButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _FinchContinueButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -409,52 +423,32 @@ class _ActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        borderRadius: BorderRadius.circular(28),
+        child: Ink(
+          height: 56,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primary.withOpacity(0.55),
-                AppColors.dark.withOpacity(0.78),
-              ],
-            ),
-            border: Border.all(
-              color: AppColors.sky.withOpacity(0.18),
-              width: 1,
+            borderRadius: BorderRadius.circular(28),
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.dark],
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.sky.withOpacity(0.08),
-                blurRadius: 20,
-                spreadRadius: 1,
+                color: AppColors.primary.withOpacity(0.4),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.auto_graph_rounded,
-                size: 18,
-                color: AppColors.sky,
+          child: const Center(
+            child: Text(
+              'Continue',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
               ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.sky,
-                    fontSize: 12,
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -462,36 +456,121 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _GlowBlob extends StatelessWidget {
-  final double size;
-  final Color color;
+// ─── Helpers ──────────────────────────────────────────────────
 
-  const _GlowBlob({required this.size, required this.color});
+class _SoftOrb extends StatelessWidget {
+  final double diameter;
+  final Color color;
+  const _SoftOrb({required this.diameter, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      ),
     );
   }
 }
 
-class HexagonClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(size.width * 0.5, 0);
-    path.lineTo(size.width, size.height * 0.25);
-    path.lineTo(size.width, size.height * 0.75);
-    path.lineTo(size.width * 0.5, size.height);
-    path.lineTo(0, size.height * 0.75);
-    path.lineTo(0, size.height * 0.25);
-    path.close();
-    return path;
-  }
+class _Sparkle extends StatelessWidget {
+  final double size;
+  const _Sparkle({required this.size});
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: math.pi / 4,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(color: AppColors.yellow.withOpacity(0.7), blurRadius: 6),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingBody extends StatelessWidget {
+  const _LoadingBody();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBody extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorBody({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.dark.withOpacity(0.75),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _FinchContinueButton(onPressed: onRetry),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => StudentEntryNavigator.goAfterStreak(context),
+              child: const Text(
+                'Continue anyway',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+extension _Entrance on Widget {
+  Widget animateEntrance() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.86, end: 1),
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value.clamp(0.0, 1.0),
+          child: Transform.scale(scale: value, child: child),
+        );
+      },
+      child: this,
+    );
+  }
 }

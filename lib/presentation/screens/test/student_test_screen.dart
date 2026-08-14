@@ -13,6 +13,7 @@ import 'package:fluent/presentation/widgets/app_backdrop.dart';
 import 'package:fluent/presentation/widgets/fill_answer_widget.dart';
 import 'package:fluent/helper/questions/answer_display_helper.dart';
 import 'package:fluent/presentation/widgets/arrange_answer_widget.dart';
+import 'package:fluent/presentation/widgets/pair_answer_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -401,7 +402,6 @@ class _StudentTestViewState extends State<_StudentTestView> {
   }
 }
 
-
 class _IntroView extends StatelessWidget {
   final bool loading;
   final VoidCallback onStart;
@@ -666,6 +666,8 @@ class _InProgressView extends StatelessWidget {
   }
 }
 
+/// Immediate feedback after submit — only fields the backend returns:
+/// is_correct, score, max_score. No reconstructed "Your answer" / "Correct".
 class _AnswerFeedbackBanner extends StatelessWidget {
   final SubmitAnswerResult result;
   final Question question;
@@ -678,22 +680,8 @@ class _AnswerFeedbackBanner extends StatelessWidget {
     final color = ok ? const Color(0xFF2ECC71) : AppColors.orange;
     final icon = ok ? Icons.check_circle_rounded : Icons.cancel_rounded;
     final title = ok ? 'Correct!' : 'Not quite';
+    // Backend: score + max_score only
     final detail = '${result.score}/${result.maxScore} pts';
-
-    String? correctLine;
-    if (!ok && result.correctAnswer != null) {
-      correctLine = AnswerDisplayHelper.format(
-        answer: result.correctAnswer,
-        question: question,
-      );
-    }
-
-    String? yoursLine;
-    if (!ok && result.rawAnswer != null) {
-      // rawAnswer is UserAttemptAnswer row; submitted payload is answer_json
-      final aj = result.rawAnswer!['answer_json'] ?? result.rawAnswer;
-      yoursLine = AnswerDisplayHelper.format(answer: aj, question: question);
-    }
 
     return Container(
       width: double.infinity,
@@ -703,60 +691,33 @@ class _AnswerFeedbackBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: color.withOpacity(0.45)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 22.sp),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.poppins(
-                        color: color,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                    Text(
-                      detail,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+          Icon(icon, color: color, size: 22.sp),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.sp,
+                  ),
                 ),
-              ),
-            ],
+                Text(
+                  detail,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
-          if (yoursLine != null && yoursLine.isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Your answer: $yoursLine',
-              style: GoogleFonts.poppins(
-                color: Colors.redAccent.shade100,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          if (correctLine != null && correctLine.isNotEmpty) ...[
-            SizedBox(height: 4.h),
-            Text(
-              'Correct: $correctLine',
-              style: GoogleFonts.poppins(
-                color: Colors.greenAccent,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1050,97 +1011,12 @@ class _AnswerArea extends StatelessWidget {
         );
 
       case QuestionType.pair:
-        final answers = question.answers.where((a) => a.id != null).toList();
-        // Stable but strong shuffle per question — lefts and rights use different seeds
-        // so matching by row order is never the correct solution.
-        final lefts = List.of(answers);
-        final rightOptions = List.of(answers);
-        lefts.shuffle(math.Random(question.id * 7919 + 17));
-        rightOptions.shuffle(math.Random(question.id * 9973 + 42));
-        return Column(
-          children: [
-            for (final left in lefts)
-              Padding(
-                padding: EdgeInsets.only(bottom: 10.h),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.07),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Text(
-                          left.leftText ?? left.textAnswer ?? '',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: pairMap[left.id],
-                        dropdownColor: AppColors.dark,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.07),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10.w,
-                            vertical: 8.h,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        hint: Text(
-                          'Match',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white38,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                        items: [
-                          for (final r in rightOptions)
-                            DropdownMenuItem(
-                              value: r.id,
-                              // يمنع اختيار نفس الكلمة مرتين (إلا إذا كانت هي المختارة حالياً لهذا الصف)
-                              enabled:
-                                  !pairMap.values.contains(r.id) ||
-                                  pairMap[left.id] == r.id,
-                              child: Text(
-                                r.rightText ?? r.textAnswer ?? '#${r.id}',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white, // كل الكلمات نفس الدرجة
-                                  fontSize: 12.sp,
-                                  decoration: pairMap.values.contains(r.id)
-                                      ? TextDecoration
-                                            .lineThrough // الكلمة المختارة تتشطب
-                                      : TextDecoration.none,
-                                  decorationColor: Colors.white70,
-                                  decorationThickness: 1.6,
-                                ),
-                              ),
-                            ),
-                        ],
-                        onChanged: locked
-                            ? null
-                            : (v) {
-                                if (v == null || left.id == null) return;
-                                final next = Map<int, int>.from(pairMap);
-                                next[left.id!] = v;
-                                onPairChanged(next);
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+        return PairAnswerWidget(
+          key: ValueKey('pair-${question.id}'),
+          question: question,
+          initialPairs: pairMap.isEmpty ? null : pairMap,
+          readOnly: locked,
+          onChanged: onPairChanged,
         );
     }
   }

@@ -12,6 +12,7 @@ import 'package:fluent/data/models/level_model.dart';
 import 'package:fluent/presentation/widgets/app_backdrop.dart';
 import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:fluent/presentation/widgets/arrange_answer_widget.dart';
+import 'package:fluent/presentation/widgets/pair_answer_widget.dart';
 import 'package:fluent/presentation/widgets/fill_answer_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -901,106 +902,12 @@ class _AnswerArea extends StatelessWidget {
         );
 
       case QuestionType.pair:
-        final answers = question.answers.where((a) => a.id != null).toList();
-        final lefts = List.of(answers);
-        final rightOptions = List.of(answers);
-        lefts.shuffle(math.Random(question.id * 7919 + 17));
-        rightOptions.shuffle(math.Random(question.id * 9973 + 42));
-        return Column(
-          children: [
-            for (final left in lefts)
-              Padding(
-                padding: EdgeInsets.only(bottom: 10.h),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.07),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Text(
-                          left.leftText ?? left.textAnswer ?? '',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: pairMap[left.id],
-                        dropdownColor: AppColors.dark,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.07),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10.w,
-                            vertical: 8.h,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        hint: Text(
-                          'Match',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white38,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                        selectedItemBuilder: (context) {
-                          return [
-                            for (final r in rightOptions)
-                              Text(
-                                r.rightText ?? r.textAnswer ?? '#${r.id}',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ];
-                        },
-                        items: [
-                          for (final r in rightOptions)
-                            DropdownMenuItem(
-                              value: r.id,
-                              enabled:
-                                  !pairMap.values.contains(r.id) ||
-                                  pairMap[left.id] == r.id,
-                              child: Text(
-                                r.rightText ?? r.textAnswer ?? '#${r.id}',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                  decoration: pairMap.values.contains(r.id)
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                  decorationColor: Colors.white70,
-                                  decorationThickness: 1.6,
-                                ),
-                              ),
-                            ),
-                        ],
-                        onChanged: locked
-                            ? null
-                            : (v) {
-                                if (v == null || left.id == null) return;
-                                final next = Map<int, int>.from(pairMap);
-                                next[left.id!] = v;
-                                onPairChanged(next);
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+        return PairAnswerWidget(
+          key: ValueKey('pair-${question.id}'),
+          question: question,
+          initialPairs: pairMap.isEmpty ? null : pairMap,
+          readOnly: locked,
+          onChanged: onPairChanged,
         );
     }
   }

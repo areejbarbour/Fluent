@@ -80,9 +80,24 @@ class ProfileCubit extends Cubit<ProfileState> {
           );
         }
       } else {
-        final result = await profileRepository.getStudentProfile();
+        // Load profile + weekly chart in parallel (same APIs as Streak screen)
+        final results = await Future.wait([
+          profileRepository.getStudentProfile(),
+          profileRepository.getWeeklyActivity(),
+        ]);
+        final result = results[0];
+        final weeklyResult = results[1];
+
         if (result['success'] == true) {
           final p = result['data'] as StudentProfileModel;
+          WeeklyActivityModel? weekly;
+          if (weeklyResult['success'] == true &&
+              weeklyResult['data'] is WeeklyActivityModel) {
+            weekly = weeklyResult['data'] as WeeklyActivityModel;
+          } else {
+            weekly = WeeklyActivityModel.fromJson(const {});
+          }
+
           _current = ProfileViewData(
             isTeacher: false,
             name: name,
@@ -92,8 +107,11 @@ class ProfileCubit extends Cubit<ProfileState> {
             points: p.points,
             streak: p.streak,
             lastActivateDate: p.lastActivateDate,
+            weeklyActivity: weekly,
           );
-          print('🎉 [ProfileCubit] Student profile loaded');
+          print(
+            '🎉 [ProfileCubit] Student profile loaded (weekly days=${weekly.days.length})',
+          );
           emit(ProfileLoaded(_current!));
         } else {
           print(

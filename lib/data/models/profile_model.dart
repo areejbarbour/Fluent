@@ -87,6 +87,7 @@ class ProfileViewData {
   final int points;
   final int streak;
   final String? lastActivateDate;
+  final WeeklyActivityModel? weeklyActivity;
 
   const ProfileViewData({
     required this.isTeacher,
@@ -97,6 +98,7 @@ class ProfileViewData {
     this.points = 0,
     this.streak = 0,
     this.lastActivateDate,
+    this.weeklyActivity,
   });
 
   ProfileViewData copyWith({
@@ -108,6 +110,7 @@ class ProfileViewData {
     int? points,
     int? streak,
     String? lastActivateDate,
+    WeeklyActivityModel? weeklyActivity,
   }) {
     return ProfileViewData(
       isTeacher: isTeacher ?? this.isTeacher,
@@ -118,6 +121,63 @@ class ProfileViewData {
       points: points ?? this.points,
       streak: streak ?? this.streak,
       lastActivateDate: lastActivateDate ?? this.lastActivateDate,
+      weeklyActivity: weeklyActivity ?? this.weeklyActivity,
     );
+  }
+}
+
+/// One day in the weekly activity chart.
+class WeeklyActivityDay {
+  final DateTime date;
+  final int completedLessons;
+
+  const WeeklyActivityDay({required this.date, required this.completedLessons});
+
+  bool get isActive => completedLessons > 0;
+
+  String get shortLabel {
+    const labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    return labels[date.weekday % 7];
+  }
+}
+
+/// Parsed weekly activity for the current week (Sunday → Saturday).
+class WeeklyActivityModel {
+  final List<WeeklyActivityDay> days;
+
+  const WeeklyActivityModel({required this.days});
+
+  factory WeeklyActivityModel.fromJson(Map<String, dynamic> json) {
+    final raw = json['weekly_activity'];
+    final Map<String, dynamic> map;
+    if (raw is Map) {
+      map = Map<String, dynamic>.from(raw);
+    } else {
+      map = <String, dynamic>{};
+    }
+
+    final entries = map.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    final days = <WeeklyActivityDay>[];
+    for (final e in entries) {
+      final parsed = DateTime.tryParse(e.key);
+      if (parsed == null) continue;
+      final count = e.value is int
+          ? e.value as int
+          : int.tryParse(e.value.toString()) ?? 0;
+      days.add(WeeklyActivityDay(date: parsed, completedLessons: count));
+    }
+
+    if (days.isEmpty) {
+      final now = DateTime.now();
+      final sunday = now.subtract(Duration(days: now.weekday % 7));
+      for (var i = 0; i < 7; i++) {
+        final d = DateTime(sunday.year, sunday.month, sunday.day + i);
+        days.add(WeeklyActivityDay(date: d, completedLessons: 0));
+      }
+    }
+
+    return WeeklyActivityModel(days: days);
   }
 }

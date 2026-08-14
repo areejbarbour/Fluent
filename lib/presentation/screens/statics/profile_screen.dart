@@ -16,6 +16,7 @@ import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
 import 'package:fluent/cubit/profile/profile_cubit.dart';
 import 'package:fluent/cubit/profile/profile_state.dart';
 import 'package:fluent/data/models/profile_model.dart';
+import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -31,6 +32,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  /// null = still loading; true = student has ≥1 exception request.
+  bool? _hasLevelExceptions;
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +42,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       context.read<LogoutCubit>().reset();
       context.read<ProfileCubit>().loadProfile();
+      _loadHasLevelExceptions();
     });
+  }
+
+  Future<void> _loadHasLevelExceptions() async {
+    try {
+      final repo = context.read<LevelExceptionRepository>();
+      const statuses = ['pending', 'in_review', 'approved', 'rejected'];
+      final results = await Future.wait(
+        statuses.map((s) => repo.getByStatus(s, page: 1)),
+      );
+
+      var has = false;
+      for (final r in results) {
+        if (r['success'] != true) continue;
+        final total = r['total'];
+        if (total is int && total > 0) {
+          has = true;
+          break;
+        }
+        final data = r['data'];
+        if (data is List && data.isNotEmpty) {
+          has = true;
+          break;
+        }
+      }
+
+      if (mounted) setState(() => _hasLevelExceptions = has);
+    } catch (_) {
+      if (mounted) setState(() => _hasLevelExceptions = false);
+    }
   }
 
   @override
@@ -186,25 +220,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _buildHeroProfile(profile),
                                 SizedBox(height: 22.h),
                                 if (!profile.isTeacher) ...[
+                                  // Student order:
+                                  // stats → change password → exception (if any) → weekly chart
                                   _buildStudentStatsRow(profile),
-                                  SizedBox(height: 26.h),
+                                  SizedBox(height: 16.h),
+                                  _buildChangePasswordCard(profile),
+                                  SizedBox(height: 14.h),
+                                  if (_hasLevelExceptions == true) ...[
+                                    _buildLevelExceptionsCard(),
+                                    SizedBox(height: 14.h),
+                                  ],
+                                  _buildWeeklyActivityCard(profile),
+                                  SizedBox(height: 14.h),
                                 ] else ...[
                                   _buildTeacherBadgeRow(profile),
                                   SizedBox(height: 26.h),
-                                ],
-                                _buildSectionHeader(
-                                  title: 'Account',
-                                  icon: Icons.person_rounded,
-                                  color: AppColors.sky,
-                                ),
-                                SizedBox(height: 12.h),
-                                _buildAccountInfoCard(profile),
-                                SizedBox(height: 14.h),
-                                _buildChangePasswordCard(profile),
-                                SizedBox(height: 14.h),
-                                // Exception requests — students only
-                                if (!profile.isTeacher) ...[
-                                  _buildLevelExceptionsCard(),
+                                  // Account box — teachers only
+                                  _buildSectionHeader(
+                                    title: 'Account',
+                                    icon: Icons.person_rounded,
+                                    color: AppColors.sky,
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  _buildAccountInfoCard(profile),
+                                  SizedBox(height: 14.h),
+                                  _buildChangePasswordCard(profile),
                                   SizedBox(height: 14.h),
                                 ],
                                 SizedBox(height: 12.h),
@@ -240,30 +280,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
-void _onNavTap(int index) {
-  HapticFeedback.selectionClick();
-  switch (index) {
-    case 0: // Home
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        studentHomeRoute, // أو homeRoute حسب اسمك
-        (route) => false,
-      );
-      break;
-    case 1: // Word Bank
-      Navigator.pushNamed(context, wordBankRoute);
-      break;
-    case 2: // Podcasts
-      Navigator.pushNamed(context, podcastsRoute);
-      break;
-    case 3: // AI Conversation
-      Navigator.pushNamed(context, aiConversationRoute);
-      break;
-    case 4: // Profile — already here
-      break;
+  void _onNavTap(int index) {
+    HapticFeedback.selectionClick();
+    switch (index) {
+      case 0: // Home
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          studentHomeRoute, // أو homeRoute حسب اسمك
+          (route) => false,
+        );
+        break;
+      case 1: // Word Bank
+        Navigator.pushNamed(context, wordBankRoute);
+        break;
+      case 2: // Podcasts
+        Navigator.pushNamed(context, podcastsRoute);
+        break;
+      case 3: // AI Conversation
+        Navigator.pushNamed(context, aiConversationRoute);
+        break;
+      case 4: // Profile — already here
+        break;
+    }
   }
-}
 
   Widget _buildErrorState(String message) {
     return Center(
@@ -331,67 +370,67 @@ void _onNavTap(int index) {
   // }
 
   Widget _buildBackground() {
-  return Stack(
-    children: [
-      Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xff011826),
-              AppColors.dark,
-              AppColors.primary,
-              Color(0xff01466A),
-              AppColors.dark,
-            ],
-            stops: [0.0, 0.2, 0.55, 0.8, 1.0],
+    return Stack(
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xff011826),
+                AppColors.dark,
+                AppColors.primary,
+                Color(0xff01466A),
+                AppColors.dark,
+              ],
+              stops: [0.0, 0.2, 0.55, 0.8, 1.0],
+            ),
           ),
         ),
-      ),
-      // توهج أصفر فوق يمين (متل الهوم)
-      Positioned(
-        top: -100.h,
-        right: -70.w,
-        child: Container(
-          width: 260.w,
-          height: 260.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.yellow.withOpacity(0.10),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.yellow.withOpacity(0.28),
-                blurRadius: 140,
-                spreadRadius: 35,
-              ),
-            ],
+        // توهج أصفر فوق يمين (متل الهوم)
+        Positioned(
+          top: -100.h,
+          right: -70.w,
+          child: Container(
+            width: 260.w,
+            height: 260.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.yellow.withOpacity(0.10),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.yellow.withOpacity(0.28),
+                  blurRadius: 140,
+                  spreadRadius: 35,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      // توهج سماوي وسط يسار
-      Positioned(
-        top: 320.h,
-        left: -90.w,
-        child: Container(
-          width: 240.w,
-          height: 240.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.sky.withOpacity(0.12),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.sky.withOpacity(0.25),
-                blurRadius: 130,
-                spreadRadius: 30,
-              ),
-            ],
+        // توهج سماوي وسط يسار
+        Positioned(
+          top: 320.h,
+          left: -90.w,
+          child: Container(
+            width: 240.w,
+            height: 240.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.sky.withOpacity(0.12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.sky.withOpacity(0.25),
+                  blurRadius: 130,
+                  spreadRadius: 30,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _buildTopBar() {
     return Row(
@@ -624,6 +663,462 @@ void _onNavTap(int index) {
     );
   }
 
+  Widget _buildWeeklyActivityCard(ProfileViewData profile) {
+    final days = profile.weeklyActivity?.days ?? const <WeeklyActivityDay>[];
+    final items = days.isEmpty
+        ? List.generate(7, (i) {
+            final now = DateTime.now();
+            final sunday = now.subtract(Duration(days: now.weekday % 7));
+            return WeeklyActivityDay(
+              date: DateTime(sunday.year, sunday.month, sunday.day + i),
+              completedLessons: 0,
+            );
+          })
+        : days;
+
+    final maxCount = items.fold<int>(
+      1,
+      (m, d) => d.completedLessons > m ? d.completedLessons : m,
+    );
+    final totalLessons = items.fold<int>(0, (s, d) => s + d.completedLessons);
+    final activeDays = items.where((d) => d.isActive).length;
+
+    // Attractive gradients per day (app palette + soft variants)
+    const barGradients = <List<Color>>[
+      [Color(0xFF7FDBF5), Color(0xFF2B9BC2)], // sky
+      [Color(0xFFFFE08A), Color(0xFFF5A201)], // yellow-orange
+      [Color(0xFFFFB347), Color(0xFFE67E22)], // orange
+      [Color(0xFF6FE3C1), Color(0xFF1ABC9C)], // mint
+      [Color(0xFFA8E8F9), Color(0xFF00537A)], // sky → primary
+      [Color(0xFFFFD35B), Color(0xFFFF9F1C)], // gold
+      [Color(0xFF9B8CFF), Color(0xFF6C5CE7)], // soft violet
+    ];
+
+    const weekdayFull = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(14.w, 16.h, 14.w, 14.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.04),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.13)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 34.w,
+                height: 34.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.r),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.dark],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.sky.withOpacity(0.25),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.bar_chart_rounded,
+                  color: AppColors.sky,
+                  size: 17.sp,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Weekly Activity',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$totalLessons lessons · $activeDays active days',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 10.5.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 14.h),
+
+          // Chart area — fixed height prevents bottom overflow
+          SizedBox(
+            height: 128.h,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final labelH = 18.h;
+                final valueH = 16.h;
+                final gapV = 4.h;
+                final chartH =
+                    constraints.maxHeight - labelH - valueH - gapV * 2;
+                final n = items.length;
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(n, (index) {
+                    final day = items[index];
+                    final count = day.completedLessons;
+                    final ratio = (count / maxCount).clamp(0.0, 1.0);
+                    // Real proportional height; empty days get a tiny base
+                    final barH = count == 0
+                        ? 8.h
+                        : (8.h + (chartH - 8.h) * ratio);
+
+                    final now = DateTime.now();
+                    final isToday =
+                        day.date.year == now.year &&
+                        day.date.month == now.month &&
+                        day.date.day == now.day;
+
+                    final grads = barGradients[index % barGradients.length];
+                    final topColor = grads[0];
+                    final bottomColor = grads[1];
+
+                    final weekdayName = weekdayFull[day.date.weekday % 7];
+                    // DateTime.weekday: Mon=1..Sun=7 → map to our Sun-first labels
+                    final fullName = switch (day.date.weekday) {
+                      DateTime.sunday => 'Sunday',
+                      DateTime.monday => 'Monday',
+                      DateTime.tuesday => 'Tuesday',
+                      DateTime.wednesday => 'Wednesday',
+                      DateTime.thursday => 'Thursday',
+                      DateTime.friday => 'Friday',
+                      DateTime.saturday => 'Saturday',
+                      _ => weekdayName,
+                    };
+
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 3.w),
+                        child: GestureDetector(
+                          onTap: () => _showDayActivitySheet(
+                            context,
+                            day: day,
+                            dayName: fullName,
+                            barColor: topColor,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              // Value
+                              SizedBox(
+                                height: valueH,
+                                child: count > 0
+                                    ? Text(
+                                        '$count',
+                                        style: GoogleFonts.poppins(
+                                          color: topColor,
+                                          fontSize: 10.sp,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                              SizedBox(height: gapV),
+                              // Shiny bar
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.easeOutCubic,
+                                height: barH,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(10.r),
+                                    bottom: Radius.circular(5.r),
+                                  ),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: count > 0
+                                        ? [
+                                            topColor,
+                                            bottomColor.withOpacity(0.85),
+                                          ]
+                                        : [
+                                            Colors.white.withOpacity(0.14),
+                                            Colors.white.withOpacity(0.05),
+                                          ],
+                                  ),
+                                  border: Border.all(
+                                    color: isToday
+                                        ? AppColors.yellow
+                                        : Colors.white.withOpacity(
+                                            count > 0 ? 0.22 : 0.08,
+                                          ),
+                                    width: isToday ? 1.6 : 0.8,
+                                  ),
+                                  boxShadow: count > 0
+                                      ? [
+                                          BoxShadow(
+                                            color: topColor.withOpacity(0.45),
+                                            blurRadius: 12,
+                                            spreadRadius: -1,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: count > 0
+                                    ? Align(
+                                        alignment: Alignment.topCenter,
+                                        child: Container(
+                                          margin: EdgeInsets.only(top: 3.h),
+                                          height: (barH * 0.28).clamp(
+                                            4.0,
+                                            14.0,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              20.r,
+                                            ),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.white.withOpacity(0.55),
+                                                Colors.white.withOpacity(0.0),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              SizedBox(height: gapV),
+                              // Weekday
+                              SizedBox(
+                                height: labelH,
+                                child: Text(
+                                  day.shortLabel,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5.sp,
+                                    fontWeight: isToday
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isToday
+                                        ? AppColors.yellow
+                                        : Colors.white.withOpacity(0.62),
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Center(
+            child: Text(
+              'Tap a bar to see details',
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 9.5.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDayActivitySheet(
+    BuildContext context, {
+    required WeeklyActivityDay day,
+    required String dayName,
+    required Color barColor,
+  }) {
+    final dateStr =
+        '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
+    final count = day.completedLessons;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 20.h),
+          padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 22.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.dark.withOpacity(0.98),
+                AppColors.primary.withOpacity(0.95),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(0.14)),
+            boxShadow: [
+              BoxShadow(color: barColor.withOpacity(0.25), blurRadius: 24),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Row(
+                children: [
+                  Container(
+                    width: 44.w,
+                    height: 44.w,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                      gradient: LinearGradient(
+                        colors: [barColor, barColor.withOpacity(0.55)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: barColor.withOpacity(0.4),
+                          blurRadius: 12,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      count > 0
+                          ? Icons.check_circle_rounded
+                          : Icons.hourglass_empty_rounded,
+                      color: AppColors.dark,
+                      size: 22.sp,
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          dayName,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          dateStr,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white54,
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 18.h),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book_rounded, color: barColor, size: 20.sp),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Text(
+                        count > 0
+                            ? 'Completed $count lesson${count == 1 ? '' : 's'} this day'
+                            : 'No lessons completed this day',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (count > 0)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 4.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: barColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(color: barColor.withOpacity(0.45)),
+                        ),
+                        child: Text(
+                          '×$count',
+                          style: GoogleFonts.poppins(
+                            color: barColor,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildStudentStatsRow(ProfileViewData profile) {
     return Row(
       children: [
@@ -726,24 +1221,24 @@ void _onNavTap(int index) {
       //   border: Border.all(color: Colors.white.withOpacity(0.12)),
       // ),
       decoration: BoxDecoration(
-  borderRadius: BorderRadius.circular(18.r),
-  gradient: LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Colors.white.withOpacity(0.12),
-      Colors.white.withOpacity(0.04),
-    ],
-  ),
-  border: Border.all(color: Colors.white.withOpacity(0.14)),
-  boxShadow: [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.18),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
-    ),
-  ],
-),
+        borderRadius: BorderRadius.circular(18.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.04),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Container(
@@ -815,17 +1310,17 @@ void _onNavTap(int index) {
       //   border: Border.all(color: Colors.white.withOpacity(0.10)),
       // ),
       decoration: BoxDecoration(
-  borderRadius: BorderRadius.circular(22.r),
-  gradient: LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Colors.white.withOpacity(0.10),
-      Colors.white.withOpacity(0.04),
-    ],
-  ),
-  border: Border.all(color: Colors.white.withOpacity(0.12)),
-),
+        borderRadius: BorderRadius.circular(22.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.10),
+            Colors.white.withOpacity(0.04),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
       child: Column(
         children: [
           _infoTile(
@@ -1235,7 +1730,6 @@ void _onNavTap(int index) {
     );
   }
 
-
   void _showLogoutConfirmDialog() {
     showDialog<void>(
       context: context,
@@ -1358,6 +1852,7 @@ void _onNavTap(int index) {
     );
   }
 }
+
 class _ChangePasswordSheet extends StatefulWidget {
   final String email;
   const _ChangePasswordSheet({required this.email});
@@ -1945,7 +2440,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   }
 }
 
-
 class _EditProfileSheet extends StatefulWidget {
   final ProfileViewData profile;
   final void Function(String bio, String? imagePath) onSave;
@@ -2170,7 +2664,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 }
 
-
 class _BottomSheetShell extends StatelessWidget {
   final String title;
   final Widget child;
@@ -2222,7 +2715,6 @@ class _BottomSheetShell extends StatelessWidget {
   }
 }
 
-
 class _GradientRingPainter extends CustomPainter {
   final double progress;
   final List<Color> colors;
@@ -2265,7 +2757,6 @@ class _GradientRingPainter extends CustomPainter {
     return oldDelegate.progress != progress;
   }
 }
-
 
 class _TwinklingStars extends StatelessWidget {
   final int count;

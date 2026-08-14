@@ -10,13 +10,17 @@ class ProfileService {
     validateStatus: (status) => status != null && status < 500,
   );
 
-
   Future<Response> getStudentProfile() async {
     return await dio.get(apiStudentProfile, options: _opts);
   }
 
   Future<Response> updateStudentProfile(FormData formData) async {
     return await dio.post(apiStudentProfile, data: formData, options: _opts);
+  }
+
+  /// GET /api/student/weeklyActivity
+  Future<Response> getWeeklyActivity() async {
+    return await dio.get(apiStudentWeeklyActivity, options: _opts);
   }
 
   Future<Response> getTeacherProfile() async {

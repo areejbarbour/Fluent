@@ -1,8 +1,8 @@
 //  const String baseUrl = 'http://192.168.1.5:8000';
 //const String baseUrl = 'http://192.168.10.224:8000';
 
-const String baseUrl = 'http://192.168.1.3:8000';
-//const String baseUrl = 'http://192.168.10.224:8000';
+// const String baseUrl = 'http://192.168.1.3:8000';
+const String baseUrl = 'http://192.168.10.224:8000';
 
 //const String baseUrl = 'http://172.20.10.2:8000';
 // const String baseUrl = 'https://fluent.moayadismail.com';
@@ -116,6 +116,7 @@ String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
 
 // ✅ Student / Teacher Profile API
 const String apiStudentProfile = '/api/student/profile';
+const String apiStudentWeeklyActivity = '/api/student/weeklyActivity';
 const String apiTeacherProfile = '/api/teacher/profile';
 
 // ── Student attempts (tests / placement) ─────────────────────

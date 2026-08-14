@@ -135,24 +135,43 @@ class SubmitAnswerResult {
   }
 }
 
-/// finish response:
-/// { "attempt_id": 1, "score": 80, "passed": true }
-/// Note: score is percentage (0–100), not sum of points.
+/// finish response (matches UserAttemptController::finish exactly):
+/// {
+///   "attempt_id": 1,
+///   "score": 80,          // percentage 0–100
+///   "passed": true,
+///   "streak": { "current": 3, "increased": true },
+///   "reward": { "points_awarded": true, "points": 50 }
+/// }
 class FinishAttemptResult {
   final int attemptId;
   final int scorePercent;
   final bool passed;
+  final FinishStreakResult streak;
+  final FinishRewardResult reward;
 
   const FinishAttemptResult({
     required this.attemptId,
     required this.scorePercent,
     required this.passed,
+    required this.streak,
+    required this.reward,
   });
 
   factory FinishAttemptResult.fromJson(Map<String, dynamic> json) {
     final idRaw = json['attempt_id'];
     final scoreRaw = json['score'];
     final passedRaw = json['passed'];
+
+    final streakRaw = json['streak'];
+    final streakMap = streakRaw is Map
+        ? Map<String, dynamic>.from(streakRaw)
+        : <String, dynamic>{};
+
+    final rewardRaw = json['reward'];
+    final rewardMap = rewardRaw is Map
+        ? Map<String, dynamic>.from(rewardRaw)
+        : <String, dynamic>{};
 
     return FinishAttemptResult(
       attemptId: idRaw is int
@@ -165,6 +184,54 @@ class FinishAttemptResult {
           passedRaw == true ||
           passedRaw == 1 ||
           passedRaw?.toString() == 'true',
+      streak: FinishStreakResult.fromJson(streakMap),
+      reward: FinishRewardResult.fromJson(rewardMap),
+    );
+  }
+}
+
+/// streak sub-object from finish:
+/// { "current": 3, "increased": true }
+class FinishStreakResult {
+  final int current;
+  final bool increased;
+
+  const FinishStreakResult({required this.current, required this.increased});
+
+  factory FinishStreakResult.fromJson(Map<String, dynamic> json) {
+    final currentRaw = json['current'];
+    final increasedRaw = json['increased'];
+    return FinishStreakResult(
+      current: currentRaw is int
+          ? currentRaw
+          : int.tryParse(currentRaw?.toString() ?? '') ?? 0,
+      increased:
+          increasedRaw == true ||
+          increasedRaw == 1 ||
+          increasedRaw?.toString() == 'true',
+    );
+  }
+}
+
+/// reward sub-object from finish:
+/// { "points_awarded": true, "points": 50 }
+class FinishRewardResult {
+  final bool pointsAwarded;
+  final int points;
+
+  const FinishRewardResult({required this.pointsAwarded, required this.points});
+
+  factory FinishRewardResult.fromJson(Map<String, dynamic> json) {
+    final awardedRaw = json['points_awarded'];
+    final pointsRaw = json['points'];
+    return FinishRewardResult(
+      pointsAwarded:
+          awardedRaw == true ||
+          awardedRaw == 1 ||
+          awardedRaw?.toString() == 'true',
+      points: pointsRaw is int
+          ? pointsRaw
+          : int.tryParse(pointsRaw?.toString() ?? '') ?? 0,
     );
   }
 }
