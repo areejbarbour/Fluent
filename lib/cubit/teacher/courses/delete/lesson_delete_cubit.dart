@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'lesson_delete_state.dart';
 
-class LessonDeleteCubit extends Cubit<LessonDeleteState> {
+class LessonDeleteCubit extends SafeCubit<LessonDeleteState> {
   final LessonRepository lessonRepository;
   LessonDeleteCubit(this.lessonRepository) : super(LessonDeleteInitial());
 

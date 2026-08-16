@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/level_exception_model.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'level_exception_create_state.dart';
 
-class LevelExceptionCreateCubit extends Cubit<LevelExceptionCreateState> {
+class LevelExceptionCreateCubit extends SafeCubit<LevelExceptionCreateState> {
   final LevelExceptionRepository repository;
 
   LevelExceptionCreateCubit(this.repository)

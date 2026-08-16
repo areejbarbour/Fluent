@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/cubit/teacher/questions/delete/question_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/delete/question_delete_state.dart';
@@ -56,21 +57,17 @@ class _QuestionDetailView extends StatelessWidget {
             child: BlocListener<QuestionDeleteCubit, QuestionDeleteState>(
               listener: (context, state) {
                 if (state is QuestionDeleteSuccess) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: AppColors.sky,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  showAppSnackBar(
+                    context,
+                    state.message,
+                    type: AppSnackType.info,
                   );
                   Navigator.pop(context, true);
                 } else if (state is QuestionDeleteFailure) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.error),
-                      backgroundColor: Colors.redAccent,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  showAppSnackBar(
+                    context,
+                    state.error,
+                    type: AppSnackType.error,
                   );
                 }
               },
@@ -823,23 +820,17 @@ class _QuestionDetailView extends StatelessWidget {
         }
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to check status'),
-              backgroundColor: Colors.redAccent,
-            ),
+          showAppSnackBar(
+            context,
+            result['message'] ?? 'Failed to check status',
+            type: AppSnackType.error,
           );
         }
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        showAppSnackBar(context, 'Error: $e', type: AppSnackType.error);
       }
     }
   }

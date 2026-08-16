@@ -6,6 +6,7 @@ import 'package:fluent/cubit/notification/notification_state.dart';
 import 'package:fluent/data/models/notification_model.dart';
 import 'package:fluent/helper/notification_route_resolver.dart';
 import 'package:fluent/presentation/widgets/app_date_format.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -339,25 +340,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showSnack(BuildContext context, String msg, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-            fontSize: 13.sp,
-          ),
-        ),
-        backgroundColor: isError
-            ? const Color(0xFFB71C1C)
-            : const Color(0xFF1B5E20),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-      ),
+    showAppSnackBar(
+      context,
+      msg,
+      type: isError ? AppSnackType.error : AppSnackType.success,
     );
   }
 }
@@ -471,12 +457,22 @@ class _NotificationTile extends StatelessWidget {
         return Icons.topic_rounded;
       case AppNotificationModel.typePodcastCreated:
         return Icons.podcasts_rounded;
-      case AppNotificationModel.typeCourseOpened:
+      case AppNotificationModel.typeCourseAssigned:
         return Icons.school_rounded;
       case AppNotificationModel.typeLessonOpened:
         return Icons.play_lesson_rounded;
+      case AppNotificationModel.typeLevelOpened:
+        return Icons.lock_open_rounded;
+      case AppNotificationModel.typeLevelException:
+        return Icons.help_outline_rounded;
       case AppNotificationModel.typeLevelExceptionApproved:
         return Icons.verified_rounded;
+      case AppNotificationModel.typeLevelExceptionReject:
+        return Icons.cancel_outlined;
+      case AppNotificationModel.typeContentDependencyChange:
+        return Icons.warning_amber_rounded;
+      case AppNotificationModel.typeDeleteLesson:
+        return Icons.delete_outline_rounded;
       case AppNotificationModel.typeContentApproved:
         return Icons.check_circle_rounded;
       case AppNotificationModel.typeContentChangesRequested:
@@ -493,12 +489,18 @@ class _NotificationTile extends StatelessWidget {
       case AppNotificationModel.typeContentApproved:
       case AppNotificationModel.typeContentPublished:
       case AppNotificationModel.typeLevelExceptionApproved:
+      case AppNotificationModel.typeLevelOpened:
         return const Color(0xFF3DD9B6);
       case AppNotificationModel.typeContentChangesRequested:
+      case AppNotificationModel.typeLevelException:
         return AppColors.lightOrange;
+      case AppNotificationModel.typeContentDependencyChange:
+      case AppNotificationModel.typeLevelExceptionReject:
+      case AppNotificationModel.typeDeleteLesson:
+        return const Color(0xFFE57373);
       case AppNotificationModel.typePodcastCreated:
         return AppColors.sky;
-      case AppNotificationModel.typeCourseOpened:
+      case AppNotificationModel.typeCourseAssigned:
         return AppColors.yellow;
       case AppNotificationModel.typeLessonOpened:
         return const Color(0xFF7EB6FF);
@@ -686,8 +688,6 @@ class _NotificationTile extends StatelessWidget {
                                           fontSize: 12.sp,
                                           height: 1.4,
                                         ),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                     if (timeLabel.isNotEmpty) ...[
@@ -772,12 +772,22 @@ class _NotificationTile extends StatelessWidget {
         return 'Topic';
       case AppNotificationModel.typePodcastCreated:
         return 'Podcast';
-      case AppNotificationModel.typeCourseOpened:
+      case AppNotificationModel.typeCourseAssigned:
         return 'Course';
       case AppNotificationModel.typeLessonOpened:
         return 'Lesson';
+      case AppNotificationModel.typeLevelOpened:
+        return 'Level';
+      case AppNotificationModel.typeLevelException:
+        return 'Request';
       case AppNotificationModel.typeLevelExceptionApproved:
         return 'Exception';
+      case AppNotificationModel.typeLevelExceptionReject:
+        return 'Rejected';
+      case AppNotificationModel.typeContentDependencyChange:
+        return 'Test Alert';
+      case AppNotificationModel.typeDeleteLesson:
+        return 'Deleted';
       case AppNotificationModel.typeContentApproved:
         return 'Approved';
       case AppNotificationModel.typeContentChangesRequested:

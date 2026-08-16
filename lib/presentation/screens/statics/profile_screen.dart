@@ -17,6 +17,7 @@ import 'package:fluent/cubit/profile/profile_cubit.dart';
 import 'package:fluent/cubit/profile/profile_state.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -85,20 +86,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           BlocListener<LogoutCubit, LogoutState>(
             listener: (context, state) {
               if (state is LogoutSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message.isNotEmpty
-                          ? state.message
-                          : 'Logged out successfully',
-                      style: GoogleFonts.poppins(fontSize: 13.sp),
-                    ),
-                    backgroundColor: AppColors.sky,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message.isNotEmpty
+                      ? state.message
+                      : 'Logged out successfully',
+                  type: AppSnackType.success,
                 );
                 Navigator.pushNamedAndRemoveUntil(
                   context,
@@ -106,20 +99,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   (route) => false,
                 );
               } else if (state is LogoutFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.error.isNotEmpty
-                          ? state.error
-                          : 'Failed to log out. Please try again.',
-                      style: GoogleFonts.poppins(fontSize: 13.sp),
-                    ),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.error.isNotEmpty
+                      ? state.error
+                      : 'Failed to log out. Please try again.',
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -127,34 +112,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           BlocListener<ProfileCubit, ProfileState>(
             listener: (context, state) {
               if (state is ProfileUpdateSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.poppins(fontSize: 13.sp),
-                    ),
-                    backgroundColor: Colors.greenAccent.shade700,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.success,
                 );
               } else if (state is ProfileFailure && state.profile == null) {
                 // Hard failure on first load — soft failures keep previous data
               } else if (state is ProfileFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.poppins(fontSize: 13.sp),
-                    ),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -231,21 +200,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     _buildLevelExceptionsCard(),
                                     SizedBox(height: 14.h),
                                   ],
+                                  _buildCertificatesCard(),
+                                  SizedBox(height: 14.h),
+                                  _buildContactUsCard(),
+                                  SizedBox(height: 14.h),
                                   _buildWeeklyActivityCard(profile),
                                   SizedBox(height: 14.h),
                                 ] else ...[
                                   _buildTeacherBadgeRow(profile),
-                                  SizedBox(height: 26.h),
-                                  // Account box — teachers only
-                                  _buildSectionHeader(
-                                    title: 'Account',
-                                    icon: Icons.person_rounded,
-                                    color: AppColors.sky,
-                                  ),
-                                  SizedBox(height: 12.h),
-                                  _buildAccountInfoCard(profile),
-                                  SizedBox(height: 14.h),
+                                  SizedBox(height: 16.h),
+                                  // Teacher order: change password → analytics
                                   _buildChangePasswordCard(profile),
+                                  SizedBox(height: 14.h),
+                                  _buildTeacherAnalyticsCard(),
                                   SizedBox(height: 14.h),
                                 ],
                                 SizedBox(height: 12.h),
@@ -1144,6 +1111,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildTeacherAnalyticsCard() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.pushNamed(context, teacherStatsRoute);
+        },
+        borderRadius: BorderRadius.circular(18.r),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.orange.withOpacity(0.22),
+                AppColors.yellow.withOpacity(0.12),
+                AppColors.primary.withOpacity(0.25),
+              ],
+            ),
+            border: Border.all(color: AppColors.orange.withOpacity(0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12.r),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.yellow, AppColors.orange],
+                  ),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Icon(
+                  Icons.insights_rounded,
+                  color: AppColors.dark,
+                  size: 22.sp,
+                ),
+              ),
+              SizedBox(width: 14.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Teaching Analytics',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      'Pass rates · abandonment · lesson funnel · question insights',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white60,
+                        fontSize: 11.sp,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.white54,
+                size: 14.sp,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTeacherBadgeRow(ProfileViewData profile) {
     return Container(
       width: double.infinity,
@@ -1516,6 +1568,134 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Level exception (kept for student + teacher profiles) ──
+
+  Widget _buildCertificatesCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, certificatesRoute),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.r),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.orange.withOpacity(0.16),
+              AppColors.yellow.withOpacity(0.08),
+            ],
+          ),
+          border: Border.all(color: AppColors.orange.withOpacity(0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.r),
+              decoration: BoxDecoration(
+                color: AppColors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(
+                Icons.workspace_premium_rounded,
+                color: AppColors.orange,
+                size: 20.sp,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Certificates',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'View and download your level certificates',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+              size: 20.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactUsCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, contactUsRoute),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.r),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.sky.withOpacity(0.16),
+              AppColors.primary.withOpacity(0.10),
+            ],
+          ),
+          border: Border.all(color: AppColors.sky.withOpacity(0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.r),
+              decoration: BoxDecoration(
+                color: AppColors.sky.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(
+                Icons.mail_outline_rounded,
+                color: AppColors.sky,
+                size: 20.sp,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Contact Us',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Send a message to the support team',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+              size: 20.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildLevelExceptionsCard() {
     return GestureDetector(
@@ -1907,15 +2087,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   void _sendOtp() {
     final email = widget.email.trim();
     if (email.isEmpty || email == '—') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Email not available. Please re-login.',
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Email not available. Please re-login.',
+        type: AppSnackType.error,
       );
       return;
     }
@@ -1925,15 +2100,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   void _verifyOtp() {
     final otp = _otpCtrl.text.trim();
     if (otp.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please enter the OTP code',
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Please enter the OTP code',
+        type: AppSnackType.error,
       );
       return;
     }
@@ -2252,29 +2422,9 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   void _showSheetSnack(
     BuildContext context, {
     required String message,
-    required Color background,
+    required AppSnackType type,
   }) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: GoogleFonts.poppins(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: background,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    showAppSnackBar(context, message, type: type);
   }
 
   @override
@@ -2295,13 +2445,13 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   message: state.message.isNotEmpty
                       ? state.message
                       : 'OTP sent to your email',
-                  background: const Color(0xFF1B8A5A),
+                  type: AppSnackType.success,
                 );
               } else if (state is ForgotPasswordFailure) {
                 _showSheetSnack(
                   context,
                   message: state.error,
-                  background: Colors.redAccent,
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -2315,13 +2465,13 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   message: state.message.isNotEmpty
                       ? state.message
                       : 'OTP verified. Set your new password.',
-                  background: const Color(0xFF1B8A5A),
+                  type: AppSnackType.success,
                 );
               } else if (state is VerifyOtpFailure) {
                 _showSheetSnack(
                   context,
                   message: state.error,
-                  background: Colors.redAccent,
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -2334,7 +2484,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   message: state.message.isNotEmpty
                       ? state.message
                       : 'Password reset successfully',
-                  background: const Color(0xFF1B8A5A),
+                  type: AppSnackType.success,
                 );
                 Future.delayed(const Duration(milliseconds: 1400), () {
                   if (!mounted) return;
@@ -2354,7 +2504,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 _showSheetSnack(
                   context,
                   message: msg,
-                  background: Colors.redAccent,
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -2709,7 +2859,7 @@ class _BottomSheetShell extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16.h),
-          child,
+          Flexible(child: child),
         ],
       ),
     );

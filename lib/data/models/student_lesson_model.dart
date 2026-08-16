@@ -21,15 +21,43 @@ class StudentLessonModel {
   }
 }
 
+/// Mirrors the `progress` object returned by the backend:
+/// { "completed_lessons": 1, "total_lessons": 3, "progress_percentage": 33 }
+class LessonsProgressSummary {
+  final int completedLessons;
+  final int totalLessons;
+  final double progressPercentage;
+
+  const LessonsProgressSummary({
+    required this.completedLessons,
+    required this.totalLessons,
+    required this.progressPercentage,
+  });
+
+  factory LessonsProgressSummary.fromJson(Map<String, dynamic> json) {
+    return LessonsProgressSummary(
+      completedLessons: json['completed_lessons'] ?? 0,
+      totalLessons: json['total_lessons'] ?? 0,
+      progressPercentage:
+          (json['progress_percentage'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  static const empty =
+      LessonsProgressSummary(completedLessons: 0, totalLessons: 0, progressPercentage: 0);
+}
+
 class StudentLessonsModel {
   final StudentLessonModel? currentLesson;
   final List<StudentLessonModel> completedLessons;
   final List<StudentLessonModel> lockedLessons;
+  final LessonsProgressSummary progress;
 
   StudentLessonsModel({
     required this.currentLesson,
     required this.completedLessons,
     required this.lockedLessons,
+    this.progress = LessonsProgressSummary.empty,
   });
 
   factory StudentLessonsModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +77,10 @@ class StudentLessonsModel {
           : null,
       completedLessons: parseList(json['completed_lessons']),
       lockedLessons: parseList(json['locked_lessons']),
+      progress: json['progress'] is Map
+          ? LessonsProgressSummary.fromJson(
+              Map<String, dynamic>.from(json['progress']))
+          : LessonsProgressSummary.empty,
     );
   }
 }

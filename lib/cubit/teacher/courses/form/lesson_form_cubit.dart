@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'lesson_form_state.dart';
 
-class LessonFormCubit extends Cubit<LessonFormState> {
+class LessonFormCubit extends SafeCubit<LessonFormState> {
   final LessonRepository lessonRepository;
   LessonFormCubit(this.lessonRepository) : super(LessonFormInitial());
 

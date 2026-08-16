@@ -9,11 +9,12 @@
 // 7) يمنع إنشاء جلسة جديدة إذا فيه active (حماية فرونت)
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/chat_models.dart';
 import 'package:fluent/data/repository/chat_repository.dart';
 import 'chat_state.dart';
 
-class ChatCubit extends Cubit<ChatState> {
+class ChatCubit extends SafeCubit<ChatState> {
   final ChatRepository repository;
 
   ChatCubit(this.repository) : super(ChatInitial());

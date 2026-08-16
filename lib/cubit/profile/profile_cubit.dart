@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fluent/data/models/profile_model.dart';
@@ -6,7 +7,7 @@ import 'package:fluent/data/repository/auth_repository.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
 import 'profile_state.dart';
 
-class ProfileCubit extends Cubit<ProfileState> {
+class ProfileCubit extends SafeCubit<ProfileState> {
   final ProfileRepository profileRepository;
   final AuthRepository authRepository;
 

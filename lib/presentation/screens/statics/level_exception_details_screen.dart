@@ -10,6 +10,7 @@ import 'package:fluent/cubit/student/levels/level_exception_update_cubit.dart';
 import 'package:fluent/cubit/student/levels/level_exception_update_state.dart';
 import 'package:fluent/data/models/level_exception_model.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -227,14 +228,14 @@ class _LevelExceptionDetailsScreenState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                'Request Details',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cinzelDecorative(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
+                  'Request Details',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzelDecorative(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
                 Container(
                   margin: EdgeInsets.only(top: 2.h),
                   width: 28.w,
@@ -642,7 +643,6 @@ class _DetailsBody extends StatelessWidget {
     );
   }
 
-
   Future<void> _confirmDeleteAttachment(
     BuildContext context,
     int exceptionId,
@@ -698,63 +698,11 @@ class _DetailsBody extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(
-    content: Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(6.r),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withOpacity(.15),
-          ),
-          child: Icon(
-            error == null
-                ? Icons.check_circle_rounded
-                : Icons.error_outline_rounded,
-            color: error == null
-                ? const Color(0xFF4ADE80)
-                : Colors.redAccent,
-            size: 18.sp,
-          ),
-        ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: Text(
-            error ?? 'Attachment deleted successfully.',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 12.5.sp,
-            ),
-          ),
-        ),
-      ],
-    ),
-    backgroundColor: AppColors.primary,
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14.r),
-    ),
-    margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-    duration: const Duration(seconds: 3),
-  ),
-);
-
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(
-    //       error ?? 'Attachment deleted successfully.',
-    //       style: GoogleFonts.poppins(fontSize: 13.sp),
-    //     ),
-    //     backgroundColor: error == null ? AppColors.sky : Colors.redAccent,
-    //     behavior: SnackBarBehavior.floating,
-    //     shape: RoundedRectangleBorder(
-    //       borderRadius: BorderRadius.circular(10.r),
-    //     ),
-    //   ),
-    // );
+    showAppSnackBar(
+      context,
+      error ?? 'Attachment deleted successfully.',
+      type: error == null ? AppSnackType.success : AppSnackType.error,
+    );
   }
 
   Widget _sectionCard({
@@ -925,18 +873,10 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
     } catch (e) {
       debugPrint('FilePicker error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to pick files',
-              style: GoogleFonts.poppins(fontSize: 13.sp),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Failed to pick files',
+          type: AppSnackType.error,
         );
       }
     }
@@ -1018,55 +958,21 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
   Widget build(BuildContext context) {
     return BlocListener<LevelExceptionUpdateCubit, LevelExceptionUpdateState>(
       listener: (context, state) {
-  if (state is LevelExceptionUpdateSuccess) {
-    Navigator.pop(context);
+        if (state is LevelExceptionUpdateSuccess) {
+          Navigator.pop(context);
 
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.15),
-              ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                color: const Color(0xFF4ADE80),
-                size: 18.sp,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                state.message ?? 'Request updated successfully.',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    widget.onSuccess(state.updated);
-  } else if (state is LevelExceptionUpdateFailure) {
-    setState(() => _formError = state.message);
-  }
-},
-     
+          HapticFeedback.lightImpact();
+          showAppSnackBar(
+            context,
+            state.message ?? 'Request updated successfully.',
+            type: AppSnackType.success,
+          );
+          widget.onSuccess(state.updated);
+        } else if (state is LevelExceptionUpdateFailure) {
+          setState(() => _formError = state.message);
+        }
+      },
+
       child: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -1310,106 +1216,105 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
                         final isPdf = name.toLowerCase().endsWith('.pdf');
 
                         return Container(
-                          margin: EdgeInsets.only(bottom: 8.h),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 11.h,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withOpacity(.07),
-                                Colors.white.withOpacity(.03),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(.12),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(6.r),
-                                decoration: BoxDecoration(
-                                  color: AppColors.sky.withOpacity(.18),
-                                  borderRadius: BorderRadius.circular(8.r),
+                              margin: EdgeInsets.only(bottom: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 11.h,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white.withOpacity(.07),
+                                    Colors.white.withOpacity(.03),
+                                  ],
                                 ),
-                                child: Icon(
-                                  isPdf
-                                      ? Icons.picture_as_pdf_rounded
-                                      : Icons.image_rounded,
-                                  color: AppColors.sky,
-                                  size: 16.sp,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(.12),
                                 ),
                               ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(6.r),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.sky.withOpacity(.18),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                    child: Icon(
+                                      isPdf
+                                          ? Icons.picture_as_pdf_rounded
+                                          : Icons.image_rounded,
+                                      color: AppColors.sky,
+                                      size: 16.sp,
+                                    ),
                                   ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () async {
-                                  HapticFeedback.selectionClick();
-                                  final item = _existingAttachments[index];
-                                  // If we have a real media id and request is pending,
-                                  // delete on the server immediately.
-                                  if (item.canDelete &&
-                                      widget.details.canManageAttachments) {
-                                    final repo = context
-                                        .read<LevelExceptionRepository>();
-                                    final result = await repo.deleteAttachment(
-                                      exceptionId: widget.details.id,
-                                      mediaId: item.id,
-                                    );
-                                    if (!mounted) return;
-                                    if (result['success'] != true) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      HapticFeedback.selectionClick();
+                                      final item = _existingAttachments[index];
+                                      // If we have a real media id and request is pending,
+                                      // delete on the server immediately.
+                                      if (item.canDelete &&
+                                          widget.details.canManageAttachments) {
+                                        final repo = context
+                                            .read<LevelExceptionRepository>();
+                                        final result = await repo
+                                            .deleteAttachment(
+                                              exceptionId: widget.details.id,
+                                              mediaId: item.id,
+                                            );
+                                        if (!mounted) return;
+                                        if (result['success'] != true) {
+                                          showAppSnackBar(
+                                            context,
                                             result['message']?.toString() ??
                                                 'Failed to delete attachment',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13.sp,
-                                            ),
-                                          ),
-                                          backgroundColor: Colors.redAccent,
-                                          behavior: SnackBarBehavior.floating,
+                                            type: AppSnackType.error,
+                                          );
+                                          return;
+                                        }
+                                      }
+                                      setState(() {
+                                        _existingAttachments.removeAt(index);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(5.r),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withOpacity(
+                                          .12,
                                         ),
-                                      );
-                                      return;
-                                    }
-                                  }
-                                  setState(() {
-                                    _existingAttachments.removeAt(index);
-                                  });
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.all(5.r),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(.12),
-                                    borderRadius: BorderRadius.circular(8.r),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: Colors.redAccent,
+                                        size: 15.sp,
+                                      ),
+                                    ),
                                   ),
-                                  child: Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: Colors.redAccent,
-                                    size: 15.sp,
-                                  ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ).animate().fadeIn(duration: 300.ms).moveX(begin: 10, end: 0);
+                            )
+                            .animate()
+                            .fadeIn(duration: 300.ms)
+                            .moveX(begin: 10, end: 0);
                       }),
                       SizedBox(height: 14.h),
                     ],
@@ -1704,6 +1609,7 @@ class _EditExceptionSheetState extends State<_EditExceptionSheet> {
     );
   }
 }
+
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});

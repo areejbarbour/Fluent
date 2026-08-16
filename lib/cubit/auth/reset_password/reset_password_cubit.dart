@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import '../../../../data/repository/auth_repository.dart';
 import 'reset_password_state.dart';
 
-class ResetPasswordCubit extends Cubit<ResetPasswordState> {
+class ResetPasswordCubit extends SafeCubit<ResetPasswordState> {
   final AuthRepository authRepository;
   ResetPasswordCubit(this.authRepository) : super(ResetPasswordInitial());
 

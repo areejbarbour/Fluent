@@ -1,15 +1,15 @@
-
-
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/data/repository/progress_repository.dart';
 import 'package:fluent/cubit/notification/notification_cubit.dart';
 import 'package:fluent/cubit/notification/notification_state.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
 import 'package:fluent/data/repository/auth_repository.dart';
+import 'package:fluent/helper/nav_key.dart';
 import 'package:fluent/helper/student_entry_navigator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -31,10 +31,10 @@ import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'package:fluent/cubit/student/payment/payment_cubit.dart';
 import 'package:fluent/data/repository/payment_repository.dart';
 import 'package:fluent/presentation/screens/home/level_purchase_sheet.dart';
-import 'package:fluent/cubit/profile/profile_cubit.dart';  
+import 'package:fluent/cubit/profile/profile_cubit.dart';
 import 'package:fluent/cubit/profile/profile_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 enum LevelStatus { completed, current, locked, boss, available }
 
@@ -83,7 +83,7 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   int _selectedNavIndex = 0;
   late final AnimationController _pathFlowController;
   late final AnimationController _borderFlowController;
@@ -99,6 +99,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   int _streakDays = 0;
   int _level = 0;
   double _levelProgress = 0.0;
+
+  /// Prevents infinite rebuild loop: BlocBuilder Success → setState/API → rebuild → Success again.
+  int? _progressSyncedForLevelId;
+  bool _levelBadgeApplied = false;
 
   static const List<IconData> _decorativeIcons = [
     Icons.auto_awesome_rounded,
@@ -140,6 +144,55 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     );
   }
 
+  /// Prefer GET /api/levels/{id}/progress for current level.
+  /// Fallback: completed / total path fraction.
+  Future<void> _syncLevelProgressFromApi(StudentLevelsModel data) async {
+    try {
+      final current = data.currentLevel;
+      if (current != null) {
+        final repo = context.read<ProgressRepository>();
+        final res = await repo.getLevelProgress(current.id);
+        if (!mounted) return;
+        if (res['success'] == true && res['data'] is num) {
+          final pct = (res['data'] as num).toDouble();
+          setState(() {
+            _levelProgress = (pct / 100.0).clamp(0.0, 1.0);
+          });
+          return;
+        }
+      }
+
+      final total =
+          data.completedLevels.length +
+          data.availableLevels.length +
+          data.lockedLevels.length +
+          (data.currentLevel != null ? 1 : 0);
+      final done = data.completedLevels.length;
+      if (!mounted) return;
+      setState(() {
+        if (total > 0) {
+          _levelProgress = (done / total).clamp(0.0, 1.0);
+        } else {
+          _levelProgress = done > 0 ? 1.0 : 0.0;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      final done = data.completedLevels.length;
+      final total =
+          done + data.availableLevels.length + data.lockedLevels.length;
+      setState(() {
+        _levelProgress = total > 0 ? (done / total).clamp(0.0, 1.0) : 0.0;
+      });
+    }
+  }
+
+  void _refreshStudentLevels() {
+    _progressSyncedForLevelId = null;
+    _levelBadgeApplied = false;
+    context.read<StudentLevelsCubit>().fetchStudentLevels();
+  }
+
   List<LevelPathData> _mapLevels(StudentLevelsModel data) {
     final list = <LevelPathData>[];
 
@@ -173,6 +226,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _xp = widget.xp;
     _streakDays = widget.streakDays;
     _level = widget.level;
@@ -201,6 +255,50 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe so we're told whenever the user navigates back to this
+    // screen from anywhere in the app (levels, purchase, profile, tests…).
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  /// Refreshes everything shown on Home: levels/progress path, profile
+  /// identity (name/photo), XP & streak, and unread notifications count.
+  /// Safe to call repeatedly — every piece guards on `mounted` internally.
+  void _fullRefresh() {
+    if (!mounted) return;
+    _refreshStudentLevels();
+    _loadStudentIdentity();
+    try {
+      context.read<NotificationCubit>().refreshAll();
+    } catch (_) {
+      // NotificationCubit not available in this context — ignore.
+    }
+  }
+
+  // ── RouteAware ───────────────────────────────────────────────
+  // Fired automatically when a route above this screen is popped and
+  // Home becomes visible again — e.g. returning from level courses,
+  // a purchase sheet, the profile screen, tests, etc. This is what makes
+  // Home refresh itself immediately without any manual pull-to-refresh.
+  @override
+  void didPopNext() {
+    _fullRefresh();
+  }
+
+  // ── WidgetsBindingObserver ───────────────────────────────────
+  // Also refresh when the app itself comes back to the foreground
+  // (e.g. the user switched apps, made a change server-side, came back).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fullRefresh();
+    }
+  }
 
   Future<void> _loadStudentIdentity() async {
     String name = widget.userName;
@@ -242,20 +340,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Future<void> _refreshPointsOnly() async {
-  try {
-    final profileRes =
-        await context.read<ProfileRepository>().getStudentProfile();
-    if (!mounted) return;
-    if (profileRes['success'] == true &&
-        profileRes['data'] is StudentProfileModel) {
-      final pr = profileRes['data'] as StudentProfileModel;
-      setState(() {
-        _xp = pr.points;
-        _streakDays = pr.streak;
-      });
-    }
-  } catch (_) {}
-}
+    try {
+      final profileRes = await context
+          .read<ProfileRepository>()
+          .getStudentProfile();
+      if (!mounted) return;
+      if (profileRes['success'] == true &&
+          profileRes['data'] is StudentProfileModel) {
+        final pr = profileRes['data'] as StudentProfileModel;
+        setState(() {
+          _xp = pr.points;
+          _streakDays = pr.streak;
+        });
+      }
+    } catch (_) {}
+  }
 
   String get _formalGreeting {
     final hour = DateTime.now().hour;
@@ -272,6 +371,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _pathFlowController.dispose();
     _borderFlowController.dispose();
     _scrollController.dispose();
@@ -304,17 +405,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildHeroGreetingCard(),
-                        SizedBox(height: 20.h),
-                        _buildDailyChallengeAndLeaders(),
+
                         SizedBox(height: 16.h),
                         _buildJourneyOverview(),
-                        SizedBox(height: 14.h),
+
                         _PathTransition(),
                         SizedBox(height: 6.h),
                         BlocBuilder<StudentLevelsCubit, StudentLevelsState>(
                           builder: (context, state) {
                             if (state is StudentLevelsLoading ||
                                 state is StudentLevelsInitial) {
+                              // Reset so the next Success re-syncs progress once
+                              // (pull-to-refresh, retry, purchase, etc.).
+                              if (state is StudentLevelsLoading) {
+                                _progressSyncedForLevelId = null;
+                                _levelBadgeApplied = false;
+                              }
                               return _levelsLoadingCard();
                             }
 
@@ -334,21 +440,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                     .map((l) => l.order)
                                     .reduce((a, b) => a > b ? a : b);
                               }
-                              if (derivedLevel != _level) {
+
+                              // Only sync once per current level id — otherwise
+                              // setState inside post-frame retriggers this builder
+                              // and spams GET /api/levels/{id}/progress.
+                              final currentLevelId = data.currentLevel?.id;
+                              final needsBadge =
+                                  !_levelBadgeApplied || _level != derivedLevel;
+                              final needsProgress =
+                                  _progressSyncedForLevelId != currentLevelId;
+
+                              if (needsBadge || needsProgress) {
                                 WidgetsBinding.instance.addPostFrameCallback((
                                   _,
                                 ) {
-                                  if (mounted) {
+                                  if (!mounted) return;
+                                  if (needsProgress) {
+                                    // Mark before async call to avoid concurrent duplicates.
+                                    _progressSyncedForLevelId = currentLevelId;
+                                    _syncLevelProgressFromApi(data);
+                                  }
+                                  if (needsBadge) {
+                                    _levelBadgeApplied = true;
                                     setState(() {
                                       _level = derivedLevel;
-                                      // Progress unknown from API — keep 0 or mild fill if enrolled
-                                      _levelProgress = data.currentLevel != null
-                                          ? 0.35
-                                          : (derivedLevel > 0 ? 1.0 : 0.0);
                                     });
                                   }
                                 });
                               }
+
                               return _LevelsPath(
                                 levels: _levels,
                                 flowController: _pathFlowController,
@@ -665,8 +785,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: 
-                    Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -708,7 +827,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     },
                   ),
                   SizedBox(width: 8.w),
-                  _circleIconButton(icon: Icons.settings_rounded, onTap: () {}),
                 ],
               ),
               SizedBox(height: 16.h),
@@ -993,227 +1111,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         ],
       ),
     );
-  }
-
-  Widget _buildDailyChallengeAndLeaders() {
-    return IntrinsicHeight(
-      child : Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 11,
-          child: _glassContainer(
-            padding: EdgeInsets.all(12.w),
-            radius: 20.r,
-            gradientColors: [
-              Colors.white.withOpacity(.10),
-              Colors.white.withOpacity(.04),
-            ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.orange.withOpacity(.4),
-                            AppColors.orange.withOpacity(.08),
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.local_fire_department_rounded,
-                        color: AppColors.orange,
-                        size: 14.sp,
-                      ),
-                    ),
-                    SizedBox(width: 6.w),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Daily Challenge",
-                          maxLines: 1,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
-                SizedBox(
-                   height: 32.h,
-                    child: Text(
-    "Complete 10 new words",
-    maxLines: 2,
-    overflow: TextOverflow.visible,
-    style: GoogleFonts.poppins(
-      color: Colors.white.withOpacity(.7),
-      fontSize: 10.5.sp,
-      height: 1.35,
-    ),
-  ),
-),
-SizedBox(height: 10.h),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: LinearProgressIndicator(
-                    value: 0.7,
-                    minHeight: 6.h,
-                    backgroundColor: Colors.white.withOpacity(.12),
-                    valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "7/10",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(.75),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      "70%",
-                      style: GoogleFonts.poppins(
-                        color: AppColors.yellow,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.card_giftcard_rounded,
-                      color: AppColors.yellow,
-                      size: 12.sp,
-                    ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      "Reward: ★ 250 XP",
-                      style: GoogleFonts.poppins(
-                        color: AppColors.yellow,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        SizedBox(width: 10.w),
-        Expanded(
-          flex: 12,
-          child: _glassContainer(
-            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 10.h),
-            radius: 20.r,
-            gradientColors: [
-              Colors.white.withOpacity(.10),
-              Colors.white.withOpacity(.04),
-            ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(5.r),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.yellow.withOpacity(.4),
-                            AppColors.yellow.withOpacity(.08),
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.emoji_events_rounded,
-                        color: AppColors.yellow,
-                        size: 13.sp,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Top Leaders",
-                          maxLines: 1,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11.5.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                      },
-                      child: Text(
-                        "View all",
-                        style: GoogleFonts.poppins(
-                          color: AppColors.sky,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 9.5.sp,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 10.h),
-                _leaderRow(
-                  rank: 1,
-                  name: "Omar",
-                  xp: "18,200",
-                  color: AppColors.yellow,
-                ),
-                SizedBox(height: 7.h),
-                _leaderRow(
-                  rank: 2,
-                  name: "Lina",
-                  xp: "16,400",
-                  color: const Color(0xFFC0C0C0),
-                ),
-                SizedBox(height: 7.h),
-                _leaderRow(
-                  rank: 3,
-                  name: "Ziad",
-                  xp: "15,100",
-                  color: const Color(0xFFCD7F32),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    )
-    )
-    .animate().fadeIn(delay: 150.ms, duration: 450.ms);
   }
 
   Widget _leaderRow({
@@ -1729,271 +1626,275 @@ SizedBox(height: 10.h),
   }
 
   Widget _buildBottomNav() {
-  final items = [
-    (Icons.home_rounded, "HOME", Icons.refresh_rounded),
-    (Icons.menu_book_rounded, "WORD BANK", null),
-    (Icons.mic_rounded, "PODCASTS", null),
-    (Icons.headset_rounded, "AI CONVERSATION", null),
-    (Icons.person_rounded, "PROFILE", null),
-  ];
+    final items = [
+      (Icons.home_rounded, "HOME", Icons.refresh_rounded),
+      (Icons.menu_book_rounded, "WORD BANK", null),
+      (Icons.mic_rounded, "PODCASTS", null),
+      (Icons.headset_rounded, "AI CONVERSATION", null),
+      (Icons.person_rounded, "PROFILE", null),
+    ];
 
-  final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-  return Container(
-    margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 0),
-    padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 12.h),
-    child: AnimatedBuilder(
-      animation: _borderFlowController,
-      builder: (context, _) {
-        final rawRadius = 28.r;
-        final navRadius =
-            (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
-                ? rawRadius
-                : 28.0;
-        final rawAnim = _borderFlowController.value;
-        final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
+    return Container(
+      margin: EdgeInsets.fromLTRB(20.w, 0, 20.w, 0),
+      padding: EdgeInsets.only(
+        bottom: bottomPadding > 0 ? bottomPadding : 12.h,
+      ),
+      child: AnimatedBuilder(
+        animation: _borderFlowController,
+        builder: (context, _) {
+          final rawRadius = 28.r;
+          final navRadius =
+              (rawRadius.isFinite && rawRadius > 0 && rawRadius < 80)
+              ? rawRadius
+              : 28.0;
+          final rawAnim = _borderFlowController.value;
+          final navAnim = rawAnim.isFinite ? rawAnim.clamp(0.0, 1.0) : 0.0;
 
-        return CustomPaint(
-          foregroundPainter: _AnimatedBorderPainter(
-            animationValue: navAnim,
-            radius: navRadius,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(navRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-              child: Container(
-                height: 68.h, 
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.dark.withOpacity(.55),
-                      AppColors.primary.withOpacity(.35),
+          return CustomPaint(
+            foregroundPainter: _AnimatedBorderPainter(
+              animationValue: navAnim,
+              radius: navRadius,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(navRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                child: Container(
+                  height: 68.h,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.dark.withOpacity(.55),
+                        AppColors.primary.withOpacity(.35),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(navRadius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.sky.withOpacity(.25),
+                        blurRadius: 25,
+                        spreadRadius: -3,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.4),
+                        blurRadius: 30,
+                        offset: const Offset(0, 10),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(navRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.sky.withOpacity(.25),
-                      blurRadius: 25,
-                      spreadRadius: -3,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(.4),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: List.generate(items.length, (i) {
-                        final selected = i == _selectedNavIndex;
-                        final (icon, label, badge) = items[i];
+                  child: Stack(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: List.generate(items.length, (i) {
+                          final selected = i == _selectedNavIndex;
+                          final (icon, label, badge) = items[i];
 
-                        return Expanded(
-                          child: GestureDetector(
-                           
-                            onTap: () async {
-  HapticFeedback.selectionClick();
-  setState(() => _selectedNavIndex = i);
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedNavIndex = i);
 
-  if (i == 0) {
-    await _refreshPointsOnly();
-    return;
-  }
+                                if (i == 0) {
+                                  await _refreshPointsOnly();
+                                  return;
+                                }
 
-  Future<void>? navigationFuture;
-  switch (i) {
-    case 1:
-      navigationFuture =
-          Navigator.pushNamed(context, wordBankRoute);
-      break;
-    case 2:
-      navigationFuture =
-          Navigator.pushNamed(context, podcastsRoute);
-      break;
-    case 3:
-      navigationFuture =
-          Navigator.pushNamed(context, aiConversationRoute);
-      break;
-    case 4:
-      navigationFuture =
-          Navigator.pushNamed(context, profileRoute);
-      break;
-  }
+                                Future<void>? navigationFuture;
+                                switch (i) {
+                                  case 1:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      wordBankRoute,
+                                    );
+                                    break;
+                                  case 2:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      podcastsRoute,
+                                    );
+                                    break;
+                                  case 3:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      aiConversationRoute,
+                                    );
+                                    break;
+                                  case 4:
+                                    navigationFuture = Navigator.pushNamed(
+                                      context,
+                                      profileRoute,
+                                    );
+                                    break;
+                                }
 
-  await navigationFuture;
+                                await navigationFuture;
 
-  if (mounted) {
-    setState(() => _selectedNavIndex = 0);
-    await _refreshPointsOnly(); 
-  }
-},
-                            behavior: HitTestBehavior.opaque,
-                            child: AnimatedContainer(
-                              duration: 250.ms,
-                              curve: Curves.easeOut,
-                              padding: EdgeInsets.symmetric(
-                                vertical: 8.h, 
-                                horizontal: 2.w,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      AnimatedScale(
-                                        scale: selected ? 1.12 : 1.0,
-                                        duration: 300.ms,
-                                        curve: Curves.easeOutBack,
-                                        child: Container(
-                                          padding: EdgeInsets.all(5.r),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: selected
-                                                ? RadialGradient(
-                                                    colors: [
-                                                      AppColors.yellow
-                                                          .withOpacity(.35),
-                                                      AppColors.orange
-                                                          .withOpacity(.15),
-                                                      Colors.transparent,
-                                                    ],
-                                                  )
-                                                : null,
-                                            boxShadow: selected
-                                                ? [
-                                                    BoxShadow(
-                                                      color: AppColors.yellow
-                                                          .withOpacity(.5),
-                                                      blurRadius: 14,
-                                                      spreadRadius: 1,
-                                                    ),
-                                                  ]
-                                                : null,
-                                          ),
-                                          child: Icon(
-                                            icon,
-                                            color: selected
-                                                ? AppColors.yellow
-                                                : Colors.white
-                                                    .withOpacity(.75),
-                                            size: 22.sp,
-                                            shadows: selected
-                                                ? [
-                                                    Shadow(
-                                                      color: AppColors.yellow
-                                                          .withOpacity(.8),
-                                                      blurRadius: 10,
-                                                    ),
-                                                  ]
-                                                : null,
-                                          ),
-                                        ),
-                                      ),
-                                      if (badge != null)
-                                        Positioned(
-                                          top: -2,
-                                          right: -4,
+                                if (mounted) {
+                                  setState(() => _selectedNavIndex = 0);
+                                  await _refreshPointsOnly();
+                                }
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: AnimatedContainer(
+                                duration: 250.ms,
+                                curve: Curves.easeOut,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 8.h,
+                                  horizontal: 2.w,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        AnimatedScale(
+                                          scale: selected ? 1.12 : 1.0,
+                                          duration: 300.ms,
+                                          curve: Curves.easeOutBack,
                                           child: Container(
-                                            padding: EdgeInsets.all(2.5.r),
+                                            padding: EdgeInsets.all(5.r),
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              gradient:
-                                                  const LinearGradient(
-                                                colors: [
-                                                  AppColors.yellow,
-                                                  AppColors.orange,
-                                                ],
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: AppColors.yellow
-                                                      .withOpacity(.6),
-                                                  blurRadius: 6,
-                                                ),
-                                              ],
+                                              gradient: selected
+                                                  ? RadialGradient(
+                                                      colors: [
+                                                        AppColors.yellow
+                                                            .withOpacity(.35),
+                                                        AppColors.orange
+                                                            .withOpacity(.15),
+                                                        Colors.transparent,
+                                                      ],
+                                                    )
+                                                  : null,
+                                              boxShadow: selected
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: AppColors.yellow
+                                                            .withOpacity(.5),
+                                                        blurRadius: 14,
+                                                        spreadRadius: 1,
+                                                      ),
+                                                    ]
+                                                  : null,
                                             ),
                                             child: Icon(
-                                              badge,
-                                              size: 7.sp,
-                                              color: Colors.black,
+                                              icon,
+                                              color: selected
+                                                  ? AppColors.yellow
+                                                  : Colors.white.withOpacity(
+                                                      .75,
+                                                    ),
+                                              size: 22.sp,
+                                              shadows: selected
+                                                  ? [
+                                                      Shadow(
+                                                        color: AppColors.yellow
+                                                            .withOpacity(.8),
+                                                        blurRadius: 10,
+                                                      ),
+                                                    ]
+                                                  : null,
                                             ),
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 3.h),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: AnimatedDefaultTextStyle(
-                                      duration: 250.ms,
-                                      style: GoogleFonts.poppins(
-                                        color: selected
-                                            ? AppColors.yellow
-                                            : Colors.white
-                                                .withOpacity(.7),
-                                        fontSize:
-                                            selected ? 9.sp : 8.5.sp,
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w500,
-                                        letterSpacing: .3,
-                                      ),
-                                      child: Text(
-                                        label,
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
+                                        if (badge != null)
+                                          Positioned(
+                                            top: -2,
+                                            right: -4,
+                                            child: Container(
+                                              padding: EdgeInsets.all(2.5.r),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    AppColors.yellow,
+                                                    AppColors.orange,
+                                                  ],
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.yellow
+                                                        .withOpacity(.6),
+                                                    blurRadius: 6,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Icon(
+                                                badge,
+                                                size: 7.sp,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 3.h),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: 250.ms,
+                                        style: GoogleFonts.poppins(
+                                          color: selected
+                                              ? AppColors.yellow
+                                              : Colors.white.withOpacity(.7),
+                                          fontSize: selected ? 9.sp : 8.5.sp,
+                                          fontWeight: selected
+                                              ? FontWeight.w800
+                                              : FontWeight.w500,
+                                          letterSpacing: .3,
+                                        ),
+                                        child: Text(
+                                          label,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
-                    ),
-                    Positioned(
-                      right: 10,
-                      top: 8,
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.sky.withOpacity(.55),
-                        size: 9.sp,
-                      )
-                          .animate(
-                              onPlay: (c) => c.repeat(reverse: true))
-                          .scale(
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.6, 1.6),
-                            duration: 1500.ms,
-                            curve: Curves.easeInOut,
-                          )
-                          .fade(
-                              begin: .3,
-                              end: .8,
-                              duration: 1500.ms),
-                    ),
-                  ],
+                          );
+                        }),
+                      ),
+                      Positioned(
+                        right: 10,
+                        top: 8,
+                        child:
+                            Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: AppColors.sky.withOpacity(.55),
+                                  size: 9.sp,
+                                )
+                                .animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.6, 1.6),
+                                  duration: 1500.ms,
+                                  curve: Curves.easeInOut,
+                                )
+                                .fade(begin: .3, end: .8, duration: 1500.ms),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
- 
+          );
+        },
+      ),
+    );
+  }
+
   Widget _glassContainer({
     required Widget child,
     EdgeInsetsGeometry? padding,
@@ -2107,7 +2008,7 @@ class _PathTransition extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 28.h,
+      height: 12.h,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -2725,10 +2626,14 @@ class _LevelRow extends StatelessWidget {
     final double cardWidth = available.clamp(95.w, 190.w);
 
     final double left = placeOnRight
-        ? (nodeDx + nodeHalf + gap)
-            .clamp(edgePadding, containerWidth - cardWidth - edgePadding)
-        : (nodeDx - nodeHalf - gap - cardWidth)
-            .clamp(edgePadding, containerWidth - cardWidth - edgePadding);
+        ? (nodeDx + nodeHalf + gap).clamp(
+            edgePadding,
+            containerWidth - cardWidth - edgePadding,
+          )
+        : (nodeDx - nodeHalf - gap - cardWidth).clamp(
+            edgePadding,
+            containerWidth - cardWidth - edgePadding,
+          );
 
     final double nodeBox = size + 34.w;
 
@@ -2859,8 +2764,10 @@ class _LevelNode extends StatelessWidget {
     }
 
     if (level.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error: Level ID is missing")),
+      showAppSnackBar(
+        context,
+        "Error: Level ID is missing",
+        type: AppSnackType.error,
       );
       return;
     }
@@ -2885,9 +2792,7 @@ class _LevelNode extends StatelessWidget {
 
   void _showPurchaseSheet(BuildContext context) {
     if (level.id == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Level ID is missing')));
+      showAppSnackBar(context, 'Level ID is missing', type: AppSnackType.error);
       return;
     }
 
@@ -2906,6 +2811,7 @@ class _LevelNode extends StatelessWidget {
             colors: level.colors,
             onSuccess: () {
               context.read<StudentLevelsCubit>().fetchStudentLevels();
+
               ///Navigator.of(context).pop();
             },
           ),
@@ -2915,264 +2821,273 @@ class _LevelNode extends StatelessWidget {
   }
 
   @override
-Widget build(BuildContext context) {
-  final isCurrent = level.status == LevelStatus.current;
-  final isLocked = level.status == LevelStatus.locked;
-  final isBoss = level.status == LevelStatus.boss;
-  final isCompleted = level.status == LevelStatus.completed;
-  final isAvailable = level.status == LevelStatus.available;
+  Widget build(BuildContext context) {
+    final isCurrent = level.status == LevelStatus.current;
+    final isLocked = level.status == LevelStatus.locked;
+    final isBoss = level.status == LevelStatus.boss;
+    final isCompleted = level.status == LevelStatus.completed;
+    final isAvailable = level.status == LevelStatus.available;
 
-  final double size = _levelNodeSizeFor(level.status);
+    final double size = _levelNodeSizeFor(level.status);
 
-  List<Color> gradientColors;
-  if (isLocked) {
-    gradientColors = [Colors.white.withOpacity(.12), Colors.white.withOpacity(.05)];
-  } else if (isBoss) {
-    gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
-  } else if (isCurrent) {
-    gradientColors = [AppColors.yellow, AppColors.orange];
-  } else if (isAvailable) {
-    gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
-  } else {
-    gradientColors = [const Color(0xFF3BCF7E), const Color(0xFF1C9E58)];
-  }
+    List<Color> gradientColors;
+    if (isLocked) {
+      gradientColors = [
+        Colors.white.withOpacity(.12),
+        Colors.white.withOpacity(.05),
+      ];
+    } else if (isBoss) {
+      gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
+    } else if (isCurrent) {
+      gradientColors = [AppColors.yellow, AppColors.orange];
+    } else if (isAvailable) {
+      gradientColors = level.colors ?? [AppColors.sky, AppColors.primary];
+    } else {
+      gradientColors = [const Color(0xFF3BCF7E), const Color(0xFF1C9E58)];
+    }
 
-  // حلقة خارجية فاتحة مشتقة من لون الدائرة نفسه
-  final Color ringColor = isLocked
-      ? Colors.white.withOpacity(.18)
-      : Color.lerp(gradientColors.first, Colors.white, 0.45)!;
+    // حلقة خارجية فاتحة مشتقة من لون الدائرة نفسه
+    final Color ringColor = isLocked
+        ? Colors.white.withOpacity(.18)
+        : Color.lerp(gradientColors.first, Colors.white, 0.45)!;
 
-  Widget aura = const SizedBox.shrink();
-  if (isCurrent) {
-    aura = Container(
-          width: size + 34.w,
-          height: size + 34.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                AppColors.yellow.withOpacity(.5),
-                AppColors.yellow.withOpacity(0),
+    Widget aura = const SizedBox.shrink();
+    if (isCurrent) {
+      aura =
+          Container(
+                width: size + 34.w,
+                height: size + 34.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.yellow.withOpacity(.5),
+                      AppColors.yellow.withOpacity(0),
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.15, 1.15),
+                duration: 1400.ms,
+                curve: Curves.easeInOut,
+              );
+    }
+
+    Widget rotatingRing = const SizedBox.shrink();
+    if (isCurrent) {
+      rotatingRing =
+          Container(
+                width: size + 20.w,
+                height: size + 20.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.yellow.withOpacity(.4),
+                    width: 1.5,
+                  ),
+                  gradient: const SweepGradient(
+                    colors: [
+                      AppColors.yellow,
+                      Colors.transparent,
+                      AppColors.orange,
+                      Colors.transparent,
+                      AppColors.yellow,
+                    ],
+                    stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .rotate(duration: 6.seconds, curve: Curves.linear);
+    }
+
+    Widget bossCrown = const SizedBox.shrink();
+    if (isBoss) {
+      bossCrown = Positioned(
+        top: -8.h,
+        child:
+            Icon(
+                  Icons.workspace_premium_rounded,
+                  color: const Color(0xFFFFD35B),
+                  size: 20.sp,
+                  shadows: const [
+                    Shadow(color: Color(0xffB861F5), blurRadius: 12),
+                    Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+                  ],
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 1400.ms,
+                ),
+      );
+    }
+
+    Widget node = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        border: Border.all(color: ringColor, width: 3.w),
+        boxShadow: isLocked
+            ? []
+            : [
+                BoxShadow(
+                  color: gradientColors.first.withOpacity(.55),
+                  blurRadius: 26,
+                  spreadRadius: 2,
+                ),
               ],
+      ),
+      child: Container(
+        margin: EdgeInsets.all(5.w),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(.35), width: 1.2),
+        ),
+        child: Center(
+          child: isLocked
+              ? Icon(Icons.lock_rounded, color: Colors.white54, size: 32.sp)
+              : Icon(
+                  level.icon,
+                  color: Colors.white,
+                  size: isBoss ? 40.sp : (isCurrent ? 38.sp : 36.sp),
+                ),
+        ),
+      ),
+    );
+
+    if (isCompleted) {
+      node = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          node,
+          Positioned(
+            bottom: -2.h,
+            right: -2.w,
+            child: Container(
+              width: 34.w,
+              height: 34.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                ),
+                border: Border.all(color: AppColors.dark, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4ADE80).withOpacity(.6),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.check_rounded,
+                size: 16.sp,
+                color: Colors.white,
+              ),
             ),
           ),
-        )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .scale(
-          begin: const Offset(1, 1),
-          end: const Offset(1.15, 1.15),
-          duration: 1400.ms,
-          curve: Curves.easeInOut,
-        );
-  }
+        ],
+      );
+    }
 
-  Widget rotatingRing = const SizedBox.shrink();
-  if (isCurrent) {
-    rotatingRing = Container(
-          width: size + 20.w,
-          height: size + 20.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.yellow.withOpacity(.4),
-              width: 1.5,
-            ),
-            gradient: const SweepGradient(
-              colors: [
-                AppColors.yellow,
-                Colors.transparent,
-                AppColors.orange,
-                Colors.transparent,
-                AppColors.yellow,
-              ],
-              stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+    if (isAvailable && level.price != null) {
+      final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
+      node = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          node,
+          Positioned(
+            bottom: -2.h,
+            right: -2.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: badgeColors),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.dark, width: 2.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: badgeColors.first.withOpacity(.6),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock_open_rounded,
+                    size: 10.sp,
+                    color: Colors.white,
+                  ),
+                  SizedBox(width: 2.w),
+                  Text(
+                    "\$${level.price!.toStringAsFixed(0)}",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 9.5.sp,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        )
-        .animate(onPlay: (c) => c.repeat())
-        .rotate(duration: 6.seconds, curve: Curves.linear);
-  }
+        ],
+      );
+    }
 
-  Widget bossCrown = const SizedBox.shrink();
-  if (isBoss) {
-    bossCrown = Positioned(
-      top: -8.h,
-      child: Icon(
-            Icons.workspace_premium_rounded,
-            color: const Color(0xFFFFD35B),
-            size: 20.sp,
-            shadows: const [
-              Shadow(color: Color(0xffB861F5), blurRadius: 12),
-              Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
-            ],
-          )
+    if (isCurrent || isBoss) {
+      node = node
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(
             begin: const Offset(1, 1),
-            end: const Offset(1.15, 1.15),
+            end: const Offset(1.06, 1.06),
             duration: 1400.ms,
-          ),
-    );
-  }
+            curve: Curves.easeInOut,
+          );
+    }
 
-  Widget node = Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: gradientColors,
-      ),
-      border: Border.all(color: ringColor, width: 3.w),
-      boxShadow: isLocked
-          ? []
-          : [
-              BoxShadow(
-                color: gradientColors.first.withOpacity(.55),
-                blurRadius: 26,
-                spreadRadius: 2,
-              ),
-            ],
-    ),
-    child: Container(
-      margin: EdgeInsets.all(5.w),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withOpacity(.35),
-          width: 1.2,
-        ),
-      ),
-      child: Center(
-        child: isLocked
-            ? Icon(Icons.lock_rounded, color: Colors.white54, size: 32.sp)
-            : Icon(
-                level.icon,
-                color: Colors.white,
-                size: isBoss ? 40.sp : (isCurrent ? 38.sp : 36.sp),
-              ),
-      ),
-    ),
-  );
-
-  if (isCompleted) {
-    node = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        node,
-        Positioned(
-          bottom: -2.h,
-          right: -2.w,
-          child: Container(
-            width: 34.w,
-            height: 34.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
-              ),
-              border: Border.all(color: AppColors.dark, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4ADE80).withOpacity(.6),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: Icon(Icons.check_rounded, size: 16.sp, color: Colors.white),
-          ),
-        ),
-      ],
-    );
-  }
-
-  if (isAvailable && level.price != null) {
-    final badgeColors = level.colors ?? [AppColors.sky, AppColors.primary];
-    node = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        node,
-        Positioned(
-          bottom: -2.h,
-          right: -2.w,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: badgeColors),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: AppColors.dark, width: 2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: badgeColors.first.withOpacity(.6),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+    return GestureDetector(
+          onTap: () => _handleTap(context),
+          child: SizedBox(
+            width: size + 34.w,
+            height: size + 34.w,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
               children: [
-                Icon(Icons.lock_open_rounded, size: 10.sp, color: Colors.white),
-                SizedBox(width: 2.w),
-                Text(
-                  "\$${level.price!.toStringAsFixed(0)}",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 9.5.sp,
-                  ),
-                ),
+                aura,
+                rotatingRing,
+                if (isBoss) bossCrown else const SizedBox.shrink(),
+                node,
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  if (isCurrent || isBoss) {
-    node = node
-        .animate(onPlay: (c) => c.repeat(reverse: true))
+        )
+        .animate()
+        .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
         .scale(
-          begin: const Offset(1, 1),
-          end: const Offset(1.06, 1.06),
-          duration: 1400.ms,
-          curve: Curves.easeInOut,
+          begin: const Offset(.7, .7),
+          end: const Offset(1, 1),
+          curve: Curves.easeOutBack,
         );
   }
 
-  return GestureDetector(
-        onTap: () => _handleTap(context),
-        child: SizedBox(
-          width: size + 34.w,
-          height: size + 34.w,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              aura,
-              rotatingRing,
-              if (isBoss) bossCrown else const SizedBox.shrink(),
-              node,
-            ],
-          ),
-        ),
-      )
-      .animate()
-      .fadeIn(delay: (200 + index * 100).ms, duration: 500.ms)
-      .scale(
-        begin: const Offset(.7, .7),
-        end: const Offset(1, 1),
-        curve: Curves.easeOutBack,
-      );
-}
-
   void _showCreateExceptionSheet(BuildContext context) {
     if (level.id == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Level ID is missing')));
+      showAppSnackBar(context, 'Level ID is missing', type: AppSnackType.error);
       return;
     }
 
@@ -3325,146 +3240,149 @@ class _LevelInfoCard extends StatelessWidget {
                 ),
 
                 child: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    if (isBoss)
-      ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
-        ).createShader(bounds),
-        child: Text(
-          "🔥 Boss Level",
-          maxLines: null,
-          overflow: TextOverflow.visible,
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 11.5.sp,
-            letterSpacing: .3,
-            height: 1.3,
-          ),
-        ),
-      )
-    else
-      Text(
-        level.title,
-        maxLines: null,               // يلتف كامل بدون نقاط
-        overflow: TextOverflow.visible,
-        style: GoogleFonts.poppins(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 11.5.sp,
-          letterSpacing: .2,
-          height: 1.3,
-        ),
-      ),
-    SizedBox(height: 2.h),
-    Text(
-      level.subtitle,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.poppins(
-        color: Colors.white.withOpacity(.72),
-        fontSize: 10.sp,
-      ),
-    ),
-    SizedBox(height: 8.h),
-    Row(
-      children: [
-        Icon(statusIcon, size: 13.sp, color: statusColor),
-        SizedBox(width: 4.w),
-        Expanded(
-          child: Text(
-            statusText,
-            maxLines: 2,
-            overflow: TextOverflow.visible,
-            style: GoogleFonts.poppins(
-              color: statusColor,
-              fontSize: 9.5.sp,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
-          ),
-        ),
-      ],
-    ),
-    if (isCurrent) ...[
-      SizedBox(height: 10.h),
-      GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              Navigator.pushNamed(
-                context,
-                levelCoursesRoute,
-                arguments: {
-                  'userName': userName,
-                  'xp': xp,
-                  'streakDays': streakDays,
-                  'level': level.order ?? 8,
-                  'levelProgress': levelProgress,
-                  'levelTitle': level.title,
-                  'levelSubtitle': level.subtitle,
-                  'levelId': level.id,
-                  'testId': level.testId,
-                },
-              );
-            },
-            child: SizedBox(
-              width: double.infinity, 
-              child: Container(
-                alignment: Alignment.center,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 10.w,
-                  vertical: 7.h,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.orange, AppColors.yellow],
-                  ),
-                  borderRadius: BorderRadius.circular(20.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.yellow.withOpacity(.6),
-                      blurRadius: 14,
-                      spreadRadius: .5,
-                    ),
-                  ],
-                ),
-                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        "Continue",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    if (isBoss)
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xffFF6FB5), Color(0xffFFD35B)],
+                        ).createShader(bounds),
+                        child: Text(
+                          "🔥 Boss Level",
+                          maxLines: null,
+                          overflow: TextOverflow.visible,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11.5.sp,
+                            letterSpacing: .3,
+                            height: 1.3,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        level.title,
+                        maxLines: null, // يلتف كامل بدون نقاط
+                        overflow: TextOverflow.visible,
                         style: GoogleFonts.poppins(
-                          color: Colors.black,
+                          color: Colors.white,
                           fontWeight: FontWeight.w800,
-                          fontSize: 11.sp,
+                          fontSize: 11.5.sp,
+                          letterSpacing: .2,
+                          height: 1.3,
                         ),
                       ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      level.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(.72),
+                        fontSize: 10.sp,
+                      ),
                     ),
-                    SizedBox(width: 4.w),
-                    Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.black,
-                      size: 14.sp,
+                    SizedBox(height: 8.h),
+                    Row(
+                      children: [
+                        Icon(statusIcon, size: 13.sp, color: statusColor),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Text(
+                            statusText,
+                            maxLines: 2,
+                            overflow: TextOverflow.visible,
+                            style: GoogleFonts.poppins(
+                              color: statusColor,
+                              fontSize: 9.5.sp,
+                              fontWeight: FontWeight.w700,
+                              height: 1.25,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (isCurrent) ...[
+                      SizedBox(height: 10.h),
+                      GestureDetector(
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.pushNamed(
+                                context,
+                                levelCoursesRoute,
+                                arguments: {
+                                  'userName': userName,
+                                  'xp': xp,
+                                  'streakDays': streakDays,
+                                  'level': level.order ?? 8,
+                                  'levelProgress': levelProgress,
+                                  'levelTitle': level.title,
+                                  'levelSubtitle': level.subtitle,
+                                  'levelId': level.id,
+                                  'testId': level.testId,
+                                },
+                              );
+                            },
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                  vertical: 7.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.orange,
+                                      AppColors.yellow,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.yellow.withOpacity(.6),
+                                      blurRadius: 14,
+                                      spreadRadius: .5,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        "Continue",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 11.sp,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.black,
+                                      size: 14.sp,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .shimmer(
+                            duration: 1800.ms,
+                            color: Colors.white.withOpacity(.7),
+                          ),
+                    ],
                   ],
                 ),
-              ),
-            ),
-          )
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .shimmer(
-            duration: 1800.ms,
-            color: Colors.white.withOpacity(.7),
-          ),
-    ],
-  ],
-),
               ),
             ),
           ),

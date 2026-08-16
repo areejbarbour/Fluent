@@ -1,9 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/rate_model.dart';
 import 'package:fluent/data/repository/rate_repository.dart';
 import 'rate_state.dart';
 
-class RateCubit extends Cubit<RateState> {
+class RateCubit extends SafeCubit<RateState> {
   final RateRepository rateRepository;
 
   /// Local cache: courseId → last known RateModel for this session.
@@ -11,8 +12,7 @@ class RateCubit extends Cubit<RateState> {
 
   RateCubit(this.rateRepository) : super(const RateInitial());
 
-  Map<int, RateModel> get ratesByCourse =>
-      Map.unmodifiable(_ratesByCourse);
+  Map<int, RateModel> get ratesByCourse => Map.unmodifiable(_ratesByCourse);
 
   RateModel? rateForCourse(int courseId) => _ratesByCourse[courseId];
 
@@ -23,19 +23,18 @@ class RateCubit extends Cubit<RateState> {
     _ratesByCourse[courseId] = rate;
   }
 
-  Future<void> rateCourse({
-    required int courseId,
-    required int stars,
-  }) async {
+  Future<void> rateCourse({required int courseId, required int stars}) async {
     if (courseId <= 0) {
       emit(const RateFailure('Invalid course.'));
       return;
     }
     if (stars < RateRepository.minStars || stars > RateRepository.maxStars) {
-      emit(RateFailure(
-        'Stars must be between ${RateRepository.minStars} and ${RateRepository.maxStars}.',
-        courseId: courseId,
-      ));
+      emit(
+        RateFailure(
+          'Stars must be between ${RateRepository.minStars} and ${RateRepository.maxStars}.',
+          courseId: courseId,
+        ),
+      );
       return;
     }
 
@@ -51,33 +50,36 @@ class RateCubit extends Cubit<RateState> {
       final rate = result['data'] as RateModel;
       _ratesByCourse[courseId] = rate;
       print(' [RateCubit] Rated course #$courseId → rate #${rate.id}');
-      emit(RateSuccess(
-        rate: rate,
-        courseId: courseId,
-        message: 'Thanks! Your rating was saved.',
-      ));
+      emit(
+        RateSuccess(
+          rate: rate,
+          courseId: courseId,
+          message: 'Thanks! Your rating was saved.',
+        ),
+      );
     } else {
       final message =
           result['message']?.toString() ?? 'Failed to rate this course.';
       print(' [RateCubit] Rate failed: $message');
-      emit(RateFailure(
-        message,
-        errors: result['errors'] as Map<String, dynamic>?,
-        courseId: courseId,
-      ));
+      emit(
+        RateFailure(
+          message,
+          errors: result['errors'] as Map<String, dynamic>?,
+          courseId: courseId,
+        ),
+      );
     }
   }
 
-  Future<void> deleteRate({
-    required int courseId,
-    int? rateId,
-  }) async {
+  Future<void> deleteRate({required int courseId, int? rateId}) async {
     final resolvedId = rateId ?? _ratesByCourse[courseId]?.id;
     if (resolvedId == null || resolvedId <= 0) {
-      emit(RateFailure(
-        'No rating found to delete for this course.',
-        courseId: courseId,
-      ));
+      emit(
+        RateFailure(
+          'No rating found to delete for this course.',
+          courseId: courseId,
+        ),
+      );
       return;
     }
 
@@ -91,20 +93,20 @@ class RateCubit extends Cubit<RateState> {
       final message =
           result['message']?.toString() ?? 'Rating deleted successfully';
       print(' [RateCubit] Rate deleted');
-      emit(RateDeleted(
-        courseId: courseId,
-        rateId: resolvedId,
-        message: message,
-      ));
+      emit(
+        RateDeleted(courseId: courseId, rateId: resolvedId, message: message),
+      );
     } else {
       final message =
           result['message']?.toString() ?? 'Failed to delete rating.';
       print(' [RateCubit] Delete failed: $message');
-      emit(RateFailure(
-        message,
-        errors: result['errors'] as Map<String, dynamic>?,
-        courseId: courseId,
-      ));
+      emit(
+        RateFailure(
+          message,
+          errors: result['errors'] as Map<String, dynamic>?,
+          courseId: courseId,
+        ),
+      );
     }
   }
 

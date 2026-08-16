@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/data/models/test_model.dart';
@@ -8,7 +9,7 @@ import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'lesson_detail_state.dart';
 
-class LessonDetailCubit extends Cubit<LessonDetailState> {
+class LessonDetailCubit extends SafeCubit<LessonDetailState> {
   final LessonRepository lessonRepository;
   final TestRepository testRepository;
   final LessonDetailRepository lessonDetailRepository;

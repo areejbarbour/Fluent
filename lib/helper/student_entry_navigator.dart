@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Post-auth routing for students — Duolingo-style:
-/// - Never completed placement AND never chose Level 1 → placement dialog
-/// - Placement done / Level 1 chosen + first home visit → home (no streak)
-/// - Placement done / Level 1 chosen + returning user → streak → home
+/// Post-auth routing for students — uses official backend placement status.
+///
+/// Preferred source of truth: GET /api/placement-test/status
+/// Fallback: local skip flag + levels enrollment (legacy).
 class StudentEntryNavigator {
   static const _onboardKeyPrefix = 'student_onboarded_';
   static const _skipPlacementKeyPrefix = 'student_skip_placement_';
@@ -48,7 +48,21 @@ class StudentEntryNavigator {
     return prefs.getBool('$_skipPlacementKeyPrefix$id') ?? false;
   }
 
-  /// Server-side placement progress (levels enrolled / recommended).
+  /// Official backend decision via GET /api/placement-test/status.
+  /// Returns null on network/parse failure so callers can fall back.
+  static Future<PlacementTestStatusModel?> fetchPlacementStatus(
+    LevelRepository levelRepository,
+  ) async {
+    try {
+      final res = await levelRepository.getPlacementTestStatus();
+      if (res['success'] == true && res['data'] is PlacementTestStatusModel) {
+        return res['data'] as PlacementTestStatusModel;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Server-side placement progress (levels enrolled) — legacy fallback.
   static Future<bool> hasServerPlacement(
     LevelRepository levelRepository,
   ) async {
@@ -56,7 +70,6 @@ class StudentEntryNavigator {
       final res = await levelRepository.getStudentLevels();
       if (res['success'] == true && res['data'] is StudentLevelsModel) {
         final d = res['data'] as StudentLevelsModel;
-        // Only real enrollment — NOT the catalog of available levels.
         return d.currentLevel != null || d.completedLevels.isNotEmpty;
       }
     } catch (_) {}
@@ -64,12 +77,21 @@ class StudentEntryNavigator {
   }
 
   /// True if student should NOT see the placement choice UI.
+  /// Uses official /placement-test/status first; falls back to levels + local skip.
   static Future<bool> hasCompletedPlacement(
     BuildContext context, {
     LevelRepository? levelRepository,
   }) async {
     if (await hasSkippedPlacement()) return true;
     final repo = levelRepository ?? context.read<LevelRepository>();
+
+    final status = await fetchPlacementStatus(repo);
+    if (status != null) {
+      // action == show_levels means placement already done (or assigned)
+      return status.shouldShowLevels;
+    }
+
+    // Fallback if status endpoint fails
     return hasServerPlacement(repo);
   }
 
@@ -78,6 +100,12 @@ class StudentEntryNavigator {
     LevelRepository levelRepository,
   ) async {
     if (await hasSkippedPlacement()) return true;
+
+    final status = await fetchPlacementStatus(levelRepository);
+    if (status != null) {
+      return status.shouldShowLevels;
+    }
+
     return hasServerPlacement(levelRepository);
   }
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent/constants/app_colors.dart';
@@ -82,6 +83,11 @@ class _FormViewState extends State<_FormView> {
   String? _existingImageUrl;
   String? _existingAudioUrl;
 
+  /// Snapshots from server — used to restore after canceling a new pick.
+  /// Backend cannot delete media without uploading a replacement.
+  String? _originalImageUrl;
+  String? _originalAudioUrl;
+
   List<_AnswerDraft> _answers = [];
   bool _prefilled = false;
 
@@ -130,12 +136,19 @@ class _FormViewState extends State<_FormView> {
     _difficulty = q.difficulty;
     _score = q.score;
     _scoreController.text = _score.toString();
-    _existingImageUrl = (q.imageUrl != null && q.imageUrl!.isNotEmpty)
+    _originalImageUrl = (q.imageUrl != null && q.imageUrl!.isNotEmpty)
         ? q.imageUrl
         : null;
-    _existingAudioUrl = (q.audioUrl != null && q.audioUrl!.isNotEmpty)
+    _originalAudioUrl = (q.audioUrl != null && q.audioUrl!.isNotEmpty)
         ? q.audioUrl
         : null;
+    _existingImageUrl = _originalImageUrl;
+    _existingAudioUrl = _originalAudioUrl;
+    // New picks start clean
+    _imageFile = null;
+    _audioFile = null;
+    _imageFileName = null;
+    _audioFileName = null;
 
     _answers = q.answers.map((a) {
       return _AnswerDraft(
@@ -250,16 +263,7 @@ class _FormViewState extends State<_FormView> {
 
   void _onCreateState(BuildContext context, QuestionCreateState state) {
     if (state is QuestionCreateSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Question created successfully",
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.greenAccent.shade400,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showAppSnackBar(context, "Question created successfully", type: AppSnackType.success);
       // Return the created Question so callers (e.g. test question picker) can use it
       Navigator.pop(context, state.question);
     } else if (state is QuestionCreateFailure) {
@@ -269,18 +273,7 @@ class _FormViewState extends State<_FormView> {
 
   void _onUpdateState(BuildContext context, QuestionUpdateState state) {
     if (state is QuestionUpdateSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            state.message,
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: state.wasVersioned
-              ? AppColors.orange
-              : Colors.greenAccent.shade400,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showAppSnackBar(context, state.message, type: state.wasVersioned ? AppSnackType.warning : AppSnackType.success);
       Navigator.pop(context, true);
     } else if (state is QuestionUpdateFailure) {
       _showError(context, state.error, state.errors);
@@ -1046,12 +1039,21 @@ class _FormViewState extends State<_FormView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Media (optional - Choose One)",
+            "Media (optional — one only)",
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
               fontSize: 12.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            "Image and audio cannot both stay. Uploading one replaces the other on the server.",
+            style: GoogleFonts.poppins(
+              color: Colors.white54,
+              fontSize: 10.sp,
+              height: 1.3,
             ),
           ),
           SizedBox(height: 10.h),
@@ -1068,7 +1070,11 @@ class _FormViewState extends State<_FormView> {
                   fileName: _imageFileName,
                   existingUrl: _imageFile == null ? _existingImageUrl : null,
                   isImage: true,
-                  isEnabled: _audioFile == null,
+                  // Can always pick image; picking clears audio (matches backend).
+                  isEnabled: true,
+                  canRemove:
+                      _imageFile != null ||
+                      (_existingImageUrl != null && _audioFile == null),
                 ),
               ),
               SizedBox(width: 10.w),
@@ -1083,7 +1089,10 @@ class _FormViewState extends State<_FormView> {
                   fileName: _audioFileName,
                   existingUrl: _audioFile == null ? _existingAudioUrl : null,
                   isImage: false,
-                  isEnabled: _imageFile == null,
+                  isEnabled: true,
+                  canRemove:
+                      _audioFile != null ||
+                      (_existingAudioUrl != null && _imageFile == null),
                 ),
               ),
             ],
@@ -1104,6 +1113,7 @@ class _FormViewState extends State<_FormView> {
     String? existingUrl,
     required bool isImage,
     required bool isEnabled,
+    bool canRemove = true,
   }) {
     final hasFile = file != null;
     final hasExisting = !hasFile && existingUrl != null;
@@ -1193,38 +1203,88 @@ class _FormViewState extends State<_FormView> {
           ],
           if (showsSomething) ...[
             SizedBox(height: 10.h),
-            GestureDetector(
-              // <--- بدلاً من الحذف، سنقوم بفتح مستكشف الملفات للاستبدال
-              onTap: isImage ? _pickImage : _pickAudio,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: AppColors.sky.withOpacity(
-                    0.2,
-                  ), // <--- تغيير اللون ليعكس الاستبدال
-                  borderRadius: BorderRadius.circular(6.r),
-                  border: Border.all(color: AppColors.sky.withOpacity(0.5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.swap_horiz,
-                      color: AppColors.sky,
-                      size: 14.sp,
-                    ), // <--- أيقونة الاستبدال
-                    SizedBox(width: 4.w),
-                    Text(
-                      "Replace", // <--- تغيير النص
-                      style: GoogleFonts.poppins(
-                        color: AppColors.sky,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+            // Stack vertically so half-width tiles never overflow
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: GestureDetector(
+                    onTap: isImage ? _pickImage : _pickAudio,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 6.h),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.sky.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6.r),
+                        border: Border.all(
+                          color: AppColors.sky.withOpacity(0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.swap_horiz,
+                            color: AppColors.sky,
+                            size: 14.sp,
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            'Replace',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.sky,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                // Cancel only for a *new* local pick (restores server media).
+                if (hasFile) ...[
+                  SizedBox(height: 6.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: GestureDetector(
+                      onTap: onRemove,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 6.h),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(
+                            color: Colors.redAccent.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.close,
+                              color: Colors.redAccent,
+                              size: 14.sp,
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                color: Colors.redAccent,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ],
@@ -1751,16 +1811,7 @@ class _FormViewState extends State<_FormView> {
 
   void _submit() async {
     if (!(_formKey.currentState?.validate() ?? true)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Please fix the validation errors before submitting.",
-            style: GoogleFonts.poppins(fontSize: 13.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showAppSnackBar(context, "Please fix the validation errors before submitting.", type: AppSnackType.error);
       return;
     }
 
@@ -1920,19 +1971,34 @@ class _FormViewState extends State<_FormView> {
     }
   }
 
+  /// Cancel a newly picked image (not yet uploaded).
+  /// Restores original server media — backend cannot delete without replacement.
   void _removeImage() {
+    if (_imageFile == null) {
+      // Existing server image: cannot delete alone (matches backend).
+      showAppSnackBar(context, 'You cannot remove media without uploading a replacement. ' 'Upload a new image or audio to replace it.', type: AppSnackType.warning);
+      return;
+    }
     setState(() {
       _imageFile = null;
       _imageFileName = null;
-      _existingImageUrl = null;
+      // Restore what was on the server before this pick session
+      _existingImageUrl = _originalImageUrl;
+      _existingAudioUrl = _originalAudioUrl;
     });
   }
 
+  /// Cancel a newly picked audio (not yet uploaded).
   void _removeAudio() {
+    if (_audioFile == null) {
+      showAppSnackBar(context, 'You cannot remove media without uploading a replacement. ' 'Upload a new image or audio to replace it.', type: AppSnackType.warning);
+      return;
+    }
     setState(() {
       _audioFile = null;
       _audioFileName = null;
-      _existingAudioUrl = null;
+      _existingImageUrl = _originalImageUrl;
+      _existingAudioUrl = _originalAudioUrl;
     });
   }
 
@@ -1987,24 +2053,22 @@ class _FormViewState extends State<_FormView> {
         if (file.path != null) {
           // ✅ فحص حجم الملف (5 ميجابايت كحد أقصى حسب الـ Backend)
           if (file.size > 5 * 1024 * 1024) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Image size must not exceed 5MB'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
+            showAppSnackBar(context, 'Image size must not exceed 5MB', type: AppSnackType.error);
             return;
           }
           setState(() {
             _imageFile = File(file.path!);
             _imageFileName = file.name;
+            // Backend on update: new image clears BOTH image + audio collections
+            _audioFile = null;
+            _audioFileName = null;
+            _existingAudioUrl = null;
+            _existingImageUrl = null;
           });
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+      showAppSnackBar(context, 'Failed to pick image: $e', type: AppSnackType.error);
     }
   }
 
@@ -2019,24 +2083,22 @@ class _FormViewState extends State<_FormView> {
         if (file.path != null) {
           // ✅ فحص حجم الملف (5 ميجابايت كحد أقصى حسب الـ Backend)
           if (file.size > 5 * 1024 * 1024) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Audio size must not exceed 5MB'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
+            showAppSnackBar(context, 'Audio size must not exceed 5MB', type: AppSnackType.error);
             return;
           }
           setState(() {
             _audioFile = File(file.path!);
             _audioFileName = file.name;
+            // Backend on update: new audio clears BOTH audio + image collections
+            _imageFile = null;
+            _imageFileName = null;
+            _existingImageUrl = null;
+            _existingAudioUrl = null;
           });
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to pick audio: $e')));
+      showAppSnackBar(context, 'Failed to pick audio: $e', type: AppSnackType.error);
     }
   }
 }

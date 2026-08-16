@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'test_update_state.dart';
 
-class TestUpdateCubit extends Cubit<TestUpdateState> {
+class TestUpdateCubit extends SafeCubit<TestUpdateState> {
   final TestRepository testRepository;
   TestUpdateCubit(this.testRepository) : super(TestUpdateInitial());
 

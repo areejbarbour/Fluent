@@ -25,10 +25,41 @@ class LevelRepository {
       }
     } on DioException catch (e) {
       print("❌ GetStudentLevels DioException: ${e.response?.data}");
-      final errorData = e.response?.data;
       return ApiErrorHelper.fromDio(e, 'Something went wrong');
     } catch (e) {
       print("❌ GetStudentLevels Unexpected error: $e");
+      return {'success': false, 'message': 'An unexpected error occurred'};
+    }
+  }
+
+  /// GET /api/placement-test/status — official backend decision for placement flow.
+  Future<Map<String, dynamic>> getPlacementTestStatus() async {
+    try {
+      final response = await levelService.getPlacementTestStatus();
+      print("✅ PlacementTestStatus Status: ${response.statusCode}");
+      print("✅ PlacementTestStatus Data: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map) {
+          return {
+            'success': true,
+            'data': PlacementTestStatusModel.fromJson(
+              Map<String, dynamic>.from(data),
+            ),
+          };
+        }
+        return {'success': false, 'message': 'Unexpected response format'};
+      }
+      return ApiErrorHelper.failure(
+        response.data,
+        'Failed to load placement status',
+      );
+    } on DioException catch (e) {
+      print("❌ PlacementTestStatus DioException: ${e.response?.data}");
+      return ApiErrorHelper.fromDio(e, 'Something went wrong');
+    } catch (e) {
+      print("❌ PlacementTestStatus Unexpected error: $e");
       return {'success': false, 'message': 'An unexpected error occurred'};
     }
   }

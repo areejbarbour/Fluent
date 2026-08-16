@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_status_state.dart';
 
-class QuestionStatusCubit extends Cubit<QuestionStatusState> {
+class QuestionStatusCubit extends SafeCubit<QuestionStatusState> {
   final QuestionRepository questionRepository;
 
   QuestionStatusCubit(this.questionRepository) : super(QuestionStatusInitial());
@@ -17,10 +18,12 @@ class QuestionStatusCubit extends Cubit<QuestionStatusState> {
       if (success) {
         emit(QuestionStatusLoaded(result['data']));
       } else {
-        emit(QuestionStatusFailure(
-          result['message']?.toString() ?? 'Failed to load status',
-          errors: result['errors'] as Map<String, dynamic>?,
-        ));
+        emit(
+          QuestionStatusFailure(
+            result['message']?.toString() ?? 'Failed to load status',
+            errors: result['errors'] as Map<String, dynamic>?,
+          ),
+        );
       }
     } catch (e) {
       emit(QuestionStatusFailure(e.toString()));
@@ -28,4 +31,4 @@ class QuestionStatusCubit extends Cubit<QuestionStatusState> {
   }
 
   void reset() => emit(QuestionStatusInitial());
-} 
+}

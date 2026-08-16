@@ -1,4 +1,3 @@
-
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
@@ -8,6 +7,7 @@ import 'package:fluent/cubit/student/levels/level_exception_delete_cubit.dart';
 import 'package:fluent/cubit/student/levels/level_exception_delete_state.dart';
 import 'package:fluent/cubit/student/levels/level_exception_state.dart';
 import 'package:fluent/data/models/level_exception_model.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -63,10 +63,10 @@ class _ExceptionStatusStyle {
   }
 
   static List<_ExceptionStatusStyle> get tabbed => [
-        all.firstWhere((s) => s.status == LevelExceptionStatuses.pending),
-        all.firstWhere((s) => s.status == LevelExceptionStatuses.approved),
-        all.firstWhere((s) => s.status == LevelExceptionStatuses.rejected),
-      ];
+    all.firstWhere((s) => s.status == LevelExceptionStatuses.pending),
+    all.firstWhere((s) => s.status == LevelExceptionStatuses.approved),
+    all.firstWhere((s) => s.status == LevelExceptionStatuses.rejected),
+  ];
 }
 
 class LevelExceptionsScreen extends StatefulWidget {
@@ -124,22 +124,31 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 10.h,
+                  ),
                   child: _buildTopBar(),
                 ),
                 BlocBuilder<LevelExceptionCubit, LevelExceptionState>(
                   builder: (context, state) {
-                    final success = state is LevelExceptionSuccess ? state : null;
+                    final success = state is LevelExceptionSuccess
+                        ? state
+                        : null;
                     return Padding(
-                      padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 14.h),
-                      child: _buildTabGates(success),
-                    ).animate().fadeIn(duration: 350.ms).moveY(begin: 8, end: 0);
+                          padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 14.h),
+                          child: _buildTabGates(success),
+                        )
+                        .animate()
+                        .fadeIn(duration: 350.ms)
+                        .moveY(begin: 8, end: 0);
                   },
                 ),
                 Expanded(
                   child: BlocBuilder<LevelExceptionCubit, LevelExceptionState>(
                     builder: (context, state) {
-                      if (state is LevelExceptionLoading || state is LevelExceptionInitial) {
+                      if (state is LevelExceptionLoading ||
+                          state is LevelExceptionInitial) {
                         return Center(
                           child: CircularProgressIndicator(
                             color: AppColors.yellow,
@@ -158,7 +167,10 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
                           itemCount: _tabs.length,
                           itemBuilder: (context, index) {
                             final style = _tabs[index];
-                            return _buildGateContent(style: style, state: state);
+                            return _buildGateContent(
+                              style: style,
+                              state: state,
+                            );
                           },
                         );
                       }
@@ -227,7 +239,9 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
                                   ? Colors.white
                                   : Colors.white.withOpacity(0.65),
                               fontSize: 12.sp,
-                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                         ),
@@ -305,15 +319,17 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
                     loaded: items.length,
                     total: total,
                     onTap: () {
-                      context.read<LevelExceptionCubit>().loadMore(style.status);
+                      context.read<LevelExceptionCubit>().loadMore(
+                        style.status,
+                      );
                     },
                   );
                 }
                 return _ExceptionCard(
-                  item: items[index],
-                  status: style.status,
-                  index: index,
-                )
+                      item: items[index],
+                      status: style.status,
+                      index: index,
+                    )
                     .animate(delay: (40 * index).ms)
                     .fadeIn(duration: 320.ms)
                     .moveY(begin: 10, end: 0);
@@ -333,9 +349,16 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: style.color.withOpacity(.12),
-              border: Border.all(color: style.color.withOpacity(.35), width: 1.5),
+              border: Border.all(
+                color: style.color.withOpacity(.35),
+                width: 1.5,
+              ),
             ),
-            child: Icon(style.icon, color: style.color.withOpacity(.75), size: 28.sp),
+            child: Icon(
+              style.icon,
+              color: style.color.withOpacity(.75),
+              size: 28.sp,
+            ),
           ),
           SizedBox(height: 16.h),
           Text(
@@ -366,12 +389,19 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 42.sp),
+            Icon(
+              Icons.error_outline_rounded,
+              color: Colors.redAccent,
+              size: 42.sp,
+            ),
             SizedBox(height: 14.h),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13.sp),
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+                fontSize: 13.sp,
+              ),
             ),
             SizedBox(height: 18.h),
             TextButton(
@@ -481,14 +511,14 @@ class _LevelExceptionsScreenState extends State<LevelExceptionsScreen> {
         Expanded(
           child: Center(
             child: Text(
-                'Level Exceptions',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cinzelDecorative(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+              'Level Exceptions',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.cinzelDecorative(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
               ),
+            ),
           ),
         ),
         SizedBox(width: 44.w),
@@ -513,7 +543,9 @@ class _ExceptionCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.dark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
         title: Text(
           'Delete request?',
           style: GoogleFonts.poppins(
@@ -529,7 +561,10 @@ class _ExceptionCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white54)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -561,231 +596,178 @@ class _ExceptionCard extends StatelessWidget {
 
     return BlocListener<LevelExceptionDeleteCubit, LevelExceptionDeleteState>(
       listener: (context, state) {
-    if (state is LevelExceptionDeleteSuccess && state.id == item.id) {
-      HapticFeedback.lightImpact();
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(6.r),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(.15),
-                ),
-                child: Icon(
-                  Icons.check_circle_rounded,
-                  color: const Color(0xFF4ADE80),
-                  size: 18.sp,
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Text(
-                  state.message,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5.sp,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
-          ),
-          margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      context.read<LevelExceptionCubit>().removeLocally(item.id);
-      context.read<LevelExceptionCubit>().loadBoard();
-    } else if (state is LevelExceptionDeleteFailure) {
-      HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(6.r),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(.15),
-                ),
-                child: Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.redAccent,
-                  size: 18.sp,
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Text(
-                  state.message,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5.sp,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
-          ),
-          margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  },
+        if (state is LevelExceptionDeleteSuccess && state.id == item.id) {
+          HapticFeedback.lightImpact();
+          showAppSnackBar(context, state.message, type: AppSnackType.info);
+          context.read<LevelExceptionCubit>().removeLocally(item.id);
+          context.read<LevelExceptionCubit>().loadBoard();
+        } else if (state is LevelExceptionDeleteFailure) {
+          HapticFeedback.mediumImpact();
+          showAppSnackBar(context, state.message, type: AppSnackType.error);
+        }
+      },
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
           Navigator.pushNamed(
             context,
             levelExceptionDetailsRoute,
-            arguments: {
-              'id': item.id,
-              'seed': item,
-            },
+            arguments: {'id': item.id, 'seed': item},
           ).then((_) {
             if (context.mounted) {
               context.read<LevelExceptionCubit>().loadBoard();
             }
           });
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.055),
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(
-              color: statusColor.withOpacity(isRejected ? 0.55 : 0.45),
-              width: isRejected ? 1.6 : 1.35,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: statusColor.withOpacity(isRejected ? 0.18 : 0.12),
-                blurRadius: isRejected ? 14 : 10,
-                spreadRadius: 0.4,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42.w,
-                height: 42.w,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      statusColor.withOpacity(.32),
-                      statusColor.withOpacity(.10),
+        child:
+            AnimatedContainer(
+                  duration: const Duration(milliseconds: 280),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 14.w,
+                    vertical: 13.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.055),
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(
+                      color: statusColor.withOpacity(isRejected ? 0.55 : 0.45),
+                      width: isRejected ? 1.6 : 1.35,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(
+                          isRejected ? 0.18 : 0.12,
+                        ),
+                        blurRadius: isRejected ? 14 : 10,
+                        spreadRadius: 0.4,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(13.r),
-                  border: Border.all(color: statusColor.withOpacity(.40)),
-                ),
-                child: Icon(statusIcon, color: statusColor, size: 19.sp),
-              ),
-              SizedBox(width: 13.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      levelName,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 13.5.sp,
-                        fontWeight: FontWeight.w600,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42.w,
+                        height: 42.w,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              statusColor.withOpacity(.32),
+                              statusColor.withOpacity(.10),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(13.r),
+                          border: Border.all(
+                            color: statusColor.withOpacity(.40),
+                          ),
+                        ),
+                        child: Icon(
+                          statusIcon,
+                          color: statusColor,
+                          size: 19.sp,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 5.h),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 3.5.h),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(.15),
-                        borderRadius: BorderRadius.circular(20.r),
-                        border: Border.all(color: statusColor.withOpacity(.40)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, color: statusColor, size: 12.sp),
-                          SizedBox(width: 4.w),
-                          Text(
-                            statusLabel,
-                            style: GoogleFonts.poppins(
-                              color: statusColor,
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w700,
+                      SizedBox(width: 13.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              levelName,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 13.5.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
+                            SizedBox(height: 5.h),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 9.w,
+                                vertical: 3.5.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(.15),
+                                borderRadius: BorderRadius.circular(20.r),
+                                border: Border.all(
+                                  color: statusColor.withOpacity(.40),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    statusIcon,
+                                    color: statusColor,
+                                    size: 12.sp,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    statusLabel,
+                                    style: GoogleFonts.poppins(
+                                      color: statusColor,
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (status.toLowerCase() ==
+                          LevelExceptionStatuses.pending) ...[
+                        SizedBox(width: 8.w),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            _confirmDelete(context);
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(9.r),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(.12),
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(
+                                color: Colors.redAccent.withOpacity(.30),
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.redAccent,
+                              size: 17.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+                .animate(
+                  onPlay: isRejected ? (c) => c.repeat(reverse: true) : null,
+                )
+                .custom(
+                  duration: 1800.ms,
+                  builder: (context, value, child) {
+                    if (!isRejected) return child;
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withOpacity(
+                              0.12 + (value * 0.18),
+                            ),
+                            blurRadius: 10 + (value * 8),
+                            spreadRadius: 0.5,
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              if (status.toLowerCase() == LevelExceptionStatuses.pending) ...[
-                SizedBox(width: 8.w),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    _confirmDelete(context);
+                      child: child,
+                    );
                   },
-                  child: Container(
-                    padding: EdgeInsets.all(9.r),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(.12),
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: Colors.redAccent.withOpacity(.30)),
-                    ),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      color: Colors.redAccent,
-                      size: 17.sp,
-                    ),
-                  ),
                 ),
-              ],
-            ],
-          ),
-        )
-            .animate(
-              onPlay: isRejected ? (c) => c.repeat(reverse: true) : null,
-            )
-            .custom(
-              duration: 1800.ms,
-              builder: (context, value, child) {
-                if (!isRejected) return child;
-                return Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withOpacity(0.12 + (value * 0.18)),
-                        blurRadius: 10 + (value * 8),
-                        spreadRadius: 0.5,
-                      ),
-                    ],
-                  ),
-                  child: child,
-                );
-              },
-            ),
       ),
     );
   }
@@ -810,21 +792,22 @@ class _TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * MediaQuery.sizeOf(context).width,
             top: top * MediaQuery.sizeOf(context).height,
-            child: Container(
-              width: size,
-              height: size,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0.15,
-                  end: maxOpacity,
-                  duration: Duration(milliseconds: duration),
-                  delay: Duration(milliseconds: delay),
-                ),
+            child:
+                Container(
+                      width: size,
+                      height: size,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0.15,
+                      end: maxOpacity,
+                      duration: Duration(milliseconds: duration),
+                      delay: Duration(milliseconds: delay),
+                    ),
           );
         }),
       ),

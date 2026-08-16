@@ -1,11 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
 import '../../../../helper/notification_bootstrap.dart';
 import 'verify_otp_state.dart';
 
-class VerifyOtpCubit extends Cubit<VerifyOtpState> {
+class VerifyOtpCubit extends SafeCubit<VerifyOtpState> {
   final AuthRepository authRepository;
   VerifyOtpCubit(this.authRepository) : super(VerifyOtpInitial());
 

@@ -13,6 +13,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent/cubit/student/lessons/lesson_cubit.dart';
 import 'package:fluent/cubit/student/lessons/lesson_state.dart';
 import 'package:fluent/data/models/student_lesson_model.dart';
+import 'package:fluent/data/repository/progress_repository.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 
 enum LessonStatus { completed, current, locked, quiz }
 
@@ -75,7 +77,7 @@ class LessonsScreen extends StatefulWidget {
     this.userName = "Rasha",
     this.xp = 12540,
     this.courseProgress = 0.45,
-       this.onLessonTap,
+    this.onLessonTap,
     this.onBack,
   });
 
@@ -93,9 +95,33 @@ class _LessonsScreenState extends State<LessonsScreen>
 
   List<LessonData> _lessons = [];
 
-  int get _completedCount =>
-      _lessons.where((l) => l.status == LessonStatus.completed).length;
-  int get _totalCount => _lessons.isNotEmpty ? _lessons.length : 1;
+  /// Authoritative progress summary from GET /api/lessons/{course}
+  /// (`progress.completed_lessons` / `progress.total_lessons` / `progress.progress_percentage`).
+  LessonsProgressSummary _apiProgress = LessonsProgressSummary.empty;
+
+  /// 0.0–1.0 from GET /api/courses/{id}/progress — kept only as a fallback
+  /// for when the lessons endpoint hasn't returned progress yet.
+  double _apiCourseProgress = 0.0;
+  bool _courseProgressLoaded = false;
+
+  bool get _hasApiProgress => _apiProgress.totalLessons > 0;
+
+  double get _effectiveCourseProgress {
+    if (_hasApiProgress) {
+      return (_apiProgress.progressPercentage / 100.0).clamp(0.0, 1.0);
+    }
+    return _courseProgressLoaded
+        ? _apiCourseProgress
+        : widget.courseProgress.clamp(0.0, 1.0);
+  }
+
+  int get _completedCount => _hasApiProgress
+      ? _apiProgress.completedLessons
+      : _lessons.where((l) => l.status == LessonStatus.completed).length;
+
+  int get _totalCount => _hasApiProgress
+      ? _apiProgress.totalLessons
+      : (_lessons.isNotEmpty ? _lessons.length : 1);
 
   @override
   void initState() {
@@ -118,6 +144,7 @@ class _LessonsScreenState extends State<LessonsScreen>
       if (cubit.state is StudentLessonsInitial) {
         cubit.fetchStudentLessons(widget.courseId ?? 0);
       }
+      _loadCourseProgress();
     });
   }
 
@@ -187,6 +214,7 @@ class _LessonsScreenState extends State<LessonsScreen>
               builder: (context, state) {
                 if (state is StudentLessonsSuccess) {
                   _lessons = _mapLessons(state.data);
+                  _apiProgress = state.data.progress;
                 }
 
                 return LayoutBuilder(
@@ -208,8 +236,10 @@ class _LessonsScreenState extends State<LessonsScreen>
                             _buildTopBar(),
                             SizedBox(height: 16.h),
                             _buildCourseHeroCard(),
+                            SizedBox(height: 12.h),
+                            _buildCourseApiProgressBar(),
                             SizedBox(height: 14.h),
-                          
+
                             if (state is StudentLessonsLoading ||
                                 state is StudentLessonsInitial)
                               _lessonsLoadingCard()
@@ -353,6 +383,8 @@ class _LessonsScreenState extends State<LessonsScreen>
                 onTap: () => context
                     .read<StudentLessonsCubit>()
                     .fetchStudentLessons(widget.courseId ?? 0),
+
+                // progress refreshed with lessons
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 16.w,
@@ -525,8 +557,6 @@ class _LessonsScreenState extends State<LessonsScreen>
     ).animate().fadeIn(duration: 500.ms).moveY(begin: -10, end: 0);
   }
 
-    
-
   Widget _circleIconButton({
     required IconData icon,
     int badgeCount = 0,
@@ -599,32 +629,129 @@ class _LessonsScreenState extends State<LessonsScreen>
     );
   }
 
-// حبة صغيرة بنفس ستايل حبات كارد المستويات
-Widget _heroPill(IconData icon, Color color, String value) {
-  return Container(
-    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-    decoration: BoxDecoration(
+  // حبة صغيرة بنفس ستايل حبات كارد المستويات
+  Widget _heroPill(IconData icon, Color color, String value) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18.r),
+        color: Colors.white.withOpacity(.08),
+        border: Border.all(color: Colors.white.withOpacity(.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 13.sp),
+          SizedBox(width: 6.w),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadCourseProgress() async {
+    final courseId = widget.courseId;
+    if (courseId == null || courseId <= 0) {
+      setState(() {
+        _apiCourseProgress = widget.courseProgress.clamp(0.0, 1.0);
+        _courseProgressLoaded = true;
+      });
+      return;
+    }
+    try {
+      final repo = context.read<ProgressRepository>();
+      final res = await repo.getCourseProgress(courseId);
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is num) {
+        final pct = (res['data'] as num).toDouble();
+        setState(() {
+          _apiCourseProgress = (pct / 100.0).clamp(0.0, 1.0);
+          _courseProgressLoaded = true;
+        });
+      } else {
+        setState(() {
+          _apiCourseProgress = widget.courseProgress.clamp(0.0, 1.0);
+          _courseProgressLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _apiCourseProgress = widget.courseProgress.clamp(0.0, 1.0);
+        _courseProgressLoaded = true;
+      });
+    }
+  }
+
+  Widget _buildCourseApiProgressBar() {
+    final progress = _effectiveCourseProgress;
+    final pct = (progress * 100).round();
+    final value = progress.clamp(0.0, 1.0);
+
+    return ClipRRect(
       borderRadius: BorderRadius.circular(18.r),
-      color: Colors.white.withOpacity(.08),
-      border: Border.all(color: Colors.white.withOpacity(.14)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 13.sp),
-        SizedBox(width: 6.w),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w800,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.08),
+                Colors.white.withOpacity(.03),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.14)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.insights_rounded,
+                    color: AppColors.sky,
+                    size: 16.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'Course completion',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$pct%',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.yellow,
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              _CourseShinyProgressStrip(value: value),
+            ],
           ),
         ),
-      ],
-    ),
-  );
-}
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 500.ms).moveY(begin: 8, end: 0);
+  }
 
   Widget _buildCourseHeroCard() {
     return ClipRRect(
@@ -661,7 +788,9 @@ Widget _heroPill(IconData icon, Color color, String value) {
                 children: [
                   _CourseOrbitRing(
                     lessons: _lessons,
-                    progress: widget.courseProgress,
+                    progress: _effectiveCourseProgress,
+                    completedOverride: _completedCount,
+                    totalOverride: _totalCount,
                     size: 92.w,
                   ),
                   SizedBox(width: 14.w),
@@ -757,7 +886,6 @@ Widget _heroPill(IconData icon, Color color, String value) {
     ).animate().fadeIn(duration: 500.ms).moveY(begin: -8, end: 0);
   }
 
-
   Widget _buildProgressOverview() {
     Color dotColor(LessonStatus status) {
       switch (status) {
@@ -830,7 +958,6 @@ Widget _heroPill(IconData icon, Color color, String value) {
       ),
     ).animate().fadeIn(delay: 280.ms, duration: 500.ms).moveY(begin: 8, end: 0);
   }
-
 
   Widget _glassContainer({
     required Widget child,
@@ -1022,10 +1149,18 @@ class _CourseOrbitRing extends StatefulWidget {
   final double progress;
   final double size;
 
+  /// When provided (from the backend's `progress` summary), these win over
+  /// counting `lessons` locally — `lessons` only reflects completed/current/
+  /// locked-after-allowed-order, not the real total lesson count.
+  final int? completedOverride;
+  final int? totalOverride;
+
   const _CourseOrbitRing({
     required this.lessons,
     required this.progress,
     required this.size,
+    this.completedOverride,
+    this.totalOverride,
   });
 
   @override
@@ -1056,14 +1191,19 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
     final size = widget.size;
     final boxSize = size + 44.w;
 
-    // لو courseProgress صفر، نحسب من الدروس المكتملة
-    final completed = widget.lessons
-        .where((l) => l.status == LessonStatus.completed)
-        .length;
-    final total = widget.lessons.isEmpty ? 1 : widget.lessons.length;
+    // Prefer the backend's real completed/total counts; only fall back to
+    // counting the locally-built `lessons` list (which excludes lessons that
+    // are neither completed, current, nor locked-after-allowed-order) when
+    // no override was supplied.
+    final completed =
+        widget.completedOverride ??
+        widget.lessons.where((l) => l.status == LessonStatus.completed).length;
+    final total =
+        widget.totalOverride ??
+        (widget.lessons.isEmpty ? 1 : widget.lessons.length);
     final effectiveProgress = widget.progress > 0.01
         ? widget.progress.clamp(0.0, 1.0)
-        : (completed / total).clamp(0.0, 1.0);
+        : (total == 0 ? 0.0 : (completed / total).clamp(0.0, 1.0));
     final pct = (effectiveProgress * 100).toInt();
 
     Color dotColor(LessonData l) {
@@ -1110,11 +1250,11 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
                   border: isCompleted
                       ? Border.all(color: Colors.white, width: 1.4)
                       : (isCurrent
-                          ? Border.all(
-                              color: AppColors.yellow.withOpacity(.9),
-                              width: 1.5,
-                            )
-                          : null),
+                            ? Border.all(
+                                color: AppColors.yellow.withOpacity(.9),
+                                width: 1.5,
+                              )
+                            : null),
                   boxShadow: isLocked
                       ? []
                       : [
@@ -1145,10 +1285,7 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
                     );
               }
 
-              return Transform.translate(
-                offset: Offset(dx, dy),
-                child: dot,
-              );
+              return Transform.translate(offset: Offset(dx, dy), child: dot);
             }),
 
           // ── Soft track (full circle) ──────────────────────────
@@ -1158,8 +1295,7 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
             child: CircularProgressIndicator(
               value: 1,
               strokeWidth: 9.5.w,
-              valueColor:
-                  AlwaysStoppedAnimation(Colors.white.withOpacity(.08)),
+              valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(.08)),
             ),
           ),
 
@@ -1176,8 +1312,7 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
                   value: value <= 0 ? 0.02 : value, // حتى لو صفر يبين طرف
                   strokeWidth: 9.5.w,
                   strokeCap: StrokeCap.round,
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.yellow),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
                   backgroundColor: Colors.transparent,
                 );
               },
@@ -1205,19 +1340,19 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
           ),
 
           Container(
-            width: size + 8.w,
-            height: size + 8.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.yellow.withOpacity(.16),
-                  blurRadius: 20,
-                  spreadRadius: 1,
+                width: size + 8.w,
+                height: size + 8.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.yellow.withOpacity(.16),
+                      blurRadius: 20,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          )
+              )
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .fade(begin: 0.4, end: 0.9, duration: 1800.ms),
 
@@ -1225,10 +1360,10 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.auto_awesome_rounded,
-                color: AppColors.yellow,
-                size: 18.sp,
-              )
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.yellow,
+                    size: 18.sp,
+                  )
                   .animate(onPlay: (c) => c.repeat(reverse: true))
                   .scale(
                     begin: const Offset(1, 1),
@@ -1265,26 +1400,27 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
 
           Positioned(
             bottom: 1.w,
-            child: Container(
-              width: 11.w,
-              height: 11.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.yellow,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.yellow.withOpacity(.75),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
-                  begin: const Offset(1, 1),
-                  end: const Offset(1.3, 1.3),
-                  duration: 1100.ms,
-                ),
+            child:
+                Container(
+                      width: 11.w,
+                      height: 11.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.yellow,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.yellow.withOpacity(.75),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(1, 1),
+                      end: const Offset(1.3, 1.3),
+                      duration: 1100.ms,
+                    ),
           ),
         ],
       ),
@@ -1318,19 +1454,14 @@ class _SweepArcPainter extends CustomPainter {
         stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
       ).createShader(rect);
 
-    canvas.drawArc(
-      rect.deflate(strokeWidth / 2),
-      0,
-      math.pi * 2,
-      false,
-      paint,
-    );
+    canvas.drawArc(rect.deflate(strokeWidth / 2), 0, math.pi * 2, false, paint);
   }
 
   @override
   bool shouldRepaint(covariant _SweepArcPainter oldDelegate) =>
       oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
 }
+
 class _TwinklingStars extends StatelessWidget {
   final int count;
   const _TwinklingStars({this.count = 40});
@@ -1766,7 +1897,8 @@ class _LessonsPath extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final totalHeight = lessons.length * nodeSpacing + trailingHeight + 40.h;
+        final totalHeight =
+            lessons.length * nodeSpacing + trailingHeight + 40.h;
 
         final double edgeFraction = (60.w / width).clamp(0.10, 0.22);
         final double minFraction = edgeFraction;
@@ -1830,31 +1962,34 @@ class _LessonsPath extends StatelessWidget {
                 return Positioned(
                   left: endPoint.dx - 4.w,
                   top: dy,
-                  child: Container(
-                    width: 8.w - (i * 1.2.w),
-                    height: 8.w - (i * 1.2.w),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.yellow.withOpacity(opacity.clamp(0.15, 0.6)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.yellow.withOpacity(0.3),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  )
-                      .animate(onPlay: (c) => c.repeat(reverse: true))
-                      .fade(
-                        begin: opacity * 0.6,
-                        end: opacity,
-                        duration: (900 + i * 200).ms,
-                      )
-                      .scale(
-                        begin: const Offset(0.85, 0.85),
-                        end: const Offset(1.1, 1.1),
-                        duration: (1100 + i * 150).ms,
-                      ),
+                  child:
+                      Container(
+                            width: 8.w - (i * 1.2.w),
+                            height: 8.w - (i * 1.2.w),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.yellow.withOpacity(
+                                opacity.clamp(0.15, 0.6),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.yellow.withOpacity(0.3),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .fade(
+                            begin: opacity * 0.6,
+                            end: opacity,
+                            duration: (900 + i * 200).ms,
+                          )
+                          .scale(
+                            begin: const Offset(0.85, 0.85),
+                            end: const Offset(1.1, 1.1),
+                            duration: (1100 + i * 150).ms,
+                          ),
                 );
               }),
             ],
@@ -1891,9 +2026,13 @@ class _LessonPathPainter extends CustomPainter {
 
       final bounds = Rect.fromPoints(p0, p1).inflate(40);
 
+      // `points` has one more entry than `lessons` — a trailing decorative
+      // endPoint after the last lesson. Only read lessons[i + 1] when it
+      // actually refers to a real lesson, otherwise fall back to lessons[i].
+      final bool hasNextLesson = i + 1 < lessons.length;
       final isLocked =
           lessons[i].status == LessonStatus.locked ||
-          lessons[i + 1].status == LessonStatus.locked;
+          (hasNextLesson && lessons[i + 1].status == LessonStatus.locked);
 
       if (isLocked) {
         _drawLockedSegment(canvas, segmentPath);
@@ -1999,6 +2138,7 @@ double _nodeSizeFor(LessonStatus status) {
       return 96.w.clamp(76.0, 115.0);
   }
 }
+
 class _LessonRow extends StatelessWidget {
   final LessonData lesson;
   final double nodeDx;
@@ -2030,11 +2170,13 @@ class _LessonRow extends StatelessWidget {
 
     final double left = placeOnRight
         ? nodeDx + nodeHalf + gap
-        : nodeDx - nodeHalf + gap - cardWidth - gap * 2; 
+        : nodeDx - nodeHalf + gap - cardWidth - gap * 2;
 
     final double clampedLeft = placeOnRight
-        ? (nodeDx + nodeHalf + gap)
-            .clamp(edgePadding, containerWidth - cardWidth - edgePadding)
+        ? (nodeDx + nodeHalf + gap).clamp(
+            edgePadding,
+            containerWidth - cardWidth - edgePadding,
+          )
         : left.clamp(edgePadding, containerWidth - cardWidth - edgePadding);
 
     final double nodeBox = size + 30.w;
@@ -2118,6 +2260,90 @@ class _CurrentRibbon extends StatelessWidget {
   }
 }
 
+class _CourseShinyProgressStrip extends StatefulWidget {
+  final double value;
+  const _CourseShinyProgressStrip({required this.value});
+
+  @override
+  State<_CourseShinyProgressStrip> createState() =>
+      _CourseShinyProgressStripState();
+}
+
+class _CourseShinyProgressStripState extends State<_CourseShinyProgressStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = widget.value.clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8.r),
+      child: SizedBox(
+        height: 9.h,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.10),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            FractionallySizedBox(
+              widthFactor: value,
+              alignment: Alignment.centerLeft,
+              child: AnimatedBuilder(
+                animation: _shimmer,
+                builder: (context, _) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.r),
+                      gradient: LinearGradient(
+                        begin: Alignment(-1.0 + 2.0 * _shimmer.value, 0),
+                        end: Alignment(1.0 + 2.0 * _shimmer.value, 0),
+                        colors: [
+                          AppColors.yellow.withOpacity(.75),
+                          const Color(0xFFFFF1A8),
+                          AppColors.orange.withOpacity(.90),
+                          const Color(0xFFFFF1A8),
+                          AppColors.yellow.withOpacity(.75),
+                        ],
+                        stops: const [0.0, 0.35, 0.5, 0.65, 1.0],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.yellow.withOpacity(.55),
+                          blurRadius: 10,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LessonNode extends StatelessWidget {
   final LessonData lesson;
   final int index;
@@ -2132,24 +2358,10 @@ class _LessonNode extends StatelessWidget {
   void _handleTap(BuildContext context) {
     if (lesson.status == LessonStatus.locked) {
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8.w),
-              const Expanded(
-                child: Text("Finish the previous lesson to unlock this one! 💪"),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
+      showAppSnackBar(
+        context,
+        "Finish the previous lesson to unlock this one! 💪",
+        type: AppSnackType.info,
       );
       return;
     }
@@ -2169,7 +2381,10 @@ class _LessonNode extends StatelessWidget {
     List<Color> gradientColors;
     Color ringColor;
     if (isLocked) {
-      gradientColors = [Colors.white.withOpacity(.12), Colors.white.withOpacity(.05)];
+      gradientColors = [
+        Colors.white.withOpacity(.12),
+        Colors.white.withOpacity(.05),
+      ];
       ringColor = Colors.white.withOpacity(.18);
     } else if (isQuiz) {
       gradientColors = [const Color(0xffFF6FB5), const Color(0xffB861F5)];
@@ -2184,74 +2399,77 @@ class _LessonNode extends StatelessWidget {
 
     Widget aura = const SizedBox.shrink();
     if (isCurrent) {
-      aura = Container(
-            width: size + 30.w,
-            height: size + 30.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.yellow.withOpacity(.5),
-                  AppColors.yellow.withOpacity(0),
-                ],
-              ),
-            ),
-          )
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.15, 1.15),
-            duration: 1400.ms,
-            curve: Curves.easeInOut,
-          );
+      aura =
+          Container(
+                width: size + 30.w,
+                height: size + 30.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.yellow.withOpacity(.5),
+                      AppColors.yellow.withOpacity(0),
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.15, 1.15),
+                duration: 1400.ms,
+                curve: Curves.easeInOut,
+              );
     }
 
     Widget rotatingRing = const SizedBox.shrink();
     if (isCurrent) {
-      rotatingRing = Container(
-            width: size + 18.w,
-            height: size + 18.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.yellow.withOpacity(.4),
-                width: 1.5,
-              ),
-              gradient: const SweepGradient(
-                colors: [
-                  AppColors.yellow,
-                  Colors.transparent,
-                  AppColors.orange,
-                  Colors.transparent,
-                  AppColors.yellow,
-                ],
-                stops: [0.0, 0.3, 0.5, 0.8, 1.0],
-              ),
-            ),
-          )
-          .animate(onPlay: (c) => c.repeat())
-          .rotate(duration: 6.seconds, curve: Curves.linear);
+      rotatingRing =
+          Container(
+                width: size + 18.w,
+                height: size + 18.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.yellow.withOpacity(.4),
+                    width: 1.5,
+                  ),
+                  gradient: const SweepGradient(
+                    colors: [
+                      AppColors.yellow,
+                      Colors.transparent,
+                      AppColors.orange,
+                      Colors.transparent,
+                      AppColors.yellow,
+                    ],
+                    stops: [0.0, 0.3, 0.5, 0.8, 1.0],
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .rotate(duration: 6.seconds, curve: Curves.linear);
     }
 
     Widget quizCrown = const SizedBox.shrink();
     if (isQuiz) {
       quizCrown = Positioned(
         top: -8.h,
-        child: Icon(
-              Icons.workspace_premium_rounded,
-              color: const Color(0xFFFFD35B),
-              size: 20.sp,
-              shadows: const [
-                Shadow(color: Color(0xffB861F5), blurRadius: 12),
-                Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
-              ],
-            )
-            .animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(
-              begin: const Offset(1, 1),
-              end: const Offset(1.15, 1.15),
-              duration: 1400.ms,
-            ),
+        child:
+            Icon(
+                  Icons.workspace_premium_rounded,
+                  color: const Color(0xFFFFD35B),
+                  size: 20.sp,
+                  shadows: const [
+                    Shadow(color: Color(0xffB861F5), blurRadius: 12),
+                    Shadow(color: Color(0xffFF6FB5), blurRadius: 20),
+                  ],
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 1400.ms,
+                ),
       );
     }
 
@@ -2265,7 +2483,10 @@ class _LessonNode extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        border: Border.all(color: ringColor, width: 3.w), // الحلقة الخارجية الفاتحة
+        border: Border.all(
+          color: ringColor,
+          width: 3.w,
+        ), // الحلقة الخارجية الفاتحة
         boxShadow: isLocked
             ? []
             : [
@@ -2280,7 +2501,8 @@ class _LessonNode extends StatelessWidget {
         margin: EdgeInsets.all(5.w),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all( // الحلقة الداخلية الرفيعة
+          border: Border.all(
+            // الحلقة الداخلية الرفيعة
             color: Colors.white.withOpacity(.35),
             width: 1.2,
           ),
@@ -2322,7 +2544,11 @@ class _LessonNode extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(Icons.check_rounded, size: 16.sp, color: Colors.white),
+              child: Icon(
+                Icons.check_rounded,
+                size: 16.sp,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -2431,22 +2657,22 @@ class _LessonInfoCard extends StatelessWidget {
                               AppColors.orange.withOpacity(.12),
                             ]
                           : isQuiz
-                              ? [
-                                  const Color(0xffB861F5).withOpacity(.22),
-                                  const Color(0xffFF6FB5).withOpacity(.12),
-                                ]
-                              : [
-                                  Colors.white.withOpacity(.10),
-                                  Colors.white.withOpacity(.04),
-                                ],
+                          ? [
+                              const Color(0xffB861F5).withOpacity(.22),
+                              const Color(0xffFF6FB5).withOpacity(.12),
+                            ]
+                          : [
+                              Colors.white.withOpacity(.10),
+                              Colors.white.withOpacity(.04),
+                            ],
                     ),
                     borderRadius: BorderRadius.circular(20.r),
                     border: Border.all(
                       color: isCurrent
                           ? AppColors.yellow.withOpacity(.6)
                           : isQuiz
-                              ? const Color(0xffFF6FB5).withOpacity(.5)
-                              : Colors.white.withOpacity(.15),
+                          ? const Color(0xffFF6FB5).withOpacity(.5)
+                          : Colors.white.withOpacity(.15),
                       width: isCurrent || isQuiz ? 1.5 : 1,
                     ),
                     boxShadow: isCurrent
@@ -2458,14 +2684,14 @@ class _LessonInfoCard extends StatelessWidget {
                             ),
                           ]
                         : isQuiz
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xffB861F5).withOpacity(.4),
-                                  blurRadius: 18,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : null,
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xffB861F5).withOpacity(.4),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2550,7 +2776,10 @@ class _LessonInfoCard extends StatelessWidget {
                                   height: 6.h,
                                   decoration: const BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [AppColors.orange, AppColors.yellow],
+                                      colors: [
+                                        AppColors.orange,
+                                        AppColors.yellow,
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -2560,66 +2789,72 @@ class _LessonInfoCard extends StatelessWidget {
                         ),
                       ],
                       if (isCurrent) ...[
-  SizedBox(height: 10.h),
-  GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
-      child: SizedBox(
-        width: double.infinity,
-        child: Container(
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.orange, AppColors.yellow],
-            ),
-            borderRadius: BorderRadius.circular(20.r),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.yellow.withOpacity(.6),
-                blurRadius: 14,
-                spreadRadius: .5,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown, // يصغّر النص ليقد المساحة بدل ما ينقطه
-                  child: Text(
-                    "Continue",
-                    maxLines: 1,
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11.sp,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 4.w),
-              Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.black,
-                size: 14.sp,
-              ),
-            ],
-          ),
-        ),
-      ),
-    )
-    .animate(onPlay: (c) => c.repeat(reverse: true))
-    .shimmer(
-      duration: 1800.ms,
-      color: Colors.white.withOpacity(.7),
-    ),
-  
-],
+                        SizedBox(height: 10.h),
+                        GestureDetector(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                onTap();
+                              },
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w,
+                                    vertical: 7.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        AppColors.orange,
+                                        AppColors.yellow,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20.r),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.yellow.withOpacity(.6),
+                                        blurRadius: 14,
+                                        spreadRadius: .5,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Flexible(
+                                        child: FittedBox(
+                                          fit: BoxFit
+                                              .scaleDown, // يصغّر النص ليقد المساحة بدل ما ينقطه
+                                          child: Text(
+                                            "Continue",
+                                            maxLines: 1,
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11.sp,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: Colors.black,
+                                        size: 14.sp,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .shimmer(
+                              duration: 1800.ms,
+                              color: Colors.white.withOpacity(.7),
+                            ),
+                      ],
                     ],
                   ),
                 ),

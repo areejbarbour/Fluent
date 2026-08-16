@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_detail_state.dart';
 
-class QuestionDetailCubit extends Cubit<QuestionDetailState> {
+class QuestionDetailCubit extends SafeCubit<QuestionDetailState> {
   final QuestionRepository questionRepository;
 
-  QuestionDetailCubit(this.questionRepository)
-      : super(QuestionDetailInitial());
+  QuestionDetailCubit(this.questionRepository) : super(QuestionDetailInitial());
 
   Future<void> loadQuestion(int id) async {
     emit(QuestionDetailLoading());
@@ -18,10 +18,12 @@ class QuestionDetailCubit extends Cubit<QuestionDetailState> {
       if (success) {
         emit(QuestionDetailLoaded(result['data']));
       } else {
-        emit(QuestionDetailFailure(
-          result['message']?.toString() ?? 'Failed to load question',
-          errors: result['errors'] as Map<String, dynamic>?,
-        ));
+        emit(
+          QuestionDetailFailure(
+            result['message']?.toString() ?? 'Failed to load question',
+            errors: result['errors'] as Map<String, dynamic>?,
+          ),
+        );
       }
     } catch (e) {
       emit(QuestionDetailFailure(e.toString()));

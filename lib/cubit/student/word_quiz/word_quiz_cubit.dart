@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/word_quiz_model.dart';
 import 'package:fluent/data/repository/word_quiz_repository.dart';
 import 'word_quiz_state.dart';
@@ -9,7 +10,7 @@ import 'word_quiz_state.dart';
 /// - selectOption: local UI selection
 /// - submitAnswer: POST /api/words/{word}/quiz_check { answer_id }
 /// - nextQuestion / finish
-class WordQuizCubit extends Cubit<WordQuizState> {
+class WordQuizCubit extends SafeCubit<WordQuizState> {
   final WordQuizRepository repository;
 
   WordQuizCubit(this.repository) : super(const WordQuizInitial());

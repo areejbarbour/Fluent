@@ -116,3 +116,31 @@ class StudentLevelsModel {
     );
   }
 }
+
+/// Backend: GET /api/placement-test/status
+/// StudentLevelService@getStatus
+class PlacementTestStatusModel {
+  /// "take_placement_test" | "show_levels"
+  final String action;
+  final bool canRetakePlacement;
+
+  /// ISO / Carbon string when canRetakePlacement == false, else null
+  final String? retakeAvailableAt;
+
+  const PlacementTestStatusModel({
+    required this.action,
+    required this.canRetakePlacement,
+    this.retakeAvailableAt,
+  });
+
+  factory PlacementTestStatusModel.fromJson(Map<String, dynamic> json) {
+    return PlacementTestStatusModel(
+      action: json['action']?.toString() ?? 'take_placement_test',
+      canRetakePlacement: json['can_retake_placement'] == true,
+      retakeAvailableAt: json['retake_available_at']?.toString(),
+    );
+  }
+
+  bool get shouldTakePlacement => action == 'take_placement_test';
+  bool get shouldShowLevels => action == 'show_levels';
+}

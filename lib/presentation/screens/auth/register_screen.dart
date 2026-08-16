@@ -5,6 +5,7 @@ import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_cubit.dart';
 import 'package:fluent/cubit/auth/sign_up/sign_up_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -111,15 +112,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               listener: (context, state) {
                 if (state is SignUpSuccess) {
                   // ✅ نجاح التسجيل - الانتقال إلى OTP
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: AppColors.sky,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                    ),
+                  showAppSnackBar(
+                    context,
+                    state.message,
+                    type: AppSnackType.success,
                   );
                   Navigator.pushReplacementNamed(
                     context,
@@ -685,15 +681,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocConsumer<GoogleLoginCubit, GoogleLoginState>(
       listener: (context, state) {
         if (state is GoogleLoginSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Google login successful!'),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
+          showAppSnackBar(
+            context,
+            'Google login successful!',
+            type: AppSnackType.success,
           );
 
           // ✅ استخراج roles من state
@@ -725,16 +716,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             (route) => false,
           );
         } else if (state is GoogleLoginFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message), // ✅ message وليس error
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.error);
         }
       },
       builder: (context, state) {

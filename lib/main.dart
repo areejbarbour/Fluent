@@ -4,6 +4,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:fluent/data/repository/chat_repository.dart';
 import 'package:fluent/data/services/chat_service.dart';
+import 'package:fluent/data/services/progress_service.dart';
+import 'package:fluent/data/repository/progress_repository.dart';
+import 'package:fluent/data/services/certificate_service.dart';
+import 'package:fluent/data/repository/certificate_repository.dart';
+import 'package:fluent/data/services/contact_us_service.dart';
+import 'package:fluent/data/repository/contact_us_repository.dart';
 
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -30,6 +36,8 @@ import 'package:fluent/data/services/lesson_service.dart';
 import 'package:fluent/data/services/test_service.dart';
 import 'package:fluent/data/services/content_review_service.dart';
 import 'package:fluent/data/repository/content_review_repository.dart';
+import 'package:fluent/data/services/teacher_stats_service.dart';
+import 'package:fluent/data/repository/teacher_stats_repository.dart';
 import 'package:fluent/data/services/notification_service.dart';
 import 'package:fluent/data/repository/notification_repository.dart';
 import 'package:fluent/cubit/notification/notification_cubit.dart';
@@ -162,6 +170,9 @@ Future<void> main() async {
   final contentReviewService = ContentReviewService(dioInstance);
   final contentReviewRepository = ContentReviewRepository(contentReviewService);
 
+  final teacherStatsService = TeacherStatsService(dioInstance);
+  final teacherStatsRepository = TeacherStatsRepository(teacherStatsService);
+
   final notificationService = NotificationService(dioInstance);
   final notificationRepository = NotificationRepository(notificationService);
 
@@ -173,6 +184,15 @@ Future<void> main() async {
 
   final paymentService = PaymentService(dioInstance);
   final paymentRepository = PaymentRepository(paymentService);
+
+  final progressService = ProgressService(dioInstance);
+  final progressRepository = ProgressRepository(progressService);
+
+  final certificateService = CertificateService(dioInstance);
+  final certificateRepository = CertificateRepository(certificateService);
+
+  final contactUsService = ContactUsService(dioInstance);
+  final contactUsRepository = ContactUsRepository(contactUsService);
 
   // Logged OUT → always login (never auto-enter app content).
   // Logged IN  → teacher home / student placement-or-home — never login UI.
@@ -220,6 +240,10 @@ Future<void> main() async {
       podcastRepository: podcastRepository,
       paymentRepository: paymentRepository,
       chatRepository: chatRepository,
+      progressRepository: progressRepository,
+      certificateRepository: certificateRepository,
+      contactUsRepository: contactUsRepository,
+      teacherStatsRepository: teacherStatsRepository,
 
       initialRoute: initialRoute,
       isUserLoggedIn: isUserLoggedIn,
@@ -255,6 +279,10 @@ class MyApp extends StatefulWidget {
   final PodcastRepository podcastRepository;
   final PaymentRepository paymentRepository;
   final ChatRepository chatRepository;
+  final ProgressRepository progressRepository;
+  final CertificateRepository certificateRepository;
+  final ContactUsRepository contactUsRepository;
+  final TeacherStatsRepository teacherStatsRepository;
   late final AppRouter appRouter;
 
   MyApp({
@@ -283,6 +311,10 @@ class MyApp extends StatefulWidget {
     required this.chatRepository,
     required this.podcastRepository,
     required this.paymentRepository,
+    required this.progressRepository,
+    required this.certificateRepository,
+    required this.contactUsRepository,
+    required this.teacherStatsRepository,
   }) {
     appRouter = AppRouter(authRepository);
   }
@@ -465,6 +497,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             RepositoryProvider<ChatRepository>.value(
               value: widget.chatRepository,
             ),
+            RepositoryProvider<ProgressRepository>.value(
+              value: widget.progressRepository,
+            ),
+            RepositoryProvider<CertificateRepository>.value(
+              value: widget.certificateRepository,
+            ),
+            RepositoryProvider<ContactUsRepository>.value(
+              value: widget.contactUsRepository,
+            ),
+            RepositoryProvider<TeacherStatsRepository>.value(
+              value: widget.teacherStatsRepository,
+            ),
           ],
           child: MultiBlocProvider(
             providers: [
@@ -499,6 +543,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               title: 'Fluent',
               debugShowCheckedModeBanner: false,
               navigatorKey: navigatorKey,
+              navigatorObservers: [routeObserver],
               theme: ThemeData(
                 useMaterial3: true,
                 primarySwatch: Colors.blue,

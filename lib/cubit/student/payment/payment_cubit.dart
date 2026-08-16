@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/payment_repository.dart';
 import 'payment_state.dart';
 
-class PaymentCubit extends Cubit<PaymentState> {
+class PaymentCubit extends SafeCubit<PaymentState> {
   final PaymentRepository repository;
 
   PaymentCubit(this.repository) : super(PaymentInitial());

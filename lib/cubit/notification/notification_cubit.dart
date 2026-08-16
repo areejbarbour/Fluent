@@ -1,9 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/notification_model.dart';
 import 'package:fluent/data/repository/notification_repository.dart';
 import 'notification_state.dart';
 
-class NotificationCubit extends Cubit<NotificationState> {
+class NotificationCubit extends SafeCubit<NotificationState> {
   final NotificationRepository repository;
 
   NotificationCubit(this.repository) : super(const NotificationState());

@@ -1,3 +1,9 @@
+import 'package:fluent/cubit/certificates/certificates_cubit.dart';
+import 'package:fluent/cubit/contact_us/contact_us_cubit.dart';
+import 'package:fluent/data/repository/certificate_repository.dart';
+import 'package:fluent/data/repository/contact_us_repository.dart';
+import 'package:fluent/presentation/screens/statics/certificates_screen.dart';
+import 'package:fluent/presentation/screens/statics/contact_us_screen.dart';
 import 'package:fluent/cubit/auth/forgot_password/forgot_password_cubit.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
@@ -34,6 +40,9 @@ import 'package:fluent/presentation/screens/teacher/courses/teacher_course_detai
 import 'package:fluent/presentation/screens/teacher/courses/teacher_courses_screen.dart';
 import 'package:fluent/presentation/screens/teacher/courses/course_tests_screen.dart';
 import 'package:fluent/presentation/screens/teacher/home/teacher_home_screen.dart';
+import 'package:fluent/presentation/screens/teacher/stats/teacher_stats_screen.dart';
+import 'package:fluent/cubit/teacher/stats/teacher_stats_cubit.dart';
+import 'package:fluent/data/repository/teacher_stats_repository.dart';
 import 'package:fluent/presentation/screens/teacher/lessons/lesson_detail_screen.dart';
 import 'package:fluent/presentation/screens/teacher/lessons/lesson_form_screen.dart';
 import 'package:fluent/presentation/screens/teacher/status_board/teacher_status_board_screen.dart';
@@ -270,6 +279,18 @@ class AppRouter {
               ),
             ],
             child: const TeacherHomeScreen(),
+          ),
+        );
+
+      case teacherStatsRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => TeacherStatsCubit(
+              statsRepository: ctx.read<TeacherStatsRepository>(),
+              lessonRepository: ctx.read<LessonRepository>(),
+              testRepository: ctx.read<TestRepository>(),
+            ),
+            child: const TeacherStatsScreen(),
           ),
         );
 
@@ -547,6 +568,23 @@ class AppRouter {
       case notificationsRoute:
         // NotificationCubit is provided globally in main.dart
         return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+
+      case certificatesRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) =>
+                CertificatesCubit(ctx.read<CertificateRepository>()),
+            child: const CertificatesScreen(),
+          ),
+        );
+
+      case contactUsRoute:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (ctx) => ContactUsCubit(ctx.read<ContactUsRepository>()),
+            child: const ContactUsScreen(),
+          ),
+        );
 
       default:
         return MaterialPageRoute(

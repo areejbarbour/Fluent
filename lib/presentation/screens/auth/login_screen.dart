@@ -7,6 +7,7 @@ import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_cubit.dart';
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:fluent/cubit/auth/login/login_cubit.dart';
 import 'package:fluent/cubit/auth/login/login_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,7 +15,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
-  final String? email; 
+  final String? email;
 
   const LoginScreen({super.key, this.email});
 
@@ -106,15 +107,10 @@ class _LoginScreenState extends State<LoginScreen> {
             child: BlocConsumer<LoginCubit, LoginState>(
               listener: (context, state) {
                 if (state is LoginSuccess) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: AppColors.sky,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                    ),
+                  showAppSnackBar(
+                    context,
+                    state.message,
+                    type: AppSnackType.success,
                   );
 
                   // Register FCM token + refresh unread badge (non-blocking)
@@ -144,16 +140,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     StudentEntryNavigator.goAfterLogin(context);
                   }
                 } else if (state is LoginFailure) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.error),
-                      backgroundColor: Colors.redAccent,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      duration: const Duration(seconds: 3),
-                    ),
+                  showAppSnackBar(
+                    context,
+                    state.error,
+                    type: AppSnackType.error,
                   );
                 }
               },
@@ -667,15 +657,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocConsumer<GoogleLoginCubit, GoogleLoginState>(
       listener: (context, state) {
         if (state is GoogleLoginSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Google login successful!'),
-              backgroundColor: AppColors.sky,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
+          showAppSnackBar(
+            context,
+            'Google login successful!',
+            type: AppSnackType.success,
           );
 
           NotificationBootstrap.registerFromContext(context);
@@ -702,16 +687,7 @@ class _LoginScreenState extends State<LoginScreen> {
             StudentEntryNavigator.goAfterLogin(context);
           }
         } else if (state is GoogleLoginFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message), // ✅ message وليس error
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.error);
         }
       },
       builder: (context, state) {

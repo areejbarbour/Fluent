@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
@@ -6,7 +7,7 @@ import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 import 'teacher_course_detail_state.dart';
 
-class TeacherCourseDetailCubit extends Cubit<TeacherCourseDetailState> {
+class TeacherCourseDetailCubit extends SafeCubit<TeacherCourseDetailState> {
   final LessonRepository lessonRepository;
   final TestRepository testRepository;
   final CourseModel course;

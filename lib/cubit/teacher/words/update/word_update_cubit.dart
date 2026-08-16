@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'word_update_state.dart';
 
-class WordUpdateCubit extends Cubit<WordUpdateState> {
+class WordUpdateCubit extends SafeCubit<WordUpdateState> {
   final WordRepository wordRepository;
   WordUpdateCubit(this.wordRepository) : super(WordUpdateInitial());
 

@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/podcast_repository.dart';
 import 'topic_podcasts_state.dart';
 
-class TopicPodcastsCubit extends Cubit<TopicPodcastsState> {
+class TopicPodcastsCubit extends SafeCubit<TopicPodcastsState> {
   final PodcastRepository repository;
 
   TopicPodcastsCubit(this.repository) : super(TopicPodcastsInitial());
@@ -18,9 +19,9 @@ class TopicPodcastsCubit extends Cubit<TopicPodcastsState> {
       emit(TopicPodcastsSuccess(result['data']));
     } else {
       print(" [TopicPodcastsCubit] Failed: ${result['message']}");
-      emit(TopicPodcastsFailure(
-        result['message'] ?? 'Failed to load podcasts',
-      ));
+      emit(
+        TopicPodcastsFailure(result['message'] ?? 'Failed to load podcasts'),
+      );
     }
   }
 }

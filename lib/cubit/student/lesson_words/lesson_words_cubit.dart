@@ -1,9 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/lesson_word_model.dart';
 import 'package:fluent/data/repository/lesson_word_repository.dart';
 import 'lesson_words_state.dart';
 
-class LessonWordsCubit extends Cubit<LessonWordsState> {
+class LessonWordsCubit extends SafeCubit<LessonWordsState> {
   final LessonWordRepository repository;
   List<LessonWordModel> _currentWords = [];
 
@@ -74,4 +75,4 @@ class LessonWordsCubit extends Cubit<LessonWordsState> {
       emit(LessonWordsSuccess(_currentWords));
     }
   }
-} 
+}

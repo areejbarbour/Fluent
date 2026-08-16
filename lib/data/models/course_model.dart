@@ -5,7 +5,7 @@ class CourseModel {
   final int estimatedDuration;
   final String status;
   final String image;
-  final String teacherName; // ← جديد
+  final String teacherName;
 
   /// Published course test id (CourseResource.test_id).
   final int? testId;
@@ -22,12 +22,13 @@ class CourseModel {
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
-    String teacherName = "Fluent Instructor"; // قيمة افتراضية
+    String teacherName = "Fluent Instructor";
 
     final teacher = json['teacher'];
-    if (teacher is Map<String, dynamic>) {
-      final first = teacher['first_name']?.toString() ?? '';
-      final last = teacher['last_name']?.toString() ?? '';
+    if (teacher is Map) {
+      final map = Map<String, dynamic>.from(teacher);
+      final first = map['first_name']?.toString() ?? '';
+      final last = map['last_name']?.toString() ?? '';
       teacherName = "$first $last".trim();
       if (teacherName.isEmpty) teacherName = "Fluent Instructor";
     }
@@ -47,15 +48,47 @@ class CourseModel {
   }
 }
 
+/// Matches backend StudentCourseService@getCourses progress block.
+class CoursesProgressModel {
+  final int completedCourses;
+  final int totalCourses;
+  final int progressPercentage;
+
+  const CoursesProgressModel({
+    required this.completedCourses,
+    required this.totalCourses,
+    required this.progressPercentage,
+  });
+
+  factory CoursesProgressModel.fromJson(Map<String, dynamic> json) {
+    int asInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v?.toString() ?? '') ?? 0;
+    }
+
+    return CoursesProgressModel(
+      completedCourses: asInt(json['completed_courses']),
+      totalCourses: asInt(json['total_courses']),
+      progressPercentage: asInt(json['progress_percentage']),
+    );
+  }
+
+  /// 0.0 – 1.0 for UI rings / bars
+  double get fraction => (progressPercentage.clamp(0, 100) / 100.0);
+}
+
 class StudentCoursesModel {
   final CourseModel? currentCourse;
   final List<CourseModel> completedCourses;
   final List<CourseModel> lockedCourses;
+  final CoursesProgressModel? progress;
 
   StudentCoursesModel({
     required this.currentCourse,
     required this.completedCourses,
     required this.lockedCourses,
+    this.progress,
   });
 
   factory StudentCoursesModel.fromJson(Map<String, dynamic> json) {
@@ -67,14 +100,23 @@ class StudentCoursesModel {
           .toList();
     }
 
+    CoursesProgressModel? progress;
+    final rawProgress = json['progress'];
+    if (rawProgress is Map) {
+      progress = CoursesProgressModel.fromJson(
+        Map<String, dynamic>.from(rawProgress),
+      );
+    }
+
     return StudentCoursesModel(
       currentCourse: json['current_course'] != null
           ? CourseModel.fromJson(
-              Map<String, dynamic>.from(json['current_course']),
+              Map<String, dynamic>.from(json['current_course'] as Map),
             )
           : null,
       completedCourses: parseList(json['completed_courses']),
       lockedCourses: parseList(json['locked_courses']),
+      progress: progress,
     );
   }
 }

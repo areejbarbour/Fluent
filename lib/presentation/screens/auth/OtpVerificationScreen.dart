@@ -7,6 +7,7 @@ import 'package:fluent/cubit/auth/resend_otp/resend_otp_state.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
 import 'package:fluent/presentation/screens/placementTestDialog.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -165,15 +166,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   listener: (context, state) {
                     if (state is VerifyOtpSuccess) {
                       // ✅ نجاح التحقق
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: AppColors.sky,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
+                      showAppSnackBar(
+                        context,
+                        state.message,
+                        type: AppSnackType.success,
                       );
 
                       // ✅ التوجيه بناءً على الـ type
@@ -194,16 +190,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       }
                     } else if (state is VerifyOtpFailure) {
                       // ✅ فشل التحقق - عرض رسالة + مسح الخانات
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.error),
-                          backgroundColor: Colors.redAccent,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          duration: const Duration(seconds: 3),
-                        ),
+                      showAppSnackBar(
+                        context,
+                        state.error,
+                        type: AppSnackType.error,
                       );
                       _clearOtpFields();
                     }
@@ -213,27 +203,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 BlocListener<ResendOtpCubit, ResendOtpState>(
                   listener: (context, state) {
                     if (state is ResendOtpSuccess) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: AppColors.sky,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
+                      showAppSnackBar(
+                        context,
+                        state.message,
+                        type: AppSnackType.success,
                       );
                       _startCountdown(); // إعادة تشغيل الـ countdown
                     } else if (state is ResendOtpFailure) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.error),
-                          backgroundColor: Colors.redAccent,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
+                      showAppSnackBar(
+                        context,
+                        state.error,
+                        type: AppSnackType.error,
                       );
                     }
                   },
@@ -734,17 +714,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         type: widget.type,
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text(
-                            'Please enter the complete 6-digit code',
-                          ),
-                          backgroundColor: Colors.redAccent,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
+                      showAppSnackBar(
+                        context,
+                        'Please enter the complete 6-digit code',
+                        type: AppSnackType.error,
                       );
                     }
                   },

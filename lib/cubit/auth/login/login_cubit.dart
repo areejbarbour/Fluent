@@ -1,5 +1,6 @@
 // lib/presentation/cubits/auth/login/login_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/helper/auth_session.dart';
 
@@ -8,7 +9,7 @@ import '../../../../data/repository/auth_repository.dart';
 import '../../../../helper/notification_bootstrap.dart';
 import 'login_state.dart';
 
-class LoginCubit extends Cubit<LoginState> {
+class LoginCubit extends SafeCubit<LoginState> {
   final AuthRepository authRepository;
 
   LoginCubit(this.authRepository) : super(LoginInitial());

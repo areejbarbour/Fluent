@@ -1,18 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import '../../../../data/repository/auth_repository.dart';
 import 'forgot_password_state.dart';
 
-class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
+class ForgotPasswordCubit extends SafeCubit<ForgotPasswordState> {
   final AuthRepository authRepository;
   ForgotPasswordCubit(this.authRepository) : super(ForgotPasswordInitial());
 
   Future<void> forgotPassword({required String email}) async {
     emit(ForgotPasswordLoading());
     print(" [ForgotPasswordCubit] Sending OTP to: $email");
-    
+
     try {
       final data = await authRepository.forgotPassword(email: email);
-      
+
       final success = data['success'] as bool? ?? false;
       final message = data['message'] as String? ?? '';
 

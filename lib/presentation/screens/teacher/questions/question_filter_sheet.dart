@@ -1,3 +1,4 @@
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -330,15 +331,10 @@ class _QuestionFilterSheetState extends State<QuestionFilterSheet> {
         : null;
 
     if (minScore != null && maxScore != null && maxScore < minScore) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Max score must be ≥ min score',
-            style: GoogleFonts.poppins(fontSize: 12.sp),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Max score must be ≥ min score',
+        type: AppSnackType.error,
       );
       return;
     }

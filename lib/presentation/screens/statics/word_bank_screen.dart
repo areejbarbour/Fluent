@@ -1,5 +1,3 @@
-
-
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -18,6 +16,7 @@ import 'package:fluent/constants/strings.dart';
 import 'package:fluent/data/repository/lesson_word_repository.dart';
 import 'package:fluent/presentation/screens/statics/word_quiz_screen.dart';
 import 'package:fluent/presentation/widgets/app_backdrop.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 
 enum WordStatus { learning, mastered }
 
@@ -161,9 +160,7 @@ class _WordBankScreenState extends State<WordBankScreen>
     final isLearning = word.status == WordStatus.learning;
 
     _showAppSnack(
-      isLearning
-          ? 'Transferring to know...'
-          : 'Transferring to learning...',
+      isLearning ? 'Transferring to know...' : 'Transferring to learning...',
     );
 
     final Map<String, dynamic> result;
@@ -202,95 +199,7 @@ class _WordBankScreenState extends State<WordBankScreen>
     bool isSuccess = false,
   }) {
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        content: ClipRRect(
-          borderRadius: BorderRadius.circular(16.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.r),
-                gradient: LinearGradient(
-                  colors: isError
-                      ? [
-                          const Color(0xFFFF6B6B).withOpacity(.25),
-                          AppColors.dark.withOpacity(.9),
-                        ]
-                      : isSuccess
-                      ? [
-                          const Color(0xFF4ADE80).withOpacity(.22),
-                          AppColors.dark.withOpacity(.9),
-                        ]
-                      : [
-                          AppColors.sky.withOpacity(.2),
-                          AppColors.dark.withOpacity(.9),
-                        ],
-                ),
-                border: Border.all(
-                  color: isError
-                      ? const Color(0xFFFF6B6B).withOpacity(.45)
-                      : isSuccess
-                      ? const Color(0xFF4ADE80).withOpacity(.45)
-                      : AppColors.sky.withOpacity(.35),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32.w,
-                    height: 32.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: isError
-                            ? const [Color(0xFFFF6B6B), Color(0xFFE53935)]
-                            : isSuccess
-                            ? const [Color(0xFF4ADE80), Color(0xFF22C55E)]
-                            : const [AppColors.sky, Color(0xFFB388FF)],
-                      ),
-                    ),
-                    child: Icon(
-                      isError
-                          ? Icons.error_outline_rounded
-                          : isSuccess
-                          ? Icons.check_rounded
-                          : Icons.info_outline_rounded,
-                      color: Colors.white,
-                      size: 16.sp,
-                    ),
-                  ),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: Text(
-                      message,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    showAppSnackBar(context, message, type: AppSnackType.error);
   }
 
   @override
@@ -441,52 +350,52 @@ class _WordBankScreenState extends State<WordBankScreen>
   }
 
   Widget _buildTopBar() {
-  final total = _words.length;
-  final mastered =
-      _words.where((w) => w.status == WordStatus.mastered).length;
+    final total = _words.length;
+    final mastered = _words
+        .where((w) => w.status == WordStatus.mastered)
+        .length;
 
-  return Padding(
-    padding: EdgeInsets.symmetric(horizontal: 20.w),
-    child: Row(
-      children: [
-        _circleIconButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () => Navigator.pop(context),
-        ),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Word Bank',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cinzelDecorative(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                total == 0
-                    ? 'Your personal vocabulary'
-                    : '$mastered of $total words know',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.6),
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Row(
+        children: [
+          _circleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.pop(context),
           ),
-        ),
-        SizedBox(width: 44.w),
-      ],
-    ),
-  ).animate().fadeIn(duration: 400.ms).moveY(begin: -10, end: 0);
-}
-
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Word Bank',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzelDecorative(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  total == 0
+                      ? 'Your personal vocabulary'
+                      : '$mastered of $total words know',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.6),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 44.w),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).moveY(begin: -10, end: 0);
+  }
 
   Widget _circleIconButton({
     required IconData icon,
@@ -566,9 +475,7 @@ class _WordBankScreenState extends State<WordBankScreen>
             ),
             prefixIcon: Icon(
               Icons.search_rounded,
-              color: focused
-                  ? AppColors.sky
-                  : Colors.white.withOpacity(.5),
+              color: focused ? AppColors.sky : Colors.white.withOpacity(.5),
               size: 20.sp,
             ),
             suffixIcon: _searchController.text.isNotEmpty
@@ -596,27 +503,28 @@ class _WordBankScreenState extends State<WordBankScreen>
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
 
-Widget _tabCountBadge(String value, Color color, bool selected) {
-  return Container(
-    padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 1.5.h),
-    decoration: BoxDecoration(
-      color: selected ? Colors.black.withOpacity(.22) : color.withOpacity(.20),
-      borderRadius: BorderRadius.circular(10.r),
-      border: Border.all(
-        color: selected ? Colors.transparent : color.withOpacity(.4),
+  Widget _tabCountBadge(String value, Color color, bool selected) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 1.5.h),
+      decoration: BoxDecoration(
+        color: selected
+            ? Colors.black.withOpacity(.22)
+            : color.withOpacity(.20),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: selected ? Colors.transparent : color.withOpacity(.4),
+        ),
       ),
-    ),
-    child: Text(
-      value,
-      style: GoogleFonts.poppins(
-        color: selected ? Colors.black : color,
-        fontSize: 9.sp,
-        fontWeight: FontWeight.w800,
+      child: Text(
+        value,
+        style: GoogleFonts.poppins(
+          color: selected ? Colors.black : color,
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w800,
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildTabBar() {
     final learningCount = _words
@@ -807,21 +715,26 @@ Widget _tabCountBadge(String value, Color color, bool selected) {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(24.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [AppColors.sky.withOpacity(.2), Colors.transparent],
-                ),
-              ),
-              child: Icon(
-                isLearning
-                    ? Icons.menu_book_rounded
-                    : Icons.emoji_events_rounded,
-                size: 60.sp,
-                color: Colors.white.withOpacity(.3),
-              ),
-            ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
+                  padding: EdgeInsets.all(24.r),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.sky.withOpacity(.2),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Icon(
+                    isLearning
+                        ? Icons.menu_book_rounded
+                        : Icons.emoji_events_rounded,
+                    size: 60.sp,
+                    color: Colors.white.withOpacity(.3),
+                  ),
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scaleXY(
                   begin: 1,
                   end: 1.06,
                   duration: 1800.ms,
@@ -901,10 +814,11 @@ Widget _tabCountBadge(String value, Color color, bool selected) {
                             size: 18.sp,
                           ),
                           SizedBox(width: 6.w),
-                           Text( "Quiz" ,
-                          //   learningCount > 0
-                          //       ? 'Quiz · $learningCount'
-                          //       : 'Quiz',
+                          Text(
+                            "Quiz",
+                            //   learningCount > 0
+                            //       ? 'Quiz · $learningCount'
+                            //       : 'Quiz',
                             style: GoogleFonts.poppins(
                               color: Colors.black,
                               fontWeight: FontWeight.w800,
@@ -999,7 +913,10 @@ class _MasteryRing extends StatelessWidget {
             shape: BoxShape.circle,
             color: AppColors.dark.withOpacity(.55),
             boxShadow: [
-              BoxShadow(color: AppColors.yellow.withOpacity(.18), blurRadius: 16),
+              BoxShadow(
+                color: AppColors.yellow.withOpacity(.18),
+                blurRadius: 16,
+              ),
             ],
           ),
           child: Stack(
@@ -1090,313 +1007,346 @@ class _WordCardState extends State<_WordCard> {
       child: AnimatedScale(
         scale: _pressed ? 0.98 : 1,
         duration: const Duration(milliseconds: 120),
-        child: ClipRRect(
-              borderRadius: BorderRadius.circular(22.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22.r),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        accent.withOpacity(.16),
-                        Colors.white.withOpacity(.06),
-                        AppColors.dark.withOpacity(.30),
-                      ],
-                      stops: const [0.0, 0.4, 1.0],
-                    ),
-                    border: Border.all(color: accent.withOpacity(.30)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withOpacity(.20),
-                        blurRadius: 22,
-                        offset: const Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          width: 4.5.w,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: isLearning
-                                  ? [AppColors.sky, const Color(0xFFB388FF)]
-                                  : [
-                                      const Color(0xFF4ADE80),
-                                      AppColors.yellow,
-                                    ],
-                            ),
-                            borderRadius: BorderRadius.horizontal(
-                              left: Radius.circular(22.r),
-                            ),
-                          ),
+        child:
+            ClipRRect(
+                  borderRadius: BorderRadius.circular(22.r),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22.r),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            accent.withOpacity(.16),
+                            Colors.white.withOpacity(.06),
+                            AppColors.dark.withOpacity(.30),
+                          ],
+                          stops: const [0.0, 0.4, 1.0],
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding:
-                                EdgeInsets.fromLTRB(12.w, 12.h, 10.w, 12.h),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 42.w,
-                                      height: 42.w,
-                                      decoration: BoxDecoration(
-                                        borderRadius:
-                                            BorderRadius.circular(14.r),
-                                        gradient: LinearGradient(
-                                          colors: isLearning
-                                              ? [
-                                                  AppColors.sky
-                                                      .withOpacity(.35),
-                                                  AppColors.sky
-                                                      .withOpacity(.12),
-                                                ]
-                                              : [
-                                                  const Color(0xFF4ADE80)
-                                                      .withOpacity(.35),
-                                                  const Color(0xFF4ADE80)
-                                                      .withOpacity(.12),
-                                                ],
-                                        ),
-                                        border: Border.all(
-                                          color: accent.withOpacity(.4),
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          widget.word.word.isNotEmpty
-                                              ? widget.word.word[0]
-                                                  .toUpperCase()
-                                              : '?',
-                                          style: GoogleFonts.poppins(
-                                            color: accent,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 17.sp,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 11.w),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            widget.word.word,
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 15.sp,
-                                            ),
-                                          ),
-                                          SizedBox(height: 2.h),
-                                          Text(
-                                            widget.word.translation,
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white
-                                                  .withOpacity(.65),
-                                              fontSize: 12.5.sp,
-                                            ),
-                                          ),
+                        border: Border.all(color: accent.withOpacity(.30)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withOpacity(.20),
+                            blurRadius: 22,
+                            offset: const Offset(0, 10),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              width: 4.5.w,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: isLearning
+                                      ? [AppColors.sky, const Color(0xFFB388FF)]
+                                      : [
+                                          const Color(0xFF4ADE80),
+                                          AppColors.yellow,
                                         ],
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: _hasAudio ? _playAudio : null,
-                                      child: Container(
-                                        width: 34.w,
-                                        height: 34.w,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: _hasAudio
-                                              ? LinearGradient(
-                                                  colors: [
-                                                    AppColors.yellow
-                                                        .withOpacity(.9),
-                                                    AppColors.orange
-                                                        .withOpacity(.85),
-                                                  ],
-                                                )
-                                              : null,
-                                          color: _hasAudio
-                                              ? null
-                                              : Colors.white.withOpacity(.06),
-                                          border: Border.all(
-                                            color: _hasAudio
-                                                ? AppColors.yellow
-                                                    .withOpacity(.5)
-                                                : Colors.white.withOpacity(.1),
-                                          ),
-                                          boxShadow: _hasAudio
-                                              ? [
-                                                  BoxShadow(
-                                                    color: AppColors.yellow
-                                                        .withOpacity(.35),
-                                                    blurRadius: 10,
-                                                  ),
-                                                ]
-                                              : null,
-                                        ),
-                                        child: Icon(
-                                          Icons.volume_up_rounded,
-                                          color: _hasAudio
-                                              ? Colors.black
-                                              : Colors.white.withOpacity(.28),
-                                          size: 16.sp,
-                                        ),
-                                      )
-                                          .animate(
-                                            target: _isPlaying ? 1 : 0,
-                                          )
-                                          .scaleXY(
-                                            begin: 1,
-                                            end: 1.12,
-                                            duration: 260.ms,
-                                          ),
-                                    ),
-                                    SizedBox(width: 6.w),
-                                  ],
                                 ),
-                                SizedBox(height: 12.h),
-                                Container(
-                                  height: 1,
-                                  color: Colors.white.withOpacity(.07),
+                                borderRadius: BorderRadius.horizontal(
+                                  left: Radius.circular(22.r),
                                 ),
-                                SizedBox(height: 10.h),
-                                Row(
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  12.w,
+                                  12.h,
+                                  10.w,
+                                  12.h,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 9.w,
-                                        vertical: 4.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        borderRadius:
-                                            BorderRadius.circular(20.r),
-                                        color: accent.withOpacity(.12),
-                                        border: Border.all(
-                                          color: accent.withOpacity(.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            isLearning
-                                                ? Icons.school_rounded
-                                                : Icons.verified_rounded,
-                                            size: 11.sp,
-                                            color: accent,
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            isLearning
-                                                ? 'Learning'
-                                                : 'Know',
-                                            style: GoogleFonts.poppins(
-                                              color: accent,
-                                              fontSize: 10.sp,
-                                              fontWeight: FontWeight.w700,
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 42.w,
+                                          height: 42.w,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              14.r,
+                                            ),
+                                            gradient: LinearGradient(
+                                              colors: isLearning
+                                                  ? [
+                                                      AppColors.sky.withOpacity(
+                                                        .35,
+                                                      ),
+                                                      AppColors.sky.withOpacity(
+                                                        .12,
+                                                      ),
+                                                    ]
+                                                  : [
+                                                      const Color(
+                                                        0xFF4ADE80,
+                                                      ).withOpacity(.35),
+                                                      const Color(
+                                                        0xFF4ADE80,
+                                                      ).withOpacity(.12),
+                                                    ],
+                                            ),
+                                            border: Border.all(
+                                              color: accent.withOpacity(.4),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(width: 6.w),
-                                    Icon(
-                                      Icons.swipe_left_alt_rounded,
-                                      size: 13.sp,
-                                      color: Colors.white.withOpacity(.25),
-                                    ),
-                                    const Spacer(),
-                                    GestureDetector(
-                                      onTap: widget.onMove,
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 12.w,
-                                          vertical: 7.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(14.r),
-                                          gradient: LinearGradient(
-                                            colors: isLearning
-                                                ? const [
-                                                    Color(0xFF4ADE80),
-                                                    Color(0xFF22C55E),
-                                                  ]
-                                                : const [
-                                                    AppColors.orange,
-                                                    AppColors.yellow,
-                                                  ],
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: (isLearning
-                                                      ? const Color(
-                                                          0xFF4ADE80)
-                                                      : AppColors.yellow)
-                                                  .withOpacity(.4),
-                                              blurRadius: 12,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              widget.actionIcon,
-                                              color: isLearning
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                              size: 14.sp,
-                                            ),
-                                            SizedBox(width: 5.w),
-                                            Text(
-                                              widget.actionLabel,
+                                          child: Center(
+                                            child: Text(
+                                              widget.word.word.isNotEmpty
+                                                  ? widget.word.word[0]
+                                                        .toUpperCase()
+                                                  : '?',
                                               style: GoogleFonts.poppins(
-                                                color: isLearning
-                                                    ? Colors.white
-                                                    : Colors.black,
+                                                color: accent,
                                                 fontWeight: FontWeight.w800,
-                                                fontSize: 11.sp,
+                                                fontSize: 17.sp,
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
+                                        SizedBox(width: 11.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                widget.word.word,
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 15.sp,
+                                                ),
+                                              ),
+                                              SizedBox(height: 2.h),
+                                              Text(
+                                                widget.word.translation,
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white
+                                                      .withOpacity(.65),
+                                                  fontSize: 12.5.sp,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: _hasAudio ? _playAudio : null,
+                                          child:
+                                              Container(
+                                                    width: 34.w,
+                                                    height: 34.w,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      gradient: _hasAudio
+                                                          ? LinearGradient(
+                                                              colors: [
+                                                                AppColors.yellow
+                                                                    .withOpacity(
+                                                                      .9,
+                                                                    ),
+                                                                AppColors.orange
+                                                                    .withOpacity(
+                                                                      .85,
+                                                                    ),
+                                                              ],
+                                                            )
+                                                          : null,
+                                                      color: _hasAudio
+                                                          ? null
+                                                          : Colors.white
+                                                                .withOpacity(
+                                                                  .06,
+                                                                ),
+                                                      border: Border.all(
+                                                        color: _hasAudio
+                                                            ? AppColors.yellow
+                                                                  .withOpacity(
+                                                                    .5,
+                                                                  )
+                                                            : Colors.white
+                                                                  .withOpacity(
+                                                                    .1,
+                                                                  ),
+                                                      ),
+                                                      boxShadow: _hasAudio
+                                                          ? [
+                                                              BoxShadow(
+                                                                color: AppColors
+                                                                    .yellow
+                                                                    .withOpacity(
+                                                                      .35,
+                                                                    ),
+                                                                blurRadius: 10,
+                                                              ),
+                                                            ]
+                                                          : null,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.volume_up_rounded,
+                                                      color: _hasAudio
+                                                          ? Colors.black
+                                                          : Colors.white
+                                                                .withOpacity(
+                                                                  .28,
+                                                                ),
+                                                      size: 16.sp,
+                                                    ),
+                                                  )
+                                                  .animate(
+                                                    target: _isPlaying ? 1 : 0,
+                                                  )
+                                                  .scaleXY(
+                                                    begin: 1,
+                                                    end: 1.12,
+                                                    duration: 260.ms,
+                                                  ),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                      ],
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    Container(
+                                      height: 1,
+                                      color: Colors.white.withOpacity(.07),
+                                    ),
+                                    SizedBox(height: 10.h),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 9.w,
+                                            vertical: 4.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              20.r,
+                                            ),
+                                            color: accent.withOpacity(.12),
+                                            border: Border.all(
+                                              color: accent.withOpacity(.3),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                isLearning
+                                                    ? Icons.school_rounded
+                                                    : Icons.verified_rounded,
+                                                size: 11.sp,
+                                                color: accent,
+                                              ),
+                                              SizedBox(width: 4.w),
+                                              Text(
+                                                isLearning
+                                                    ? 'Learning'
+                                                    : 'Know',
+                                                style: GoogleFonts.poppins(
+                                                  color: accent,
+                                                  fontSize: 10.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Icon(
+                                          Icons.swipe_left_alt_rounded,
+                                          size: 13.sp,
+                                          color: Colors.white.withOpacity(.25),
+                                        ),
+                                        const Spacer(),
+                                        GestureDetector(
+                                          onTap: widget.onMove,
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 12.w,
+                                              vertical: 7.h,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(14.r),
+                                              gradient: LinearGradient(
+                                                colors: isLearning
+                                                    ? const [
+                                                        Color(0xFF4ADE80),
+                                                        Color(0xFF22C55E),
+                                                      ]
+                                                    : const [
+                                                        AppColors.orange,
+                                                        AppColors.yellow,
+                                                      ],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color:
+                                                      (isLearning
+                                                              ? const Color(
+                                                                  0xFF4ADE80,
+                                                                )
+                                                              : AppColors
+                                                                    .yellow)
+                                                          .withOpacity(.4),
+                                                  blurRadius: 12,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  widget.actionIcon,
+                                                  color: isLearning
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  size: 14.sp,
+                                                ),
+                                                SizedBox(width: 5.w),
+                                                Text(
+                                                  widget.actionLabel,
+                                                  style: GoogleFonts.poppins(
+                                                    color: isLearning
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 11.sp,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-            )
-            .animate()
-            .fadeIn(delay: (40 * widget.index).ms, duration: 350.ms)
-            .moveY(begin: 12, end: 0, curve: Curves.easeOutCubic),
+                )
+                .animate()
+                .fadeIn(delay: (40 * widget.index).ms, duration: 350.ms)
+                .moveY(begin: 12, end: 0, curve: Curves.easeOutCubic),
       ),
     );
   }

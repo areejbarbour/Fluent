@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/attempt_models.dart';
 import 'package:fluent/data/models/question_model.dart';
 import 'package:fluent/data/models/question_type.dart';
@@ -8,7 +9,7 @@ import 'placement_attempt_state.dart';
 
 /// Full placement flow aligned with backend AttemptService:
 /// startPlacementTest → submit-answer (sequential) → finish → review (if passed).
-class PlacementAttemptCubit extends Cubit<PlacementAttemptState> {
+class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
   final AttemptRepository attemptRepository;
 
   PlacementAttemptCubit(this.attemptRepository)

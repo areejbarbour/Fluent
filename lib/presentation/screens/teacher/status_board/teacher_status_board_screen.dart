@@ -1,5 +1,6 @@
 // lib/presentation/screens/teacher/status_board/teacher_status_board_screen.dart
 import 'dart:ui';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/statuses/teacher_status_board_cubit.dart';
@@ -61,11 +62,10 @@ class _TeacherStatusBoardScreenState extends State<TeacherStatusBoardScreen>
     if (result['success'] == true && result['data'] is TestModel) {
       fullTest = result['data'] as TestModel;
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Failed to load test details'),
-          backgroundColor: Colors.redAccent,
-        ),
+      showAppSnackBar(
+        context,
+        result['message'] ?? 'Failed to load test details',
+        type: AppSnackType.error,
       );
       return;
     }

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_cubit.dart';
 import 'package:fluent/cubit/teacher/questions/question_filter/question_filter_state.dart';
@@ -81,7 +82,7 @@ class _TestFormScreenState extends State<TestFormScreen> {
   void _submit(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedQuestions.length < 2) {
-      _showSnackBar('You must select at least 2 questions', Colors.redAccent);
+      _showSnackBar('You must select at least 2 questions', AppSnackType.error);
       return;
     }
 
@@ -190,14 +191,8 @@ class _TestFormScreenState extends State<TestFormScreen> {
     }
   }
 
-  void _showSnackBar(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showSnackBar(String msg, AppSnackType type) {
+    showAppSnackBar(context, msg, type: type);
   }
 
   void _openQuestionPicker() {
@@ -238,7 +233,10 @@ class _TestFormScreenState extends State<TestFormScreen> {
           BlocListener<TestCreateCubit, TestCreateState>(
             listener: (context, state) {
               if (state is TestCreateSuccess) {
-                _showSnackBar('Test created successfully!', Colors.greenAccent);
+                _showSnackBar(
+                  'Test created successfully!',
+                  AppSnackType.success,
+                );
                 Navigator.pop(context, true);
               } else if (state is TestCreateFailure) {
                 _showError(state.error, state.errors);
@@ -248,7 +246,7 @@ class _TestFormScreenState extends State<TestFormScreen> {
           BlocListener<TestUpdateCubit, TestUpdateState>(
             listener: (context, state) {
               if (state is TestUpdateSuccess) {
-                _showSnackBar(state.message, Colors.greenAccent);
+                _showSnackBar(state.message, AppSnackType.success);
                 Navigator.pop(context, true);
               } else if (state is TestUpdateFailure) {
                 _showError(state.error, state.errors);
@@ -269,7 +267,7 @@ class _TestFormScreenState extends State<TestFormScreen> {
         errorMsg += '- $key: ${(value is List ? value.join(', ') : value)}\n';
       });
     }
-    _showSnackBar(errorMsg, Colors.redAccent);
+    _showSnackBar(errorMsg, AppSnackType.error);
   }
 
   Widget _buildUI(BuildContext context) {
@@ -732,15 +730,11 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
   void _toggleSelection(Question q) {
     // لاختبار كورس: امنع اختيار غير المؤهل
     if (widget.isCourseTest && q.isEligible == false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'This question is not eligible for this course test. '
-            'Use it in a lesson test first.',
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'This question is not eligible for this course test. '
+        'Use it in a lesson test first.',
+        type: AppSnackType.error,
       );
       return;
     }
@@ -843,15 +837,10 @@ class _QuestionPickerSheetState extends State<_QuestionPickerSheet> {
         onlyEligible: widget.isCourseTest ? true : null,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Question created and added to selection',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.greenAccent.shade400,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Question created and added to selection',
+        type: AppSnackType.success,
       );
     }
   }

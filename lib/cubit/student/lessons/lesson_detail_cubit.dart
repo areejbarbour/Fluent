@@ -1,10 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/lesson_detail_model.dart';
 import '../../../data/repository/lesson_detail_repository.dart';
 import 'package:fluent/cubit/student/lessons/lesson_detail_state.dart';
 
-class LessonDetailCubit extends Cubit<LessonDetailState> {
+class LessonDetailCubit extends SafeCubit<LessonDetailState> {
   static const int maxCommentLength = 1000;
 
   final LessonDetailRepository lessonDetailRepository;

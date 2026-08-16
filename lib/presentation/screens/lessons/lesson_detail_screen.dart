@@ -9,6 +9,7 @@ import 'package:fluent/cubit/student/lessons/lesson_detail_cubit.dart';
 import 'package:fluent/cubit/student/lessons/lesson_detail_state.dart';
 import 'package:fluent/data/models/lesson_detail_model.dart';
 import 'package:fluent/data/models/lesson_word_model.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -53,15 +54,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   Future<void> _playWordAudio(String? audioUrl) async {
     if (audioUrl == null || audioUrl.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No audio for this word',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'No audio for this word',
+        type: AppSnackType.warning,
       );
       return;
     }
@@ -72,15 +68,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       await _audioPlayer.play(UrlSource(url));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to play audio',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Failed to play audio',
+        type: AppSnackType.error,
       );
     }
   }
@@ -181,13 +172,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   void _showErrorSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.poppins(fontSize: 13)),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    showAppSnackBar(context, message, type: AppSnackType.error);
   }
 
   void _showCommentActions(LessonCommentModel comment, {bool canEdit = true}) {
@@ -912,26 +897,16 @@ class _WordsStep extends StatelessWidget {
           child: BlocConsumer<LessonWordsCubit, LessonWordsState>(
             listener: (context, state) {
               if (state is LessonWordsActionSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.poppins(fontSize: 13),
-                    ),
-                    backgroundColor: Colors.greenAccent.shade700,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.success,
                 );
               } else if (state is LessonWordsFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.poppins(fontSize: 13),
-                    ),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.error,
                 );
               }
             },
@@ -1935,12 +1910,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final err = await widget.onAdd(text);
     if (!mounted) return;
     if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(err, style: GoogleFonts.poppins(fontSize: 13)),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      showAppSnackBar(context, err, type: AppSnackType.error);
     } else {
       _controller.clear();
       FocusScope.of(context).unfocus();

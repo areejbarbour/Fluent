@@ -1,11 +1,12 @@
 import 'package:fluent/cubit/teacher/home/home_teacher_state.dart';
 import 'package:fluent/data/models/test_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 
-class TeacherHomeCubit extends Cubit<TeacherHomeState> {
+class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
   final LessonRepository lessonRepository;
   final QuestionRepository questionRepository;
   final TestRepository testRepository;

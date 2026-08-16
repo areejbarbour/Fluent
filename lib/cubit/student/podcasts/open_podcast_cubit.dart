@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/podcast_repository.dart';
 import 'open_podcast_state.dart';
 
-class OpenPodcastCubit extends Cubit<OpenPodcastState> {
+class OpenPodcastCubit extends SafeCubit<OpenPodcastState> {
   final PodcastRepository repository;
 
   OpenPodcastCubit(this.repository) : super(OpenPodcastInitial());
@@ -15,15 +16,10 @@ class OpenPodcastCubit extends Cubit<OpenPodcastState> {
 
     if (result['success'] == true) {
       print(" [OpenPodcastCubit] Podcast opened");
-      emit(OpenPodcastSuccess(
-        result: result['data'],
-        podcastId: podcastId,
-      ));
+      emit(OpenPodcastSuccess(result: result['data'], podcastId: podcastId));
     } else {
       print(" [OpenPodcastCubit] Failed: ${result['message']}");
-      emit(OpenPodcastFailure(
-        result['message'] ?? 'Failed to open podcast',
-      ));
+      emit(OpenPodcastFailure(result['message'] ?? 'Failed to open podcast'));
     }
   }
 

@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
+import 'package:fluent/presentation/widgets/certificate_earned_dialog.dart';
 import 'package:fluent/cubit/student/attempt/student_attempt_cubit.dart';
 import 'package:fluent/cubit/student/attempt/student_attempt_state.dart';
 import 'package:fluent/data/models/attempt_models.dart';
 import 'package:fluent/data/models/question_model.dart';
 import 'package:fluent/data/models/question_type.dart';
 import 'package:fluent/data/repository/attempt_repository.dart';
+import 'package:fluent/data/repository/certificate_repository.dart';
+import 'package:fluent/data/models/certificate_model.dart';
 import 'package:fluent/data/repository/level_repository.dart';
 import 'package:fluent/data/models/level_model.dart';
 import 'package:fluent/presentation/widgets/app_backdrop.dart';
@@ -14,6 +17,7 @@ import 'package:fluent/presentation/widgets/fill_answer_widget.dart';
 import 'package:fluent/helper/questions/answer_display_helper.dart';
 import 'package:fluent/presentation/widgets/arrange_answer_widget.dart';
 import 'package:fluent/presentation/widgets/pair_answer_widget.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -162,15 +166,7 @@ class _StudentTestViewState extends State<_StudentTestView> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: GoogleFonts.poppins(fontSize: 13)),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    showAppSnackBar(context, msg, type: AppSnackType.info);
   }
 
   Future<bool> _onWillPop() async {
@@ -273,18 +269,7 @@ class _StudentTestViewState extends State<_StudentTestView> {
               child: BlocConsumer<StudentAttemptCubit, StudentAttemptState>(
                 listener: (context, state) {
                   void showErr(String msg) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          msg,
-                          style: GoogleFonts.poppins(fontSize: 13),
-                        ),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 4),
-                      ),
-                    );
+                    showAppSnackBar(context, msg, type: AppSnackType.info);
                   }
 
                   if (state is StudentAttemptFailure) {
@@ -1116,6 +1101,9 @@ class _FinishedViewState extends State<_FinishedView>
   late final Animation<double> _scale;
   late final Animation<double> _fade;
 
+  bool _certificateDialogShown = false;
+  String? _resolvedCertificateUrl;
+
   @override
   void initState() {
     super.initState();
@@ -1126,6 +1114,75 @@ class _FinishedViewState extends State<_FinishedView>
     _scale = CurvedAnimation(parent: _anim, curve: Curves.easeOutBack);
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
     _anim.forward();
+
+    // Finish response now includes reward.certificate_url + reward.user_level_id
+    // on level pass. Resolve URL (with retry) then celebrate with direct open.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowCertificateDialog();
+    });
+  }
+
+  /// Prefer finish.reward.certificate_url; if null but user_level_id is set,
+  /// retry GET /user-levels/{id}/certificate a few times (generation lag / failure).
+  Future<String?> _resolveCertificateUrl() async {
+    final reward = widget.state.result.reward;
+    final fromFinish = CertificateModel.normalizeMediaUrl(
+      reward.certificateUrl,
+    );
+    if (fromFinish != null) return fromFinish;
+
+    final userLevelId = reward.userLevelId;
+    if (userLevelId == null) return null;
+
+    final repo = context.read<CertificateRepository>();
+    // Short retries: image generation + media attach can lag briefly.
+    for (var i = 0; i < 3; i++) {
+      if (i > 0) {
+        await Future<void>.delayed(Duration(milliseconds: 700 * i));
+      }
+      if (!mounted) return null;
+      final result = await repo.getUserLevelCertificate(userLevelId);
+      if (result['success'] == true && result['data'] is String) {
+        final url = CertificateModel.normalizeMediaUrl(
+          result['data'] as String,
+        );
+        if (url != null) return url;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _maybeShowCertificateDialog() async {
+    if (_certificateDialogShown || !mounted) return;
+    final r = widget.state.result;
+    final t = widget.state.test;
+    if (!r.passed || !t.isLevel) return;
+
+    _certificateDialogShown = true;
+    // Let the result screen animate in first.
+    await Future<void>.delayed(const Duration(milliseconds: 650));
+    if (!mounted) return;
+
+    final certUrl = await _resolveCertificateUrl();
+    if (!mounted) return;
+    if (certUrl != null) {
+      setState(() => _resolvedCertificateUrl = certUrl);
+    }
+
+    final levelTitle = t.title.trim().isNotEmpty ? t.title.trim() : null;
+    final viewCert = await CertificateEarnedDialog.show(
+      context,
+      levelName: levelTitle,
+      scorePercent: r.scorePercent,
+      certificateUrl: _resolvedCertificateUrl,
+    );
+    if (!mounted) return;
+    if (viewCert) {
+      // Primary already opened the URL when available; only push list as fallback.
+      if (_resolvedCertificateUrl == null) {
+        await openCertificatesScreen(context, expectFresh: true);
+      }
+    }
   }
 
   @override
@@ -1298,6 +1355,34 @@ class _FinishedViewState extends State<_FinishedView>
                         isCourse: isCourse,
                         isLevel: isLevel,
                       ),
+                      if (isLevel) ...[
+                        SizedBox(height: 12.h),
+                        _CertificatePromoCard(
+                          hasDirectUrl: _resolvedCertificateUrl != null,
+                          onView: () async {
+                            HapticFeedback.lightImpact();
+                            final url = _resolvedCertificateUrl;
+                            if (url != null) {
+                              final ok = await openCertificateUrl(url);
+                              if (ok) return;
+                            }
+                            // No URL yet or open failed → resolve then open / list.
+                            final resolved = await _resolveCertificateUrl();
+                            if (!mounted) return;
+                            if (resolved != null) {
+                              setState(
+                                () => _resolvedCertificateUrl = resolved,
+                              );
+                              final ok = await openCertificateUrl(resolved);
+                              if (ok) return;
+                            }
+                            await openCertificatesScreen(
+                              context,
+                              expectFresh: true,
+                            );
+                          },
+                        ),
+                      ],
                     ],
 
                     SizedBox(height: 12.h),
@@ -1594,6 +1679,105 @@ class _ScoreHero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Inline promo on the finished screen (level pass only).
+class _CertificatePromoCard extends StatelessWidget {
+  final VoidCallback onView;
+  final bool hasDirectUrl;
+  const _CertificatePromoCard({
+    required this.onView,
+    this.hasDirectUrl = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onView,
+        borderRadius: BorderRadius.circular(18.r),
+        child: Ink(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.yellow.withOpacity(0.18),
+                AppColors.orange.withOpacity(0.10),
+                Colors.white.withOpacity(0.05),
+              ],
+            ),
+            border: Border.all(color: AppColors.yellow.withOpacity(0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.yellow.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44.w,
+                height: 44.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppColors.yellow, AppColors.orange],
+                  ),
+                ),
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: AppColors.dark,
+                  size: 24.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasDirectUrl
+                          ? 'Open your certificate'
+                          : 'Certificate ready',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      hasDirectUrl
+                          ? 'Tap to view your level certificate now.'
+                          : 'Your level certificate was issued. Tap to open it.',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white60,
+                        fontSize: 11.5.sp,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                hasDirectUrl
+                    ? Icons.open_in_new_rounded
+                    : Icons.chevron_right_rounded,
+                color: AppColors.yellow,
+                size: 26.sp,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

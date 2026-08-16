@@ -1,4 +1,5 @@
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/tests/delete/test_delete_cubit.dart';
 import 'package:fluent/cubit/teacher/tests/delete/test_delete_state.dart';
@@ -80,21 +81,11 @@ class _CourseTestsScreenState extends State<CourseTestsScreen> {
     return BlocListener<TestDeleteCubit, TestDeleteState>(
       listener: (context, state) {
         if (state is TestDeleteSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.greenAccent,
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.success);
           _loadTests();
         }
         if (state is TestDeleteFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.error),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          showAppSnackBar(context, state.error, type: AppSnackType.error);
         }
       },
       child: Scaffold(
@@ -585,12 +576,7 @@ class _CourseTestsScreenState extends State<CourseTestsScreen> {
         fullTest = result['data'] as TestModel;
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to load test'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          showAppSnackBar(context, result['message'] ?? 'Failed to load test', type: AppSnackType.error);
         }
         return;
       }

@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/level_exception_repository.dart';
 import 'level_exception_delete_state.dart';
 
-class LevelExceptionDeleteCubit extends Cubit<LevelExceptionDeleteState> {
+class LevelExceptionDeleteCubit extends SafeCubit<LevelExceptionDeleteState> {
   final LevelExceptionRepository repository;
 
   LevelExceptionDeleteCubit(this.repository)

@@ -3,6 +3,7 @@ import 'package:fluent/cubit/student/rate/rate_cubit.dart';
 import 'package:fluent/cubit/student/rate/rate_state.dart';
 import 'package:fluent/data/models/rate_model.dart';
 import 'package:fluent/data/repository/rate_repository.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -102,15 +103,10 @@ class _RateCourseSheetState extends State<RateCourseSheet> {
 
   void _submit() {
     if (_selectedStars < 1 || _selectedStars > 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please select a rating from 1 to 5 stars.',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Please select a rating from 1 to 5 stars.',
+        type: AppSnackType.warning,
       );
       return;
     }
@@ -203,42 +199,15 @@ class _RateCourseSheetState extends State<RateCourseSheet> {
     return BlocListener<RateCubit, RateState>(
       listener: (context, state) {
         if (state is RateSuccess && state.courseId == widget.courseId) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-              backgroundColor: Colors.greenAccent.shade700,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.success);
           Navigator.of(context).pop(state.rate);
         } else if (state is RateDeleted && state.courseId == widget.courseId) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-              backgroundColor: AppColors.primary,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.info);
           Navigator.of(context).pop(null);
         } else if (state is RateFailure &&
             (state.courseId == null || state.courseId == widget.courseId)) {
           setState(() => _submitted = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showAppSnackBar(context, state.message, type: AppSnackType.error);
         }
       },
       child: Padding(

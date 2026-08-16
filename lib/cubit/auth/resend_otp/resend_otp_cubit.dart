@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import '../../../../data/repository/auth_repository.dart';
 import 'resend_otp_state.dart';
 
-class ResendOtpCubit extends Cubit<ResendOtpState> {
+class ResendOtpCubit extends SafeCubit<ResendOtpState> {
   final AuthRepository authRepository;
   ResendOtpCubit(this.authRepository) : super(ResendOtpInitial());
 

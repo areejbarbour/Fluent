@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 
 import '../../../../data/network/dio_client.dart';
 import '../../../../data/repository/auth_repository.dart';
@@ -6,7 +7,7 @@ import '../../../../helper/auth_session.dart';
 import '../../../../helper/notification_bootstrap.dart';
 import 'logout_state.dart';
 
-class LogoutCubit extends Cubit<LogoutState> {
+class LogoutCubit extends SafeCubit<LogoutState> {
   final AuthRepository authRepository;
 
   LogoutCubit(this.authRepository) : super(LogoutInitial());

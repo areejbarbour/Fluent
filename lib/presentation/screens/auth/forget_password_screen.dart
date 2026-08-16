@@ -8,6 +8,7 @@ import 'package:fluent/cubit/auth/verify_otp/verify_otp_cubit.dart';
 import 'package:fluent/cubit/auth/verify_otp/verify_otp_state.dart';
 import 'package:fluent/cubit/auth/resend_otp/resend_otp_cubit.dart';
 import 'package:fluent/cubit/auth/resend_otp/resend_otp_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -100,31 +101,17 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
           BlocListener<ForgotPasswordCubit, ForgotPasswordState>(
             listener: (context, state) {
               if (state is ForgotPasswordSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: AppColors.sky,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.success,
                 );
                 setState(() {
                   _isOtpSent = true;
                 });
                 _startCountdown();
               } else if (state is ForgotPasswordFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.error),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                );
+                showAppSnackBar(context, state.error, type: AppSnackType.error);
               }
             },
           ),
@@ -132,15 +119,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
           BlocListener<VerifyOtpCubit, VerifyOtpState>(
             listener: (context, state) {
               if (state is VerifyOtpSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: AppColors.sky,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.success,
                 );
                 // ✅ الانتقال إلى SetNewPasswordScreen مع تمرير الإيميل
                 Navigator.pushReplacementNamed(
@@ -149,16 +131,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   arguments: _emailController.text.trim(),
                 );
               } else if (state is VerifyOtpFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.error),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                );
+                showAppSnackBar(context, state.error, type: AppSnackType.error);
                 _clearOtpFields();
               }
             },
@@ -167,28 +140,14 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
           BlocListener<ResendOtpCubit, ResendOtpState>(
             listener: (context, state) {
               if (state is ResendOtpSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: AppColors.sky,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
+                showAppSnackBar(
+                  context,
+                  state.message,
+                  type: AppSnackType.success,
                 );
                 _startCountdown();
               } else if (state is ResendOtpFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.error),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                );
+                showAppSnackBar(context, state.error, type: AppSnackType.error);
               }
             },
           ),
@@ -763,19 +722,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                               type: OtpType.forgotPassword,
                             );
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please enter the complete 6-digit code',
-                                ),
-                                backgroundColor: Colors.redAccent,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(10),
-                                  ),
-                                ),
-                              ),
+                            showAppSnackBar(
+                              context,
+                              'Please enter the complete 6-digit code',
+                              type: AppSnackType.error,
                             );
                           }
                         } else {

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/cubit/student/payment/payment_cubit.dart';
 import 'package:fluent/cubit/student/payment/payment_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -45,7 +46,10 @@ class _LevelPurchaseSheetState extends State<LevelPurchaseSheet> {
     context.read<PaymentCubit>().createIntent(widget.levelId);
   }
 
-  Future<void> _presentStripe(String clientSecret, String paymentIntentId) async {
+  Future<void> _presentStripe(
+    String clientSecret,
+    String paymentIntentId,
+  ) async {
     try {
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
@@ -74,45 +78,7 @@ class _LevelPurchaseSheetState extends State<LevelPurchaseSheet> {
 
   void _showSuccessSnack(String message) {
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.15),
-              ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                color: const Color(0xFF4ADE80),
-                size: 18.sp,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                message,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    showAppSnackBar(context, message, type: AppSnackType.info);
   }
 
   Widget _inlineErrorBanner(String message) {
@@ -206,8 +172,7 @@ class _LevelPurchaseSheetState extends State<LevelPurchaseSheet> {
                   ],
                   stops: const [0.0, 0.45, 1.0],
                 ),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(.14)),
                 ),
@@ -245,109 +210,109 @@ class _LevelPurchaseSheetState extends State<LevelPurchaseSheet> {
 
                     // Header
                     Row(
-                      children: [
-                        Container(
-                          width: 50.w,
-                          height: 50.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15.r),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                _colors.first.withOpacity(.30),
-                                _colors.last.withOpacity(.20),
-                              ],
-                            ),
-                            border: Border.all(
-                              color: _colors.first.withOpacity(.45),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _colors.first.withOpacity(.30),
-                                blurRadius: 14,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.credit_card_rounded,
-                            color: _colors.first,
-                            size: 23.sp,
-                          ),
-                        ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Unlock Level',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16.sp,
-                                  letterSpacing: 0.2,
+                          children: [
+                            Container(
+                              width: 50.w,
+                              height: 50.w,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15.r),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    _colors.first.withOpacity(.30),
+                                    _colors.last.withOpacity(.20),
+                                  ],
                                 ),
+                                border: Border.all(
+                                  color: _colors.first.withOpacity(.45),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _colors.first.withOpacity(.30),
+                                    blurRadius: 14,
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: 3.h),
+                              child: Icon(
+                                Icons.credit_card_rounded,
+                                color: _colors.first,
+                                size: 23.sp,
+                              ),
+                            ),
+                            SizedBox(width: 14.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Unlock Level',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16.sp,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3.h),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                      vertical: 3.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          _colors.first.withOpacity(.25),
+                                          _colors.last.withOpacity(.15),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: _colors.first.withOpacity(.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      widget.levelTitle,
+                                      style: GoogleFonts.poppins(
+                                        color: _colors.first,
+                                        fontSize: 11.5.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (widget.price != null) ...[
+                              SizedBox(width: 8.w),
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w,
-                                  vertical: 3.h,
+                                  horizontal: 12.w,
+                                  vertical: 8.h,
                                 ),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      _colors.first.withOpacity(.25),
-                                      _colors.last.withOpacity(.15),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color: _colors.first.withOpacity(.35),
-                                  ),
+                                  gradient: LinearGradient(colors: _colors),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _colors.first.withOpacity(.35),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
                                 ),
                                 child: Text(
-                                  widget.levelTitle,
+                                  '\$${widget.price!.toStringAsFixed(0)}',
                                   style: GoogleFonts.poppins(
-                                    color: _colors.first,
-                                    fontSize: 11.5.sp,
-                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14.sp,
                                   ),
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        if (widget.price != null) ...[
-                          SizedBox(width: 8.w),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 8.h,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: _colors),
-                              borderRadius: BorderRadius.circular(12.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _colors.first.withOpacity(.35),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              '\$${widget.price!.toStringAsFixed(0)}',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14.sp,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    )
+                          ],
+                        )
                         .animate()
                         .fadeIn(duration: 400.ms)
                         .moveY(begin: 8, end: 0),

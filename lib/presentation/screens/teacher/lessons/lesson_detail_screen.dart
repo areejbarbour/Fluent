@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/teacher/courses/delete/lesson_delete_cubit.dart';
@@ -259,21 +260,15 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         BlocListener<LessonDeleteCubit, LessonDeleteState>(
           listener: (context, state) {
             if (state is LessonDeleteSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
               Navigator.pop(context, true);
             }
             if (state is LessonDeleteFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
@@ -1345,7 +1340,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       _showCommentSnack(
         context,
         'Comment must not exceed ${LessonDetailCubit.maxCommentLength} characters',
-        Colors.redAccent,
       );
       return;
     }
@@ -1359,7 +1353,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     if (err == null) {
       _commentCtrl.clear();
     } else {
-      _showCommentSnack(context, err, Colors.redAccent);
+      _showCommentSnack(context, err);
     }
   }
 
@@ -1422,7 +1416,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                 if (!mounted) return;
                 setState(() => _busyCommentId = null);
                 if (err != null) {
-                  _showCommentSnack(context, err, Colors.redAccent);
+                  _showCommentSnack(context, err);
                 }
               },
               child: Text(
@@ -1477,7 +1471,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                 if (!mounted) return;
                 setState(() => _busyCommentId = null);
                 if (err != null) {
-                  _showCommentSnack(context, err, Colors.redAccent);
+                  _showCommentSnack(context, err);
                 }
               },
               child: Text(
@@ -1494,14 +1488,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  void _showCommentSnack(BuildContext context, String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showCommentSnack(BuildContext context, String msg) {
+    showAppSnackBar(context, msg, type: AppSnackType.error);
   }
 
   // ─── Helpers ───

@@ -141,7 +141,12 @@ class SubmitAnswerResult {
 ///   "score": 80,          // percentage 0–100
 ///   "passed": true,
 ///   "streak": { "current": 3, "increased": true },
-///   "reward": { "points_awarded": true, "points": 50 }
+///   "reward": {
+///     "points_awarded": true,
+///     "points": 50,
+///     "user_level_id": 15|null,       // set on level pass
+///     "certificate_url": "https..."|null
+///   }
 /// }
 class FinishAttemptResult {
   final int attemptId;
@@ -213,17 +218,53 @@ class FinishStreakResult {
   }
 }
 
-/// reward sub-object from finish:
-/// { "points_awarded": true, "points": 50 }
+/// reward sub-object from UserAttemptController::finish:
+/// {
+///   "points_awarded": true,
+///   "points": 50,
+///   "user_level_id": 15|null,
+///   "certificate_url": "https..."|null
+/// }
+///
+/// On level pass the backend issues the certificate in AttemptService and
+/// returns both fields. If generation failed, [certificateUrl] is null while
+/// [userLevelId] is still set — client should retry via
+/// GET /api/user-levels/{userLevelId}/certificate.
 class FinishRewardResult {
   final bool pointsAwarded;
   final int points;
 
-  const FinishRewardResult({required this.pointsAwarded, required this.points});
+  /// Pivot id of the completed UserLevel (level tests only).
+  final int? userLevelId;
+
+  /// Spatie media URL of the certificate image (may be null if generation failed).
+  final String? certificateUrl;
+
+  const FinishRewardResult({
+    required this.pointsAwarded,
+    required this.points,
+    this.userLevelId,
+    this.certificateUrl,
+  });
+
+  bool get hasCertificateUrl =>
+      certificateUrl != null && certificateUrl!.trim().isNotEmpty;
 
   factory FinishRewardResult.fromJson(Map<String, dynamic> json) {
     final awardedRaw = json['points_awarded'];
     final pointsRaw = json['points'];
+
+    final ulRaw = json['user_level_id'];
+    int? userLevelId;
+    if (ulRaw is int) {
+      userLevelId = ulRaw;
+    } else if (ulRaw != null) {
+      userLevelId = int.tryParse(ulRaw.toString());
+    }
+
+    final urlRaw = json['certificate_url']?.toString().trim();
+    final certificateUrl = (urlRaw == null || urlRaw.isEmpty) ? null : urlRaw;
+
     return FinishRewardResult(
       pointsAwarded:
           awardedRaw == true ||
@@ -232,6 +273,8 @@ class FinishRewardResult {
       points: pointsRaw is int
           ? pointsRaw
           : int.tryParse(pointsRaw?.toString() ?? '') ?? 0,
+      userLevelId: userLevelId,
+      certificateUrl: certificateUrl,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -234,11 +235,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     if (result != null && result.files.isNotEmpty) {
       final file = result.files.first;
       if (file.size > 150 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Video size must not exceed 150MB'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showAppSnackBar(
+          context,
+          'Video size must not exceed 150MB',
+          type: AppSnackType.error,
         );
         return;
       }
@@ -248,22 +248,20 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
 
   void _submit(BuildContext context) async {
     if (isRestrictedEdit && !isPublishedEdit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This lesson cannot be modified in its current status'),
-          backgroundColor: Colors.redAccent,
-        ),
+      showAppSnackBar(
+        context,
+        'This lesson cannot be modified in its current status',
+        type: AppSnackType.error,
       );
       return;
     }
 
     if (!_formKey.currentState!.validate()) return;
     if (!isEditMode && _selectedVideo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a video file'),
-          backgroundColor: Colors.redAccent,
-        ),
+      showAppSnackBar(
+        context,
+        'Please select a video file',
+        type: AppSnackType.error,
       );
       return;
     }
@@ -393,12 +391,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         }
       } else {
         // ❌ عرض رسالة خطأ
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to load test details'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
+        showAppSnackBar(
+          context,
+          result['message'] ?? 'Failed to load test details',
+          type: AppSnackType.error,
         );
       }
     } catch (e) {
@@ -406,13 +402,7 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
       if (mounted) Navigator.pop(context);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAppSnackBar(context, 'Error: $e', type: AppSnackType.error);
       }
     }
   }
@@ -489,67 +479,47 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
         BlocListener<LessonFormCubit, LessonFormState>(
           listener: (context, state) {
             if (state is LessonFormSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isEditMode
-                        ? 'Lesson updated successfully'
-                        : 'Lesson created successfully',
-                  ),
-                  backgroundColor: Colors.greenAccent,
-                ),
+              showAppSnackBar(
+                context,
+                isEditMode
+                    ? 'Lesson updated successfully'
+                    : 'Lesson created successfully',
+                type: AppSnackType.success,
               );
               Navigator.pop(context, true);
             }
             if (state is LessonFormFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
         BlocListener<LessonDeleteCubit, LessonDeleteState>(
           listener: (context, state) {
             if (state is LessonDeleteSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
               Navigator.pop(context, true);
             }
             if (state is LessonDeleteFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
         BlocListener<TestDeleteCubit, TestDeleteState>(
           listener: (context, state) {
             if (state is TestDeleteSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
               _fetchLessonTests();
             }
             if (state is TestDeleteFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
@@ -563,21 +533,13 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                 }
                 _lessonWords = list;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
             } else if (state is WordCreateFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
@@ -594,21 +556,13 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                 }
                 _lessonWords = list;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
             } else if (state is WordUpdateFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
@@ -620,21 +574,13 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                     .where((w) => w.id != state.wordId)
                     .toList();
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.greenAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              showAppSnackBar(
+                context,
+                state.message,
+                type: AppSnackType.success,
               );
             } else if (state is WordDeleteFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              showAppSnackBar(context, state.error, type: AppSnackType.error);
             }
           },
         ),
@@ -673,14 +619,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
 
   void _openWordForm(BuildContext context, {WordModel? word}) {
     if (!canManageWords || widget.lesson == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Words can only be managed when the lesson is draft, pending, or changes requested.',
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Words can only be managed when the lesson is draft, pending, or changes requested.',
+        type: AppSnackType.warning,
       );
       return;
     }
@@ -709,12 +651,10 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                 );
               } else {
                 if (audioFile == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Audio file is required to create a word.'),
-                      backgroundColor: Colors.redAccent,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  showAppSnackBar(
+                    context,
+                    'Audio file is required to create a word.',
+                    type: AppSnackType.error,
                   );
                   return;
                 }
@@ -1731,23 +1671,19 @@ class _WordFormSheetState extends State<_WordFormSheet> {
     final size = file.size;
     if (size > _maxAudioBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Audio must be 5MB or smaller.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Audio must be 5MB or smaller.',
+        type: AppSnackType.error,
       );
       return;
     }
     if (file.path == null || file.path!.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not read the selected audio file.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Could not read the selected audio file.',
+        type: AppSnackType.error,
       );
       return;
     }
@@ -1758,12 +1694,10 @@ class _WordFormSheetState extends State<_WordFormSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_isEdit && _pickedAudio == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Audio file is required.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'Audio file is required.',
+        type: AppSnackType.error,
       );
       return;
     }

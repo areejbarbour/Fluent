@@ -1,5 +1,6 @@
 import 'package:fluent/cubit/auth/google_sign_in/google_sign_in_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/helper/auth_session.dart';
@@ -8,7 +9,7 @@ import '../../../data/network/dio_client.dart';
 import '../../../data/repository/auth_repository.dart';
 import '../../../helper/notification_bootstrap.dart';
 
-class GoogleLoginCubit extends Cubit<GoogleLoginState> {
+class GoogleLoginCubit extends SafeCubit<GoogleLoginState> {
   final AuthRepository authRepository;
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 

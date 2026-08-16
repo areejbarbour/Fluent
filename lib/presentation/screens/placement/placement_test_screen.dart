@@ -14,6 +14,7 @@ import 'package:fluent/presentation/widgets/applogo.dart';
 import 'package:fluent/presentation/widgets/arrange_answer_widget.dart';
 import 'package:fluent/presentation/widgets/pair_answer_widget.dart';
 import 'package:fluent/presentation/widgets/fill_answer_widget.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -144,15 +145,7 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: GoogleFonts.poppins(fontSize: 13)),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    showAppSnackBar(context, msg, type: AppSnackType.info);
   }
 
   Future<void> _goAfterLeave(BuildContext context) async {
@@ -244,18 +237,7 @@ class _PlacementTestViewState extends State<_PlacementTestView> {
               child: BlocConsumer<PlacementAttemptCubit, PlacementAttemptState>(
                 listener: (context, state) {
                   void showErr(String msg) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          msg,
-                          style: GoogleFonts.poppins(fontSize: 13),
-                        ),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 4),
-                      ),
-                    );
+                    showAppSnackBar(context, msg, type: AppSnackType.info);
                   }
 
                   if (state is PlacementAttemptFailure) {

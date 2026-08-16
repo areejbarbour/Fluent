@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/cubit/student/levels/level_exception_create_cubit.dart';
 import 'package:fluent/cubit/student/levels/level_exception_create_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -60,18 +61,10 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
     } catch (e) {
       debugPrint('FilePicker error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to pick files',
-              style: GoogleFonts.poppins(fontSize: 13.sp),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Failed to pick files',
+          type: AppSnackType.error,
         );
       }
     }
@@ -152,53 +145,15 @@ class _CreateLevelExceptionSheetState extends State<CreateLevelExceptionSheet> {
   Widget build(BuildContext context) {
     return BlocListener<LevelExceptionCreateCubit, LevelExceptionCreateState>(
       listener: (context, state) {
-  if (state is LevelExceptionCreateSuccess) {
-    Navigator.pop(context);
+        if (state is LevelExceptionCreateSuccess) {
+          Navigator.pop(context);
 
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.15),
-              ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                color: const Color(0xFF4ADE80),
-                size: 18.sp,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                state.message,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  } else if (state is LevelExceptionCreateFailure) {
-    setState(() => _formError = state.message);
-  }
-},
+          HapticFeedback.lightImpact();
+          showAppSnackBar(context, state.message, type: AppSnackType.success);
+        } else if (state is LevelExceptionCreateFailure) {
+          setState(() => _formError = state.message);
+        }
+      },
       child: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,

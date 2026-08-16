@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:fluent/constants/app_colors.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -64,10 +65,10 @@ class _AudioPreviewTileState extends State<AudioPreviewTile> {
       await _player.play(UrlSource(widget.url));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to play audio: $e'),
-          ), // 👈 بدل 'Failed to play audio: $e'
+        showAppSnackBar(
+          context,
+          'Failed to play audio: $e',
+          type: AppSnackType.error,
         );
       }
     } finally {

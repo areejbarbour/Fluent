@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/podcast_repository.dart';
 import 'podcast_topics_state.dart';
 
-class PodcastTopicsCubit extends Cubit<PodcastTopicsState> {
+class PodcastTopicsCubit extends SafeCubit<PodcastTopicsState> {
   final PodcastRepository repository;
 
   PodcastTopicsCubit(this.repository) : super(PodcastTopicsInitial());

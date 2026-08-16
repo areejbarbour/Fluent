@@ -1,9 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import '../../../data/repository/level_repository.dart';
 // import 'student_levels_state.dart';
 import 'package:fluent/cubit/student/levels/levels_state.dart';
 
-class StudentLevelsCubit extends Cubit<StudentLevelsState> {
+class StudentLevelsCubit extends SafeCubit<StudentLevelsState> {
   final LevelRepository levelRepository;
   StudentLevelsCubit(this.levelRepository) : super(StudentLevelsInitial());
 

@@ -3,6 +3,7 @@ import 'package:fluent/cubit/teacher/content_review/content_review_cubit.dart';
 import 'package:fluent/cubit/teacher/content_review/content_review_state.dart';
 import 'package:fluent/data/models/content_review_model.dart';
 import 'package:fluent/presentation/widgets/app_date_format.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/presentation/widgets/review_note_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -75,23 +76,15 @@ class ContentReviewActionsBar extends StatelessWidget {
     return BlocConsumer<ContentReviewCubit, ContentReviewState>(
       listener: (context, state) {
         if (state.actionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message ?? 'Done'),
-              backgroundColor: Colors.green.shade700,
-              behavior: SnackBarBehavior.floating,
-            ),
+          showAppSnackBar(
+            context,
+            state.message ?? 'Done',
+            type: AppSnackType.success,
           );
           context.read<ContentReviewCubit>().clearActionResult();
           onSuccess?.call();
         } else if (state.error != null && state.error!.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.error!),
-              backgroundColor: Colors.red.shade700,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showAppSnackBar(context, state.error!, type: AppSnackType.error);
           context.read<ContentReviewCubit>().clearActionResult();
         }
       },

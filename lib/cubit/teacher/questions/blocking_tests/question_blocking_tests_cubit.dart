@@ -1,13 +1,13 @@
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_blocking_tests_state.dart';
 
-class QuestionBlockingTestsCubit extends Cubit<QuestionBlockingTestsState> {
+class QuestionBlockingTestsCubit extends SafeCubit<QuestionBlockingTestsState> {
   final QuestionRepository questionRepository;
 
   QuestionBlockingTestsCubit(this.questionRepository)
-      : super(QuestionBlockingTestsInitial());
+    : super(QuestionBlockingTestsInitial());
 
   Future<void> fetchBlockingTests(int id) async {
     emit(QuestionBlockingTestsLoading());
@@ -19,10 +19,12 @@ class QuestionBlockingTestsCubit extends Cubit<QuestionBlockingTestsState> {
       if (success) {
         emit(QuestionBlockingTestsLoaded(result['data']));
       } else {
-        emit(QuestionBlockingTestsFailure(
-          result['message']?.toString() ?? 'Failed to load blocking tests',
-          errors: result['errors'] as Map<String, dynamic>?,
-        ));
+        emit(
+          QuestionBlockingTestsFailure(
+            result['message']?.toString() ?? 'Failed to load blocking tests',
+            errors: result['errors'] as Map<String, dynamic>?,
+          ),
+        );
       }
     } catch (e) {
       emit(QuestionBlockingTestsFailure(e.toString()));

@@ -1,5 +1,6 @@
 import 'package:fluent/cubit/student/attempt/student_attempt_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/attempt_models.dart';
 import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/helper/questions/answer_payload_helper.dart';
@@ -7,7 +8,7 @@ import 'package:fluent/helper/questions/answer_payload_helper.dart';
 /// Full placement flow aligned with backend AttemptService:
 /// POST /tests/{id}/start → submit-answer (sequential) → finish → review (if passed).
 /// Immediate feedback: lastSubmit.isCorrect after each submit.
-class StudentAttemptCubit extends Cubit<StudentAttemptState> {
+class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
   final AttemptRepository attemptRepository;
 
   StudentAttemptCubit(this.attemptRepository) : super(StudentAttemptInitial());

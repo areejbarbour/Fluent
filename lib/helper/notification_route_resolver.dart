@@ -4,22 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/data/models/notification_model.dart';
 
-/// Decides which screen a notification should open, then pushes it.
-///
-/// One resolver is shared by every place a notification can be tapped:
-///  • the system-tray notification (app in background / killed)
-///  • a foreground FCM message shown via [LocalNotificationsService]
-///  • a tile inside [NotificationsScreen]
-///
-/// so all three behave exactly the same way.
-///
-/// Routing is driven by the notification's `type` (see
-/// [AppNotificationModel]'s `typeXxx` constants) plus its `data` payload.
-/// The expected `data` keys per type are documented next to each branch
-/// below — align them with whatever the backend actually sends. Whenever
-/// the payload doesn't carry enough information to build a specific
-/// destination, the resolver falls back to the notifications list itself
-/// rather than doing nothing.
 class NotificationRouteResolver {
   NotificationRouteResolver._();
 
@@ -63,16 +47,12 @@ class NotificationRouteResolver {
     required bool isTeacher,
     String? fallbackTitle,
   }) {
-    // Laravel-style polymorphic payload used by content-review
-    // notifications: { reviewable_type: "lesson|course|test|word|question",
-    // reviewable_id: 12 }. These notifications are teacher-only (they come
-    // from the teacher content-review workflow).
     final reviewableType = _string(data, [
       'reviewable_type',
       'content_type',
       'target_type',
     ]).toLowerCase();
-    final reviewableId = _int(data, [
+    final reviewableId = _idFrom(data, [
       'reviewable_id',
       'content_id',
       'target_id',
@@ -101,23 +81,34 @@ class NotificationRouteResolver {
     }
 
     switch (type) {
-      // data: { lesson_id / lessonId, lesson_title? }
       case AppNotificationModel.typeLessonOpened:
-      case AppNotificationModel.typeTopicPublished:
-        final lessonId = _int(data, ['lesson_id', 'lessonId', 'id']);
+        final lessonId = _idFrom(data, ['lesson_id', 'lessonId', 'id']);
         if (lessonId != null) {
           return _lessonTarget(lessonId, isTeacher, fallbackTitle);
         }
         break;
 
-      // data: { course_id / courseId, level_id / levelId? }
-      case AppNotificationModel.typeCourseOpened:
-        if (isTeacher) {
-          // Teacher course detail needs the full CourseModel, which a
-          // push payload can't carry — open the courses library instead.
-          return _RouteTarget(teacherCoursesRoute, null);
-        }
-        final levelId = _int(data, ['level_id', 'levelId']);
+      // Backend payload: { "topic_id": <int> }
+      // Plain int (unlike most other types), but there's no dedicated
+      // "topic detail" screen registered in app_router.dart today, so we
+      // deliberately fall through to the safe default below rather than
+      // guessing a destination.
+      case AppNotificationModel.typeTopicPublished:
+        break;
+
+      // Backend payload: { "course_id": <full Course model JSON> }
+      // Only ever sent to a teacher (AdminCourseService, on assignment).
+      // teacherCourseDetailRoute requires a full CourseModel instance as
+      // its route argument (see app_router.dart), which we can't safely
+      // reconstruct from a push/JSON payload — so we open the teacher's
+      // course library instead, same as before.
+      case AppNotificationModel.typeCourseAssigned:
+        return _RouteTarget(teacherCoursesRoute, null);
+
+      // Backend payload: { "level": <full Level model JSON> }
+      // Sent to the student after a successful payment (StripeWebhookService).
+      case AppNotificationModel.typeLevelOpened:
+        final levelId = _idFrom(data, ['level', 'level_id', 'levelId']);
         if (levelId != null) {
           return _RouteTarget(levelCoursesRoute, {'levelId': levelId});
         }
@@ -126,23 +117,67 @@ class NotificationRouteResolver {
       case AppNotificationModel.typePodcastCreated:
         return _RouteTarget(podcastsRoute, null);
 
-      // data: { level_exception_id / id }
+      // Backend payload: { "level_exception": <full LevelException model JSON> }
       case AppNotificationModel.typeLevelExceptionApproved:
-        final exceptionId = _int(data, [
+        final exceptionId = _idFrom(data, [
+          'level_exception',
           'level_exception_id',
           'levelExceptionId',
           'id',
         ]);
         if (exceptionId != null) {
-          return _RouteTarget(levelExceptionDetailsRoute, {
-            'id': exceptionId,
-          });
+          return _RouteTarget(levelExceptionDetailsRoute, {'id': exceptionId});
         }
         return _RouteTarget(levelExceptionsRoute, null);
+
+      // Backend payload: { "level_exception_id": <full LevelException model JSON> }
+      // NOTE: despite the key's "_id" suffix, the backend actually puts the
+      // full model there (AdminLevelExceptionService::reject) — _idFrom()
+      // handles both shapes so this works whether or not that ever changes.
+      case AppNotificationModel.typeLevelExceptionReject:
+        final rejectId = _idFrom(data, [
+          'level_exception_id',
+          'level_exception',
+          'levelExceptionId',
+          'id',
+        ]);
+        if (rejectId != null) {
+          return _RouteTarget(levelExceptionDetailsRoute, {'id': rejectId});
+        }
+        return _RouteTarget(levelExceptionsRoute, null);
+
+      // Backend payload: { "level_exception_id": <int>, "level_id": <int>, "user_id": <int> }
+      // Dispatched to super-admins only (StudentLevelExceptionService) — this
+      // teacher/student app is unlikely to ever receive one, but the shape
+      // is a plain int here (unlike the two cases above) so we still route
+      // it correctly if it ever does show up.
+      case AppNotificationModel.typeLevelException:
+        final requestId = _idFrom(data, ['level_exception_id', 'id']);
+        if (requestId != null) {
+          return _RouteTarget(levelExceptionDetailsRoute, {'id': requestId});
+        }
+        return _RouteTarget(levelExceptionsRoute, null);
+
+      // Backend payload: { "test_id": <int>, "removed_question_ids": <int[]> }
+      // Teacher-only (Test content-review workflow).
+      case AppNotificationModel.typeContentDependencyChange:
+        final testId = _idFrom(data, ['test_id', 'testId']);
+        if (testId != null) {
+          return _RouteTarget(testDetailViewRoute, {'testId': testId});
+        }
+        break;
+
+      // Backend payload: { "lesson_id": <int>, "course_id": <int> }
+      // Sent to the reviewer teacher AFTER the lesson was deleted — the
+      // lesson no longer exists, so there is nothing to open a detail
+      // screen for. Falls through to the notifications list on purpose.
+      case AppNotificationModel.typeDeleteLesson:
+        break;
     }
 
-    // Unknown type or missing ids → safest bet is the notifications list,
-    // where the user can still see full context.
+    // Unknown type, or a known type without enough data to build a specific
+    // destination → safest bet is the notifications list, where the user
+    // can still see full context.
     return _RouteTarget(notificationsRoute, null);
   }
 
@@ -166,11 +201,32 @@ class NotificationRouteResolver {
     });
   }
 
-  static int? _int(Map<String, dynamic> data, List<String> keys) {
+  /// Extracts an int id from `data[key]` for each key in order, where the
+  /// value may be:
+  ///  • a plain int/num
+  ///  • a numeric string
+  ///  • a full serialized model object, e.g. `{"id": 5, "name_en": "...", ...}`
+  ///    (several backend dispatch sites pass the Eloquent model itself
+  ///    instead of `->id` — see notification_model.dart's type doc comments)
+  static int? _idFrom(Map<String, dynamic> data, List<String> keys) {
     for (final key in keys) {
       final raw = data[key];
       if (raw == null) continue;
+
       if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+
+      if (raw is Map) {
+        final nested = raw['id'];
+        if (nested is int) return nested;
+        if (nested is num) return nested.toInt();
+        if (nested != null) {
+          final parsed = int.tryParse(nested.toString());
+          if (parsed != null) return parsed;
+        }
+        continue; // don't fall through to raw.toString() on a whole Map
+      }
+
       final parsed = int.tryParse(raw.toString());
       if (parsed != null) return parsed;
     }

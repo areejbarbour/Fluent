@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_list_state.dart';
 
-class QuestionListCubit extends Cubit<QuestionListState> {
+class QuestionListCubit extends SafeCubit<QuestionListState> {
   final QuestionRepository questionRepository;
 
   QuestionListCubit(this.questionRepository) : super(QuestionListInitial());
@@ -66,22 +67,26 @@ class QuestionListCubit extends Cubit<QuestionListState> {
           final merged = append && current != null
               ? [...current.questions, ...data.questions]
               : data.questions;
-          emit(QuestionListLoaded(
-            questions: merged,
-            currentPage: data.currentPage,
-            lastPage: data.lastPage,
-            isLoadingMore: false,
-            isDeprecatedTab: deprecated,
-          ));
+          emit(
+            QuestionListLoaded(
+              questions: merged,
+              currentPage: data.currentPage,
+              lastPage: data.lastPage,
+              isLoadingMore: false,
+              isDeprecatedTab: deprecated,
+            ),
+          );
         } else {
           emit(QuestionListFailure('Unexpected response format'));
         }
       } else {
         final msg = result['message']?.toString() ?? 'Failed to load questions';
-        emit(QuestionListFailure(
-          msg,
-          errors: result['errors'] as Map<String, dynamic>?,
-        ));
+        emit(
+          QuestionListFailure(
+            msg,
+            errors: result['errors'] as Map<String, dynamic>?,
+          ),
+        );
       }
     } catch (e) {
       emit(QuestionListFailure(e.toString()));

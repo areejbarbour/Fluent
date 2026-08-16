@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/words_bank_repository.dart';
 import 'words_bank_state.dart';
 
-class WordsBankCubit extends Cubit<WordsBankState> {
+class WordsBankCubit extends SafeCubit<WordsBankState> {
   final WordsBankRepository repository;
 
   WordsBankCubit(this.repository) : super(WordsBankInitial());

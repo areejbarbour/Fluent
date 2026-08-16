@@ -10,6 +10,7 @@ import 'package:fluent/cubit/student/podcasts/topic_podcasts_cubit.dart';
 import 'package:fluent/cubit/student/podcasts/topic_podcasts_state.dart';
 import 'package:fluent/data/models/podcast_model.dart';
 import 'package:fluent/data/repository/podcast_repository.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
@@ -19,7 +20,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
-
 
 enum PodcastLevel { beginner, intermediate, advanced }
 
@@ -185,32 +185,33 @@ class TwinklingStars extends StatelessWidget {
           return Positioned(
             left: left * 1.sw,
             top: top * 1.sh,
-            child: Container(
-              width: size.w,
-              height: size.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: hasGlow
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.7),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                        ),
-                      ]
-                    : null,
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(
-                  begin: 0,
-                  end: maxOpacity,
-                  duration: duration.ms,
-                  delay: delay.ms,
-                )
-                .then()
-                .fade(begin: maxOpacity, end: 0, duration: duration.ms),
+            child:
+                Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: hasGlow
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.7),
+                                  blurRadius: 4,
+                                  spreadRadius: 0.5,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(
+                      begin: 0,
+                      end: maxOpacity,
+                      duration: duration.ms,
+                      delay: delay.ms,
+                    )
+                    .then()
+                    .fade(begin: maxOpacity, end: 0, duration: duration.ms),
           );
         }),
       ),
@@ -236,11 +237,9 @@ Widget glassBox({
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: gradientColors ??
-                [
-                  Colors.white.withOpacity(.10),
-                  Colors.white.withOpacity(.04),
-                ],
+            colors:
+                gradientColors ??
+                [Colors.white.withOpacity(.10), Colors.white.withOpacity(.04)],
           ),
           border: Border.all(
             color: borderColor ?? Colors.white.withOpacity(.15),
@@ -335,8 +334,7 @@ class PodcastsScreen extends StatefulWidget {
 }
 
 class _PodcastsScreenState extends State<PodcastsScreen> {
-
-int _userPoints = 0;
+  int _userPoints = 0;
   bool _pointsLoading = true;
 
   @override
@@ -349,8 +347,9 @@ int _userPoints = 0;
 
   Future<void> _loadUserPoints() async {
     try {
-      final result =
-          await context.read<ProfileRepository>().getStudentProfile();
+      final result = await context
+          .read<ProfileRepository>()
+          .getStudentProfile();
 
       if (!mounted) return;
 
@@ -372,7 +371,8 @@ int _userPoints = 0;
         });
       }
     }
-    }
+  }
+
   Future<void> _openCategory(PodcastCategory category) async {
     if (category.id == null) return;
     HapticFeedback.selectionClick();
@@ -383,18 +383,15 @@ int _userPoints = 0;
         builder: (_) => MultiBlocProvider(
           providers: [
             BlocProvider(
-              create: (ctx) => TopicPodcastsCubit(ctx.read<PodcastRepository>())
-                ..fetchTopicPodcasts(category.id!),
+              create: (ctx) =>
+                  TopicPodcastsCubit(ctx.read<PodcastRepository>())
+                    ..fetchTopicPodcasts(category.id!),
             ),
             BlocProvider(
-              create: (ctx) =>
-                  OpenPodcastCubit(ctx.read<PodcastRepository>()),
+              create: (ctx) => OpenPodcastCubit(ctx.read<PodcastRepository>()),
             ),
           ],
-          child: PodcastListScreen(
-            category: category,
-            userPoints: _userPoints,
-          ),
+          child: PodcastListScreen(category: category, userPoints: _userPoints),
         ),
       ),
     );
@@ -428,16 +425,18 @@ int _userPoints = 0;
 
                 final topics = state is PodcastTopicsSuccess
                     ? state.topics
-                        .asMap()
-                        .entries
-                        .map((e) => _mapTopic(e.value, e.key))
-                        .toList()
+                          .asMap()
+                          .entries
+                          .map((e) => _mapTopic(e.value, e.key))
+                          .toList()
                     : <PodcastCategory>[];
 
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 10.h,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -488,8 +487,11 @@ int _userPoints = 0;
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded,
-                color: Colors.white.withOpacity(.6), size: 40.sp),
+            Icon(
+              Icons.wifi_off_rounded,
+              color: Colors.white.withOpacity(.6),
+              size: 40.sp,
+            ),
             SizedBox(height: 12.h),
             Text(
               message,
@@ -506,8 +508,7 @@ int _userPoints = 0;
                 context.read<PodcastTopicsCubit>().fetchTopics();
               },
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.orange, AppColors.yellow],
@@ -707,15 +708,15 @@ int _userPoints = 0;
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14.r),
-                  child: category.imageUrl != null &&
+                  child:
+                      category.imageUrl != null &&
                           category.imageUrl!.trim().isNotEmpty
                       ? Image.network(
                           category.imageUrl!,
                           width: 48.w,
                           height: 48.w,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _topicIconBox(category),
+                          errorBuilder: (_, __, ___) => _topicIconBox(category),
                           loadingBuilder: (context, child, progress) {
                             if (progress == null) return child;
                             return SizedBox(
@@ -811,17 +812,10 @@ int _userPoints = 0;
           ],
         ),
         boxShadow: [
-          BoxShadow(
-            color: category.color.withOpacity(.4),
-            blurRadius: 10,
-          ),
+          BoxShadow(color: category.color.withOpacity(.4), blurRadius: 10),
         ],
       ),
-      child: Icon(
-        category.icon,
-        color: category.color,
-        size: 22.sp,
-      ),
+      child: Icon(category.icon, color: category.color, size: 22.sp),
     );
   }
 }
@@ -860,21 +854,18 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
   }
 
   void _handlePodcastTap(PodcastItem podcast) {
-  if (podcast.isOwned) {
-    HapticFeedback.lightImpact();
-    if (podcast.id == null) return;
-    Navigator.pushNamed(
-      context,
-      podcastDetailRoute,
-      arguments: {
-        'podcastId': podcast.id,
-        'title': podcast.title,
-      },
-    );
-    return;
+    if (podcast.isOwned) {
+      HapticFeedback.lightImpact();
+      if (podcast.id == null) return;
+      Navigator.pushNamed(
+        context,
+        podcastDetailRoute,
+        arguments: {'podcastId': podcast.id, 'title': podcast.title},
+      );
+      return;
+    }
+    _showPurchaseSheet(podcast);
   }
-  _showPurchaseSheet(podcast);
-}
 
   // void _handlePodcastTap(PodcastItem podcast) {
   //   if (podcast.isOwned) {
@@ -907,16 +898,16 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
             builder: (context, setSheetState) {
               final canAfford = _userPoints >= podcast.points;
               return ClipRRect(
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                   child: Container(
                     padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 26.h),
                     decoration: BoxDecoration(
                       color: AppColors.dark.withOpacity(.92),
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(28.r)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28.r),
+                      ),
                       border: Border(
                         top: BorderSide(color: Colors.white.withOpacity(.12)),
                       ),
@@ -1076,75 +1067,83 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                             HapticFeedback.mediumImpact();
                             Navigator.pop(sheetContext);
 
-                            context
-                                .read<OpenPodcastCubit>()
-                                .openPodcast(podcast.id!);
+                            context.read<OpenPodcastCubit>().openPodcast(
+                              podcast.id!,
+                            );
                           },
-                          child: BlocBuilder<OpenPodcastCubit, OpenPodcastState>(
-                            builder: (context, openState) {
-                              final isLoading =
-                                  openState is OpenPodcastLoading &&
+                          child:
+                              BlocBuilder<OpenPodcastCubit, OpenPodcastState>(
+                                builder: (context, openState) {
+                                  final isLoading =
+                                      openState is OpenPodcastLoading &&
                                       openState.podcastId == podcast.id;
 
-                              return Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(vertical: 15.h),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: canAfford
-                                        ? [AppColors.orange, AppColors.yellow]
-                                        : [Colors.white24, Colors.white12],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16.r),
-                                  boxShadow: canAfford
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.yellow
-                                                .withOpacity(.5),
-                                            blurRadius: 16,
+                                  return Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 15.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: canAfford
+                                            ? [
+                                                AppColors.orange,
+                                                AppColors.yellow,
+                                              ]
+                                            : [Colors.white24, Colors.white12],
+                                      ),
+                                      borderRadius: BorderRadius.circular(16.r),
+                                      boxShadow: canAfford
+                                          ? [
+                                              BoxShadow(
+                                                color: AppColors.yellow
+                                                    .withOpacity(.5),
+                                                blurRadius: 16,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if (isLoading)
+                                          SizedBox(
+                                            width: 18.w,
+                                            height: 18.w,
+                                            child:
+                                                const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.black,
+                                                ),
+                                          )
+                                        else ...[
+                                          Icon(
+                                            Icons.lock_open_rounded,
+                                            color: canAfford
+                                                ? Colors.black
+                                                : Colors.white38,
+                                            size: 16.sp,
                                           ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (isLoading)
-                                      SizedBox(
-                                        width: 18.w,
-                                        height: 18.w,
-                                        child: const CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.black,
-                                        ),
-                                      )
-                                    else ...[
-                                      Icon(
-                                        Icons.lock_open_rounded,
-                                        color: canAfford
-                                            ? Colors.black
-                                            : Colors.white38,
-                                        size: 16.sp,
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Text(
-                                        canAfford
-                                            ? "Unlock Episode"
-                                            : "Insufficient Points",
-                                        style: GoogleFonts.poppins(
-                                          color: canAfford
-                                              ? Colors.black
-                                              : Colors.white38,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13.sp,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                          SizedBox(width: 8.w),
+                                          Text(
+                                            canAfford
+                                                ? "Unlock Episode"
+                                                : "Insufficient Points",
+                                            style: GoogleFonts.poppins(
+                                              color: canAfford
+                                                  ? Colors.black
+                                                  : Colors.white38,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13.sp,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                         ),
                       ],
                     ),
@@ -1167,101 +1166,29 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
       },
       child: BlocListener<OpenPodcastCubit, OpenPodcastState>(
         listener: (context, state) {
-  if (state is OpenPodcastSuccess) {
-    setState(() {
-      _userPoints = state.result.remainingPoints;
-    });
-    if (widget.category.id != null) {
-      context
-          .read<TopicPodcastsCubit>()
-          .fetchTopicPodcasts(widget.category.id!);
-    }
+          if (state is OpenPodcastSuccess) {
+            setState(() {
+              _userPoints = state.result.remainingPoints;
+            });
+            if (widget.category.id != null) {
+              context.read<TopicPodcastsCubit>().fetchTopicPodcasts(
+                widget.category.id!,
+              );
+            }
 
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.15),
-              ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                color: const Color(0xFF4ADE80),
-                size: 18.sp,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                state.result.message,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    context.read<OpenPodcastCubit>().reset();
-  } else if (state is OpenPodcastFailure) {
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6.r),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.15),
-              ),
-              child: Icon(
-                Icons.error_outline_rounded,
-                color: Colors.redAccent,
-                size: 18.sp,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                state.message,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    context.read<OpenPodcastCubit>().reset();
-  }
-},
+            HapticFeedback.lightImpact();
+            showAppSnackBar(
+              context,
+              state.result.message,
+              type: AppSnackType.success,
+            );
+            context.read<OpenPodcastCubit>().reset();
+          } else if (state is OpenPodcastFailure) {
+            HapticFeedback.mediumImpact();
+            showAppSnackBar(context, state.message, type: AppSnackType.error);
+            context.read<OpenPodcastCubit>().reset();
+          }
+        },
         child: Scaffold(
           backgroundColor: AppColors.dark,
           body: Stack(
@@ -1340,8 +1267,9 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                         ? _mapTopicPodcasts(state.data)
                         : <PodcastItem>[];
                     final filtered = _filterList(allPodcasts);
-                    final ownedCount =
-                        allPodcasts.where((p) => p.isOwned).length;
+                    final ownedCount = allPodcasts
+                        .where((p) => p.isOwned)
+                        .length;
 
                     return SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -1354,10 +1282,7 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                         children: [
                           _buildTopBar(),
                           SizedBox(height: 18.h),
-                          _buildCategoryHeader(
-                            ownedCount,
-                            allPodcasts.length,
-                          ),
+                          _buildCategoryHeader(ownedCount, allPodcasts.length),
                           SizedBox(height: 16.h),
                           _buildFilterChips(),
                           SizedBox(height: 14.h),
@@ -1368,59 +1293,62 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                             );
                           }),
                           if (filtered.isEmpty)
-  Padding(
-    padding: EdgeInsets.symmetric(vertical: 48.h),
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 68.w,
-            height: 68.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.category.color.withOpacity(.12),
-              border: Border.all(
-                color: widget.category.color.withOpacity(.35),
-                width: 1.5,
-              ),
-            ),
-            child: Icon(
-              _filter == "Locked"
-                  ? Icons.lock_rounded
-                  : _filter == "Owned"
-                      ? Icons.lock_open_rounded
-                      : Icons.podcasts_rounded,
-              color: widget.category.color.withOpacity(.75),
-              size: 28.sp,
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            'Nothing here yet',
-            style: GoogleFonts.poppins(
-              color: Colors.white70,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            _filter == "Locked"
-                ? 'No locked episodes to show'
-                : _filter == "Owned"
-                    ? 'No unlocked episodes yet'
-                    : 'No episodes available in this topic',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(0.45),
-              fontSize: 12.sp,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 300.ms),
-  ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 48.h),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 68.w,
+                                      height: 68.w,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: widget.category.color
+                                            .withOpacity(.12),
+                                        border: Border.all(
+                                          color: widget.category.color
+                                              .withOpacity(.35),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _filter == "Locked"
+                                            ? Icons.lock_rounded
+                                            : _filter == "Owned"
+                                            ? Icons.lock_open_rounded
+                                            : Icons.podcasts_rounded,
+                                        color: widget.category.color
+                                            .withOpacity(.75),
+                                        size: 28.sp,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Text(
+                                      'Nothing here yet',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white70,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4.h),
+                                    Text(
+                                      _filter == "Locked"
+                                          ? 'No locked episodes to show'
+                                          : _filter == "Owned"
+                                          ? 'No unlocked episodes yet'
+                                          : 'No episodes available in this topic',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white.withOpacity(0.45),
+                                        fontSize: 12.sp,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ).animate().fadeIn(duration: 300.ms),
+                            ),
                           SizedBox(height: 20.h),
                         ],
                       ),
@@ -1465,14 +1393,14 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
         ),
         Expanded(
           child: Text(
-  widget.category.title,
-  textAlign: TextAlign.center,
-  style: GoogleFonts.cinzelDecorative(
-    color: Colors.white,
-    fontSize: 16.sp,
-    fontWeight: FontWeight.w600,
-  ),
-),
+            widget.category.title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzelDecorative(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
@@ -1619,10 +1547,7 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
             padding: EdgeInsets.all(12.w),
             radius: 18.r,
             gradientColors: isLocked
-                ? [
-                    Colors.white.withOpacity(.07),
-                    Colors.white.withOpacity(.03),
-                  ]
+                ? [Colors.white.withOpacity(.07), Colors.white.withOpacity(.03)]
                 : [
                     const Color(0xFF4ADE80).withOpacity(.12),
                     Colors.white.withOpacity(.04),
@@ -1632,96 +1557,98 @@ class _PodcastListScreenState extends State<PodcastListScreen> {
                 : const Color(0xFF4ADE80).withOpacity(.3),
             child: Row(
               children: [
-Stack(
-  clipBehavior: Clip.none,
-  children: [
-    Container(
-      width: 58.w,
-      height: 58.w,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.r),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isLocked
-              ? [
-                  Colors.white.withOpacity(.10),
-                  Colors.white.withOpacity(.04),
-                ]
-              : [
-                  category.color.withOpacity(.55),
-                  category.color.withOpacity(.22),
-                ],
-        ),
-        border: Border.all(
-          color: isLocked
-              ? Colors.white.withOpacity(.12)
-              : category.color.withOpacity(.45),
-        ),
-        boxShadow: isLocked
-            ? null
-            : [
-                BoxShadow(
-                  color: category.color.withOpacity(.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 58.w,
+                      height: 58.w,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16.r),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isLocked
+                              ? [
+                                  Colors.white.withOpacity(.10),
+                                  Colors.white.withOpacity(.04),
+                                ]
+                              : [
+                                  category.color.withOpacity(.55),
+                                  category.color.withOpacity(.22),
+                                ],
+                        ),
+                        border: Border.all(
+                          color: isLocked
+                              ? Colors.white.withOpacity(.12)
+                              : category.color.withOpacity(.45),
+                        ),
+                        boxShadow: isLocked
+                            ? null
+                            : [
+                                BoxShadow(
+                                  color: category.color.withOpacity(.35),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // دائرة خلفية ناعمة
+                          Container(
+                            width: 36.w,
+                            height: 36.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withOpacity(
+                                isLocked ? .06 : .12,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            isLocked
+                                ? Icons.podcasts_rounded
+                                : Icons.play_circle_fill_rounded,
+                            color: isLocked
+                                ? Colors.white.withOpacity(.45)
+                                : Colors.white,
+                            size: 28.sp,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isLocked)
+                      Positioned(
+                        right: -4.w,
+                        bottom: -4.h,
+                        child: Container(
+                          width: 22.w,
+                          height: 22.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.dark,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.25),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(.35),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.lock_rounded,
+                            color: AppColors.yellow,
+                            size: 12.sp,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // دائرة خلفية ناعمة
-          Container(
-            width: 36.w,
-            height: 36.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(isLocked ? .06 : .12),
-            ),
-          ),
-          Icon(
-            isLocked
-                ? Icons.podcasts_rounded
-                : Icons.play_circle_fill_rounded,
-            color: isLocked
-                ? Colors.white.withOpacity(.45)
-                : Colors.white,
-            size: 28.sp,
-          ),
-        ],
-      ),
-    ),
-    if (isLocked)
-      Positioned(
-        right: -4.w,
-        bottom: -4.h,
-        child: Container(
-          width: 22.w,
-          height: 22.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.dark,
-            border: Border.all(
-              color: Colors.white.withOpacity(.25),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.35),
-                blurRadius: 6,
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.lock_rounded,
-            color: AppColors.yellow,
-            size: 12.sp,
-          ),
-        ),
-      ),
-  ],
-),
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Column(
@@ -1731,8 +1658,7 @@ Stack(
                       Text(
                         podcast.title,
                         style: GoogleFonts.poppins(
-                          color:
-                              Colors.white.withOpacity(isLocked ? .75 : 1),
+                          color: Colors.white.withOpacity(isLocked ? .75 : 1),
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5.sp,
                         ),
@@ -1754,10 +1680,11 @@ Stack(
                           vertical: 3.h,
                         ),
                         decoration: BoxDecoration(
-                          color: (isLocked
-                                  ? AppColors.yellow
-                                  : const Color(0xFF4ADE80))
-                              .withOpacity(.15),
+                          color:
+                              (isLocked
+                                      ? AppColors.yellow
+                                      : const Color(0xFF4ADE80))
+                                  .withOpacity(.15),
                           borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Text(
@@ -1853,4 +1780,5 @@ Stack(
         .animate()
         .fadeIn(delay: (100 + index * 70).ms, duration: 400.ms)
         .moveX(begin: 12, end: 0, curve: Curves.easeOutCubic);
-  }}
+  }
+}

@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'word_create_state.dart';
 
-class WordCreateCubit extends Cubit<WordCreateState> {
+class WordCreateCubit extends SafeCubit<WordCreateState> {
   final WordRepository wordRepository;
   WordCreateCubit(this.wordRepository) : super(WordCreateInitial());
 

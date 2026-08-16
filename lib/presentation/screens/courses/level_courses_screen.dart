@@ -17,10 +17,12 @@ import 'package:fluent/data/repository/rate_repository.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/presentation/screens/lessons/lessons_scrssn.dart';
 import 'package:fluent/presentation/widgets/rate_course_sheet.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:fluent/cubit/student/lessons/lesson_cubit.dart';
 import 'package:fluent/data/repository/student_lesson_repository.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
+import 'package:fluent/data/repository/progress_repository.dart';
 
 class LevelCoursesScreen extends StatefulWidget {
   final int? levelId;
@@ -57,13 +59,32 @@ class _LevelCoursesScreenState extends State<LevelCoursesScreen>
   int _selectedNavIndex = 0;
   int? _tappedIndex;
   late int _xp;
-late int _streakDays;
+  late int _streakDays;
 
   RateCubit? _rateCubit;
 
   late final AnimationController _borderFlowController;
 
   List<CourseData> _courses = [];
+
+  /// 0.0–1.0 from GET /api/levels/{id}/progress (fallback: widget.levelProgress)
+  double _apiLevelProgress = 0.0;
+  bool _progressLoaded = false;
+
+  /// Authoritative progress summary from GET /api/getStudentcourses/{level}
+  /// (`progress.completed_courses` / `progress.total_courses`).
+  CoursesProgressModel? _apiCoursesProgress;
+
+  bool get _hasApiCoursesProgress =>
+      _apiCoursesProgress != null && _apiCoursesProgress!.totalCourses > 0;
+
+  int get _completedCoursesCount => _hasApiCoursesProgress
+      ? _apiCoursesProgress!.completedCourses
+      : _courses.where((c) => c.isCompleted).length;
+
+  int get _totalCoursesCount => _hasApiCoursesProgress
+      ? _apiCoursesProgress!.totalCourses
+      : (_courses.isNotEmpty ? _courses.length : 0);
 
   static const List<Color> _courseAccentColors = [
     AppColors.sky,
@@ -172,40 +193,42 @@ late int _streakDays;
   // }
 
   @override
-void initState() {
-  super.initState();
-  _xp = widget.xp;
-  _streakDays = widget.streakDays;
+  void initState() {
+    super.initState();
+    _xp = widget.xp;
+    _streakDays = widget.streakDays;
 
-  _borderFlowController = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 6),
-  )..repeat();
+    _borderFlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final cubit = context.read<StudentCoursesCubit>();
-    if (cubit.state is StudentCoursesInitial) {
-      cubit.fetchStudentCourses(widget.levelId ?? 0);
-    }
-    _refreshPointsOnly(); // جلب من الباك
-  });
-}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cubit = context.read<StudentCoursesCubit>();
+      if (cubit.state is StudentCoursesInitial) {
+        cubit.fetchStudentCourses(widget.levelId ?? 0);
+      }
+      _loadLevelProgress();
+      _refreshPointsOnly(); // جلب من الباك
+    });
+  }
 
-Future<void> _refreshPointsOnly() async {
-  try {
-    final profileRes =
-        await context.read<ProfileRepository>().getStudentProfile();
-    if (!mounted) return;
-    if (profileRes['success'] == true &&
-        profileRes['data'] is StudentProfileModel) {
-      final pr = profileRes['data'] as StudentProfileModel;
-      setState(() {
-        _xp = pr.points;
-        _streakDays = pr.streak;
-      });
-    }
-  } catch (_) {}
-}
+  Future<void> _refreshPointsOnly() async {
+    try {
+      final profileRes = await context
+          .read<ProfileRepository>()
+          .getStudentProfile();
+      if (!mounted) return;
+      if (profileRes['success'] == true &&
+          profileRes['data'] is StudentProfileModel) {
+        final pr = profileRes['data'] as StudentProfileModel;
+        setState(() {
+          _xp = pr.points;
+          _streakDays = pr.streak;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -220,15 +243,10 @@ Future<void> _refreshPointsOnly() async {
     final courseId = course.id;
     if (courseId == null || courseId <= 0) return;
     if (!course.isCompleted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'You can only rate courses you have completed.',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        context,
+        'You can only rate courses you have completed.',
+        type: AppSnackType.warning,
       );
       return;
     }
@@ -283,6 +301,25 @@ Future<void> _refreshPointsOnly() async {
 
                             if (state is StudentCoursesSuccess) {
                               _courses = _mapCourses(state.data);
+                              // Prefer progress from getStudentcourses response
+                              final p = state.data.progress;
+                              _apiCoursesProgress = p;
+                              if (p != null) {
+                                final fraction = p.fraction;
+                                if (!_progressLoaded ||
+                                    (_apiLevelProgress - fraction).abs() >
+                                        0.001) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _apiLevelProgress = fraction;
+                                      _progressLoaded = true;
+                                    });
+                                  });
+                                }
+                              }
                               return _buildCoursesList();
                             }
 
@@ -395,7 +432,14 @@ Future<void> _refreshPointsOnly() async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildLevelHeroCard(),
-                SizedBox(height: 22.h),
+                SizedBox(height: 12.h),
+                _buildApiProgressBar(
+                  label: 'Level completion',
+                  progress: _progressLoaded
+                      ? _apiLevelProgress
+                      : widget.levelProgress,
+                ),
+                SizedBox(height: 16.h),
                 _buildSectionTitleRow(),
                 SizedBox(height: 12.h),
               ],
@@ -448,31 +492,11 @@ Future<void> _refreshPointsOnly() async {
                   }
                 });
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Icon(
-                          Icons.lock_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Text(
-                            "Complete previous courses to unlock!",
-                            style: GoogleFonts.poppins(fontSize: 13.sp),
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
+                showAppSnackBar(
+                  context,
+                  "Complete previous courses to unlock!",
+                  type: AppSnackType.warning,
+                  duration: const Duration(seconds: 2),
                 );
               } else {
                 HapticFeedback.lightImpact();
@@ -510,6 +534,7 @@ Future<void> _refreshPointsOnly() async {
                   context.read<StudentCoursesCubit>().fetchStudentCourses(
                     widget.levelId!,
                   );
+                  _loadLevelProgress();
                 }
                 await _refreshPointsOnly();
               }
@@ -544,7 +569,7 @@ Future<void> _refreshPointsOnly() async {
     if (widget.levelId != null) {
       context.read<StudentCoursesCubit>().fetchStudentCourses(widget.levelId!);
     }
-    await _refreshPointsOnly(); 
+    await _refreshPointsOnly();
     if (result is Map &&
         result['passed'] == true &&
         result['goToLevels'] == true) {
@@ -627,14 +652,14 @@ Future<void> _refreshPointsOnly() async {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-            'Good Progress',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cinzelDecorative(
-              color: Colors.white,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+                'Good Progress',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cinzelDecorative(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.white, AppColors.sky],
@@ -651,7 +676,6 @@ Future<void> _refreshPointsOnly() async {
             ],
           ),
         ),
-        
       ],
     ).animate().fadeIn(duration: 500.ms).moveY(begin: -10, end: 0);
   }
@@ -718,9 +742,118 @@ Future<void> _refreshPointsOnly() async {
     );
   }
 
+  Future<void> _loadLevelProgress() async {
+    // On this screen the source of truth is getStudentcourses → progress.progress_percentage.
+    // /levels/{id}/progress counts published lessons and can be 0 even when courses progressed.
+    // Only use level API when we still have no progress from courses response.
+    if (_progressLoaded && _apiLevelProgress > 0) return;
+
+    final levelId = widget.levelId;
+    if (levelId == null || levelId <= 0) {
+      if (!_progressLoaded) {
+        setState(() {
+          _apiLevelProgress = widget.levelProgress.clamp(0.0, 1.0);
+          _progressLoaded = true;
+        });
+      }
+      return;
+    }
+    try {
+      final repo = context.read<ProgressRepository>();
+      final res = await repo.getLevelProgress(levelId);
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is num) {
+        final pct = (res['data'] as num).toDouble();
+        final fraction = (pct / 100.0).clamp(0.0, 1.0);
+        // Never overwrite a non-zero courses progress with a zero level API value
+        if (_progressLoaded && _apiLevelProgress > 0 && fraction <= 0) return;
+        setState(() {
+          _apiLevelProgress = fraction;
+          _progressLoaded = true;
+        });
+      } else if (!_progressLoaded) {
+        setState(() {
+          _apiLevelProgress = widget.levelProgress.clamp(0.0, 1.0);
+          _progressLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (!mounted || _progressLoaded) return;
+      setState(() {
+        _apiLevelProgress = widget.levelProgress.clamp(0.0, 1.0);
+        _progressLoaded = true;
+      });
+    }
+  }
+
+  Widget _buildApiProgressBar({
+    required String label,
+    required double progress,
+  }) {
+    final pct = (progress.clamp(0.0, 1.0) * 100).round();
+    final value = progress.clamp(0.0, 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(.08),
+                Colors.white.withOpacity(.03),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(.14)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.insights_rounded,
+                    color: AppColors.sky,
+                    size: 16.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$pct%',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.yellow,
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              _ShinyProgressStrip(value: value),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 500.ms).moveY(begin: 8, end: 0);
+  }
+
   Widget _buildLevelHeroCard() {
-    final completedCount = _courses.where((c) => c.isCompleted).length;
-    final totalCount = _courses.isNotEmpty ? _courses.length : 0;
+    final completedCount = _completedCoursesCount;
+    final totalCount = _totalCoursesCount;
 
     return ClipRRect(
           borderRadius: BorderRadius.circular(26.r),
@@ -756,7 +889,9 @@ Future<void> _refreshPointsOnly() async {
                     children: [
                       _LevelOrbitRing(
                         courses: _courses,
-                        progress: widget.levelProgress,
+                        progress: _progressLoaded
+                            ? _apiLevelProgress
+                            : widget.levelProgress,
                         size: 100.w,
                       ),
                       SizedBox(width: 16.w),
@@ -897,7 +1032,8 @@ Future<void> _refreshPointsOnly() async {
   }
 
   Widget _buildSectionTitleRow() {
-    final completedCount = _courses.where((c) => c.isCompleted).length;
+    final completedCount = _completedCoursesCount;
+    final totalCount = _totalCoursesCount;
     return Row(
       children: [
         Text(
@@ -917,7 +1053,7 @@ Future<void> _refreshPointsOnly() async {
             border: Border.all(color: Colors.white.withOpacity(.14)),
           ),
           child: Text(
-            "$completedCount/${_courses.length}",
+            "$completedCount/$totalCount",
             style: GoogleFonts.poppins(
               color: AppColors.yellow,
               fontSize: 11.sp,
@@ -1178,6 +1314,92 @@ Future<void> _refreshPointsOnly() async {
       if (posFromEnd > 1 && posFromEnd % 3 == 1) buffer.write(',');
     }
     return buffer.toString();
+  }
+}
+
+/// Glass-matched progress strip with a soft shimmer.
+class _ShinyProgressStrip extends StatefulWidget {
+  final double value;
+  const _ShinyProgressStrip({required this.value});
+
+  @override
+  State<_ShinyProgressStrip> createState() => _ShinyProgressStripState();
+}
+
+class _ShinyProgressStripState extends State<_ShinyProgressStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = widget.value.clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8.r),
+      child: SizedBox(
+        height: 9.h,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Track
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.10),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            // Fill
+            FractionallySizedBox(
+              widthFactor: value,
+              alignment: Alignment.centerLeft,
+              child: AnimatedBuilder(
+                animation: _shimmer,
+                builder: (context, _) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.r),
+                      gradient: LinearGradient(
+                        begin: Alignment(-1.0 + 2.0 * _shimmer.value, 0),
+                        end: Alignment(1.0 + 2.0 * _shimmer.value, 0),
+                        colors: [
+                          AppColors.yellow.withOpacity(.75),
+                          const Color(0xFFFFF1A8),
+                          AppColors.orange.withOpacity(.90),
+                          const Color(0xFFFFF1A8),
+                          AppColors.yellow.withOpacity(.75),
+                        ],
+                        stops: const [0.0, 0.35, 0.5, 0.65, 1.0],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.yellow.withOpacity(.55),
+                          blurRadius: 10,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1675,7 +1897,6 @@ class AnimatedCourseCard extends StatelessWidget {
     );
   }
 
-
   Widget _buildInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1886,51 +2107,37 @@ class _CardBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(20),
-    );
-    final startAngle = animationValue * math.pi * 2;
+    if (size.width <= 0 || size.height <= 0 || !size.isFinite) return;
 
+    final r = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(20),
+    );
+
+    // Safe animated border — no SweepGradient (avoids dart:ui assertion)
+    final t = animationValue % 1.0;
     final glowPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: [
-          color.withOpacity(0),
-          color.withOpacity(0.5),
-          color.withOpacity(0),
-          color.withOpacity(0.35),
-          color.withOpacity(0),
-        ],
-        stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
-      ).createShader(rect.outerRect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
+      ..strokeWidth = 3.5
+      ..color = color.withOpacity(
+        0.25 + 0.35 * (0.5 + 0.5 * (t < 0.5 ? t * 2 : (1 - t) * 2)),
+      )
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
 
-    canvas.drawRRect(rect, glowPaint);
+    canvas.drawRRect(r, glowPaint);
 
     final borderPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle + 0.3,
-        colors: [
-          color.withOpacity(0.3),
-          color.withOpacity(0.8),
-          color.withOpacity(0.5),
-          color.withOpacity(0.9),
-          color.withOpacity(0.3),
-        ],
-        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-      ).createShader(rect.outerRect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+      ..strokeWidth = 1.4
+      ..color = color.withOpacity(0.55 + 0.35 * t);
 
-    canvas.drawRRect(rect.deflate(1.5), borderPaint);
+    canvas.drawRRect(r.deflate(1.5), borderPaint);
   }
 
   @override
   bool shouldRepaint(covariant _CardBorderPainter oldDelegate) =>
-      oldDelegate.animationValue != animationValue;
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.color != color;
 }
 
 class _TwinklingStars extends StatelessWidget {
@@ -1996,48 +2203,26 @@ class _AnimatedBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = RRect.fromRectAndRadius(
+    if (size.width <= 0 || size.height <= 0 || !size.isFinite) return;
+
+    final r = RRect.fromRectAndRadius(
       Offset.zero & size,
-      Radius.circular(radius),
+      Radius.circular(radius.isFinite ? radius : 16),
     );
-    final startAngle = animationValue * math.pi * 2;
 
+    final t = animationValue % 1.0;
     final glowPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0x00FFD35B),
-          Color(0x88FFD35B),
-          Color(0x00F5A201),
-          Color(0x88A8E8F9),
-          Color(0x00B388FF),
-          Color(0x88FF6FB5),
-          Color(0x00FFD35B),
-        ],
-        stops: [0.0, 0.14, 0.32, 0.5, 0.68, 0.86, 1.0],
-      ).createShader(rect.outerRect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-
-    canvas.drawRRect(rect.deflate(3.5), glowPaint);
+      ..strokeWidth = 6
+      ..color = const Color(0x88FFD35B).withOpacity(0.35 + 0.25 * t)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawRRect(r.deflate(3.5), glowPaint);
 
     final borderPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        colors: const [
-          Color(0xffA8E8F9),
-          Color(0xffFFD35B),
-          Color(0xffF5A201),
-          Color(0xffB388FF),
-          Color(0xffA8E8F9),
-        ],
-        stops: [0.0, 0.25, 0.5, 0.75, 1.0],
-      ).createShader(rect.outerRect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    canvas.drawRRect(rect.deflate(0.5), borderPaint);
+      ..strokeWidth = 1.2
+      ..color = const Color(0xffA8E8F9).withOpacity(0.7);
+    canvas.drawRRect(r.deflate(1.2), borderPaint);
   }
 
   @override
@@ -2045,7 +2230,6 @@ class _AnimatedBorderPainter extends CustomPainter {
       oldDelegate.animationValue != animationValue;
 }
 
-/// Compact level checkpoint — matches course final-test card language.
 class _LevelFinalTestCard extends StatelessWidget {
   final bool locked;
   final String levelTitle;

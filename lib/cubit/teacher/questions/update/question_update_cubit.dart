@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_update_state.dart';
 
-class QuestionUpdateCubit extends Cubit<QuestionUpdateState> {
+class QuestionUpdateCubit extends SafeCubit<QuestionUpdateState> {
   final QuestionRepository questionRepository;
 
   QuestionUpdateCubit(this.questionRepository) : super(QuestionUpdateInitial());

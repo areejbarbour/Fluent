@@ -1,8 +1,8 @@
 //  const String baseUrl = 'http://192.168.1.5:8000';
-//const String baseUrl = 'http://192.168.10.224:8000';
+const String baseUrl = 'http://192.168.10.220:8000';
 
 // const String baseUrl = 'http://192.168.1.3:8000';
-const String baseUrl = 'http://192.168.10.224:8000';
+// const String baseUrl = 'http://192.168.1.108:8000';
 
 //const String baseUrl = 'http://172.20.10.2:8000';
 // const String baseUrl = 'https://fluent.moayadismail.com';
@@ -22,6 +22,7 @@ const String placementTestRoute = '/placement-test';
 const String studentTestRoute = '/student-test';
 const String studentHomeRoute = '/student/home';
 const String teacherHomeRoute = '/teacher/home';
+const String teacherStatsRoute = '/teacher/stats';
 const String levelCoursesRoute = '/level-courses';
 const String courseLessonsRoute = '/course-lessons';
 const String profileRoute = '/profile';
@@ -30,6 +31,8 @@ const String podcastsRoute = '/podcasts';
 const String aiConversationRoute = '/ai-conversation';
 const String levelExceptionsRoute = '/level-exceptions';
 const String notificationsRoute = '/notifications';
+const String certificatesRoute = '/certificates';
+const String contactUsRoute = '/contact-us';
 
 // ✅ Teacher Question routes
 const String questionsListRoute = '/teacher/questions';
@@ -118,6 +121,11 @@ String apiDeleteRate(int rateId) => '/api/rate/$rateId/delete';
 const String apiStudentProfile = '/api/student/profile';
 const String apiStudentWeeklyActivity = '/api/student/weeklyActivity';
 const String apiTeacherProfile = '/api/teacher/profile';
+
+// ── Placement status (official backend decision) ─────────────
+/// GET /api/placement-test/status
+/// Response: { action: "take_placement_test"|"show_levels", can_retake_placement: bool, retake_available_at?: string|null }
+const String apiPlacementTestStatus = '/api/placement-test/status';
 
 // ── Student attempts (tests / placement) ─────────────────────
 
@@ -223,6 +231,10 @@ String apiResubmitTest(int testId) => '/api/tests/$testId/resubmit';
 String apiLessonReviewHistory(int lessonId) => '/api/lessons/$lessonId/history';
 String apiTestReviewHistory(int testId) => '/api/tests/$testId/history';
 
+// ✅ Teacher Stats API Endpoints
+String apiCourseStats(int courseId) => '/api/courses/$courseId/stats';
+String apiTestStats(int testId) => '/api/tests/$testId/stats';
+
 // ✅ Notifications API Endpoints (Teacher + Student)
 const String apiFirebaseToken = '/api/firebase/token';
 const String apiNotifications = '/api/notifications';
@@ -246,6 +258,25 @@ String apiChatSendMessage(int sessionId) =>
 String apiChatEndSession(int sessionId) => '/api/chat/sessions/$sessionId/end';
 
 String apiChatSessionDetails(int sessionId) => '/api/chat/sessions/$sessionId';
+
+// ── Progress API (student) ───────────────────────────────────
+/// GET /api/courses/{course}/progress → { "progress": float }
+String apiCourseProgress(int courseId) => '/api/courses/$courseId/progress';
+
+/// GET /api/levels/{level}/progress → { "progress": float }
+String apiLevelProgress(int levelId) => '/api/levels/$levelId/progress';
+
+// ── Certificate API (student) ────────────────────────────────
+/// GET /api/certificates → list of certificates
+const String apiCertificates = '/api/certificates';
+
+/// GET /api/user-levels/{userLevel}/certificate → { "download_url": "..." }
+String apiUserLevelCertificate(int userLevelId) =>
+    '/api/user-levels/$userLevelId/certificate';
+
+// ── Contact Us API (student + teacher) ───────────────────────
+/// POST /api/contact-us  body: { "text": "..." }  (min 10, max 2000)
+const String apiContactUs = '/api/contact-us';
 
 // ✅ OTP Types
 class OtpType {

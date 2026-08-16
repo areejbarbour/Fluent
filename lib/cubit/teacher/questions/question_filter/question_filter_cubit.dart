@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/question_repository.dart';
 import 'question_filter_state.dart';
 
-class QuestionFilterCubit extends Cubit<QuestionFilterState> {
+class QuestionFilterCubit extends SafeCubit<QuestionFilterState> {
   final QuestionRepository questionRepository;
 
   // متغيرات لتخزين حالة الفلتر الحالية لدعم الـ Pagination
@@ -76,13 +77,15 @@ class QuestionFilterCubit extends Cubit<QuestionFilterState> {
 
     if (result['success'] == true) {
       final paginated = result['data'] as PaginatedQuestions;
-      emit(current.copyWith(
-        questions: [...current.questions, ...paginated.questions],
-        currentPage: paginated.currentPage,
-        lastPage: paginated.lastPage,
-        total: paginated.total,
-        isLoadingMore: false,
-      ));
+      emit(
+        current.copyWith(
+          questions: [...current.questions, ...paginated.questions],
+          currentPage: paginated.currentPage,
+          lastPage: paginated.lastPage,
+          total: paginated.total,
+          isLoadingMore: false,
+        ),
+      );
     } else {
       emit(current.copyWith(isLoadingMore: false));
     }
@@ -122,19 +125,23 @@ class QuestionFilterCubit extends Cubit<QuestionFilterState> {
       if (paginated.questions.isEmpty) {
         emit(QuestionFilterEmpty('No questions match your filters.'));
       } else {
-        emit(QuestionFilterLoaded(
-          questions: paginated.questions,
-          currentPage: paginated.currentPage,
-          lastPage: paginated.lastPage,
-          total: paginated.total,
-          hasActiveFilters: hasActiveFilters,
-        ));
+        emit(
+          QuestionFilterLoaded(
+            questions: paginated.questions,
+            currentPage: paginated.currentPage,
+            lastPage: paginated.lastPage,
+            total: paginated.total,
+            hasActiveFilters: hasActiveFilters,
+          ),
+        );
       }
     } else {
-      emit(QuestionFilterFailure(
-        result['message'] ?? 'Something went wrong',
-        errors: result['errors'],
-      ));
+      emit(
+        QuestionFilterFailure(
+          result['message'] ?? 'Something went wrong',
+          errors: result['errors'],
+        ),
+      );
     }
   }
 }

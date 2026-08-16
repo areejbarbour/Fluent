@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/cubit/student/streak/streak_state.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
@@ -7,7 +8,7 @@ import 'package:fluent/data/repository/profile_repository.dart';
 /// Matches backend:
 /// - GET /api/student/profile → streak, last_activate_date
 /// - GET /api/student/weeklyActivity → weekly_activity map (Sun→Sat)
-class StreakCubit extends Cubit<StreakState> {
+class StreakCubit extends SafeCubit<StreakState> {
   final ProfileRepository profileRepository;
 
   StreakCubit({required this.profileRepository}) : super(StreakInitial());
@@ -43,25 +44,30 @@ class StreakCubit extends Cubit<StreakState> {
 
       // Prefer showing something useful even if one call fails.
       if (weekly != null) {
-        emit(StreakLoaded(
-          streak: streak,
-          lastActivateDate: lastActivateDate,
-          weeklyActivity: weekly,
-        ));
+        emit(
+          StreakLoaded(
+            streak: streak,
+            lastActivateDate: lastActivateDate,
+            weeklyActivity: weekly,
+          ),
+        );
         return;
       }
 
       // Weekly failed — still show streak with empty week if profile ok.
       if (profileResult['success'] == true) {
-        emit(StreakLoaded(
-          streak: streak,
-          lastActivateDate: lastActivateDate,
-          weeklyActivity: WeeklyActivityModel.fromJson(const {}),
-        ));
+        emit(
+          StreakLoaded(
+            streak: streak,
+            lastActivateDate: lastActivateDate,
+            weeklyActivity: WeeklyActivityModel.fromJson(const {}),
+          ),
+        );
         return;
       }
 
-      final msg = profileResult['message']?.toString() ??
+      final msg =
+          profileResult['message']?.toString() ??
           weeklyResult['message']?.toString() ??
           'Failed to load streak data';
       emit(StreakFailure(msg, streak: streak, weeklyActivity: weekly));

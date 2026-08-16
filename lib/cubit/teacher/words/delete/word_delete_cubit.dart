@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/repository/word_repository.dart';
 import 'word_delete_state.dart';
 
-class WordDeleteCubit extends Cubit<WordDeleteState> {
+class WordDeleteCubit extends SafeCubit<WordDeleteState> {
   final WordRepository wordRepository;
   WordDeleteCubit(this.wordRepository) : super(WordDeleteInitial());
 

@@ -3,6 +3,7 @@ import 'package:fluent/constants/app_colors.dart';
 import 'package:fluent/constants/strings.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_cubit.dart';
 import 'package:fluent/cubit/auth/reset_password/reset_password_state.dart';
+import 'package:fluent/presentation/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -67,16 +68,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
       body: BlocConsumer<ResetPasswordCubit, ResetPasswordState>(
         listener: (context, state) {
           if (state is ResetPasswordSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.sky,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-              ),
-            );
+            showAppSnackBar(context, state.message, type: AppSnackType.success);
             // ✅ الانتقال إلى شاشة تسجيل الدخول مع مسح كامل للسجل
             Future.delayed(const Duration(milliseconds: 500), () {
               Navigator.pushNamedAndRemoveUntil(
@@ -86,17 +78,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               );
             });
           } else if (state is ResetPasswordFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error),
-                backgroundColor: Colors.redAccent,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            showAppSnackBar(context, state.error, type: AppSnackType.error);
           }
         },
         builder: (context, state) {
@@ -547,15 +529,10 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
             : () {
                 if (_formKey.currentState!.validate()) {
                   if (_email == null || _email!.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Email not found. Please try again.'),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10)),
-                        ),
-                      ),
+                    showAppSnackBar(
+                      context,
+                      'Email not found. Please try again.',
+                      type: AppSnackType.error,
                     );
                     return;
                   }

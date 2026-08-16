@@ -1,11 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/content_review_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
 import 'package:fluent/data/repository/content_review_repository.dart';
 import 'content_review_state.dart';
 
-class ContentReviewCubit extends Cubit<ContentReviewState> {
+class ContentReviewCubit extends SafeCubit<ContentReviewState> {
   final ContentReviewRepository repository;
 
   ContentReviewCubit(this.repository) : super(const ContentReviewState());
