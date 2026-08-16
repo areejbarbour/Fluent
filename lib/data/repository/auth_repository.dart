@@ -6,25 +6,21 @@ class AuthRepository {
   final AuthService authService;
   AuthRepository(this.authService);
 
-  // 🟢 Save token helper
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
   }
 
-  // 🟢 Clear token helper
   Future<void> _clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
   }
 
-  // 🟢 Get token helper
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  // 🟢 Register
   Future<Map<String, dynamic>> register({
     required String firstName,
     required String lastName,
@@ -268,7 +264,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Logout
   Future<Map<String, dynamic>> logout() async {
     try {
       final token = await _getToken();
@@ -313,7 +308,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Forgot Password - جديد
   Future<Map<String, dynamic>> forgotPassword({required String email}) async {
     try {
       final response = await authService.forgotPassword(email: email);
@@ -352,7 +346,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Reset Password - جديد
   Future<Map<String, dynamic>> resetPassword({
     required String email,
     required String password,
@@ -399,7 +392,6 @@ class AuthRepository {
     }
   }
 
-  // 🟢 Google Login - MODIFIED
   Future<Map<String, dynamic>> googleLogin({required String token}) async {
     try {
       final response = await authService.loginWithGoogleToken(token);

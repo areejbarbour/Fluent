@@ -1,20 +1,3 @@
-/// Notification models matching backend NotificationResource + AppNotification.
-///
-/// Backend shape (NotificationResource):
-/// {
-///   "id": "uuid",
-///   "title": "...",
-///   "body": "...",
-///   "data": { ... },
-///   "type": "...",
-///   "is_read": true/false,
-///   "read_at": "...",
-///   "created_at": "..."
-/// }
-///
-/// Unread count response:
-/// { "number of unread notification": 5 }
-
 class AppNotificationModel {
   final String id;
   final String title;
@@ -96,11 +79,7 @@ class AppNotificationModel {
     );
   }
 
-  /// Known backend notification types — these are the exact `type` strings
-  /// dispatched by `SendNotificationJob` across the backend services
-  /// (verified against every `SendNotificationJob::dispatch(...)` call site,
-  /// not just the seeder — the seeder's `course-opened` value is fake data
-  /// and is never actually dispatched, hence it is NOT listed here).
+ 
   static const String typeTopicPublished = 'topic-published';
   static const String typePodcastCreated = 'podcast-created';
   static const String typeLessonOpened = 'lesson-opened';
@@ -113,18 +92,13 @@ class AppNotificationModel {
   static const String typeDeleteLesson = 'delete_lesson';
   static const String typeGeneral = 'general';
 
-  /// Content-review related types — NOT currently dispatched anywhere in the
-  /// backend (no `SendNotificationJob::dispatch` uses these strings, and
-  /// they're not in the seeder either). Kept here so the UI/resolver is
-  /// ready the moment the backend starts sending them, but as of now a
-  /// notification with one of these types will never arrive from the API.
+ 
   static const String typeContentApproved = 'content-approved';
   static const String typeContentChangesRequested = 'content-changes-requested';
   static const String typeContentPublished = 'content-published';
 }
 
-/// Helper to parse unread-count response.
-/// Backend key is exactly: "number of unread notification"
+
 class UnreadCountResult {
   final int count;
 

@@ -1,7 +1,6 @@
-// lib/cubit/teacher/statuses/teacher_status_board_state.dart
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
-import 'package:fluent/data/models/test_model.dart'; // أضف هذا الاستيراد
+import 'package:fluent/data/models/test_model.dart'; 
 
 abstract class TeacherStatusBoardState {}
 
@@ -12,10 +11,10 @@ class TeacherStatusBoardLoading extends TeacherStatusBoardState {}
 class TeacherStatusBoardLoaded extends TeacherStatusBoardState {
   final Map<String, List<CourseModel>> coursesByStatus;
   final Map<String, List<LessonModel>> lessonsByStatus;
-  final Map<String, List<TestModel>> testsByStatus; // جديد
+  final Map<String, List<TestModel>> testsByStatus; 
   final int totalCourses;
   final int totalLessons;
-  final int totalTests; // جديد
+  final int totalTests; 
   final bool isRefreshing;
 
   TeacherStatusBoardLoaded({

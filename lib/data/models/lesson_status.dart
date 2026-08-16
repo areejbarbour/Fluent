@@ -1,9 +1,4 @@
-// lib/data/models/lesson_status.dart
-//
-// Mirrors App\Enums\ContentStatus on the backend (in declaration order).
-// Kept as its own enum (rather than reusing QuestionType-style file) so the
-// lesson feature stays self-contained, same convention used for
-// QuestionType / QuestionDifficulty.
+
 
 enum LessonStatus {
   draft('draft', 'Draft'),

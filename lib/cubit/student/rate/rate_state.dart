@@ -9,7 +9,6 @@ class RateInitial extends RateState {
 }
 
 class RateLoading extends RateState {
-  /// courseId currently being rated / deleted (for per-card loading UI)
   final int? courseId;
   final bool isDeleting;
 

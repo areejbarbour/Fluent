@@ -6,10 +6,6 @@ class NotificationRepository {
   final NotificationService service;
   NotificationRepository(this.service);
 
-  // ────────────────────────────────────────────
-  // Shared helpers (same conventions as ContentReviewRepository)
-  // ────────────────────────────────────────────
-
   String _extractMessage(dynamic data, String fallback) {
     if (data is! Map) return fallback;
     final errors = data['errors'];
@@ -26,9 +22,7 @@ class NotificationRepository {
     if (data['error'] is String && (data['error'] as String).isNotEmpty) {
       return data['error'] as String;
     }
-    // Backend ownership errors:
-    // "You cannot mark this notification as read."
-    // "You cannot delete this notification."
+
     if (data['notification'] is List &&
         (data['notification'] as List).isNotEmpty) {
       return (data['notification'] as List).first.toString();
@@ -57,8 +51,6 @@ class NotificationRepository {
   List<AppNotificationModel> _parseList(dynamic data) {
     final list = <AppNotificationModel>[];
 
-    // Laravel Resource::collection → usually { "data": [ ... ] }
-    // Sometimes direct list.
     List? rawList;
     if (data is List) {
       rawList = data;
@@ -79,9 +71,6 @@ class NotificationRepository {
     return list;
   }
 
-  // ────────────────────────────────────────────
-  // 1) POST /api/firebase/token
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> registerFirebaseToken({
     required String token,
     String? deviceType,
@@ -113,9 +102,6 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 2) GET /api/notifications
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> getNotifications() async {
     try {
       final response = await service.getNotifications();
@@ -136,10 +122,6 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 3) GET /api/notifications/unread
-  //    Fallback: if backend 500, caller can filter from getNotifications()
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> getUnreadNotifications() async {
     try {
       final response = await service.getUnreadNotifications();
@@ -160,10 +142,6 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 4) GET /api/notifications/unreadcount
-  //    Response key: "number of unread notification"
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> getUnreadCount() async {
     try {
       final response = await service.getUnreadCount();
@@ -188,16 +166,12 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 5) PATCH /api/notifications/{id}/markAsRead
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> markAsRead(String notificationId) async {
     try {
       final response = await service.markAsRead(notificationId);
       final data = response.data;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Resource returns single object (possibly wrapped in "data")
         Map<String, dynamic>? raw;
         if (data is Map) {
           raw = _asMap(data['data']) ?? _asMap(data);
@@ -222,9 +196,6 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 6) PATCH /api/notifications/markAllAsRead
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> markAllAsRead() async {
     try {
       final response = await service.markAllAsRead();
@@ -249,10 +220,6 @@ class NotificationRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 7) DELETE /api/notifications/{id}/delete
-  //    Success body: { "Notification deleted" }  (or message string)
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> deleteNotification(String notificationId) async {
     try {
       final response = await service.deleteNotification(notificationId);

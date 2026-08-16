@@ -25,7 +25,6 @@ class ProfileCubit extends SafeCubit<ProfileState> {
       final role = (prefs.getString('user_role') ?? 'student').toLowerCase();
       final isTeacher = role == 'teacher';
 
-      // Name / email: prefer /api/user, fall back to prefs
       String name = prefs.getString('user_name') ?? '';
       String email = prefs.getString('user_email') ?? '';
 
@@ -81,7 +80,6 @@ class ProfileCubit extends SafeCubit<ProfileState> {
           );
         }
       } else {
-        // Load profile + weekly chart in parallel (same APIs as Streak screen)
         final results = await Future.wait([
           profileRepository.getStudentProfile(),
           profileRepository.getWeeklyActivity(),
@@ -132,8 +130,6 @@ class ProfileCubit extends SafeCubit<ProfileState> {
     }
   }
 
-  /// Updates bio and/or profile image. Matches backend:
-  /// POST multipart with optional `bio` and optional `image`.
   Future<void> updateProfile({String? bio, String? imagePath}) async {
     final previous = _current;
     if (previous != null) {

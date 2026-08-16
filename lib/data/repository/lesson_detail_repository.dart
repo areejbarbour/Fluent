@@ -7,7 +7,6 @@ class LessonDetailRepository {
   final LessonDetailService lessonDetailService;
   LessonDetailRepository(this.lessonDetailService);
 
-  /// يستخرج رسالة خطأ واضحة من استجابة Laravel (message أو errors.comment)
   static String extractErrorMessage(dynamic errorData, String fallback) {
     return ApiErrorHelper.extract(
       errorData,
@@ -16,14 +15,12 @@ class LessonDetailRepository {
     );
   }
 
-  /// يفكّ CommentResource سواء كان { data: {...} } أو الكائن مباشرة
   static Map<String, dynamic>? unwrapResource(dynamic data) {
     if (data is! Map) return null;
     final map = Map<String, dynamic>.from(data);
     if (map['data'] is Map) {
       return Map<String, dynamic>.from(map['data'] as Map);
     }
-    // بعض الـ APIs ترجع الحقول مباشرة
     if (map.containsKey('id') && map.containsKey('comment')) {
       return map;
     }

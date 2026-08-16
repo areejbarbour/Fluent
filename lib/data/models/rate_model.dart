@@ -1,4 +1,3 @@
-/// Matches backend [RateResource]: { id, stars }
 class RateModel {
   final int id;
   final int stars;

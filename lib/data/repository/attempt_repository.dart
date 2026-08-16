@@ -48,7 +48,6 @@ class AttemptRepository {
         raw.contains('cooldown');
   }
 
-  /// GET /api/startPlacementTest
   Future<Map<String, dynamic>> startPlacementTest() async {
     try {
       final res = await attemptService.startPlacementTest();
@@ -169,7 +168,6 @@ class AttemptRepository {
     );
   }
 
-  /// PAIR: matches = leftId → rightId (correct when equal).
   Future<Map<String, dynamic>> submitPair({
     required int attemptId,
     required int questionId,

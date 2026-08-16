@@ -32,7 +32,6 @@ class LevelRepository {
     }
   }
 
-  /// GET /api/placement-test/status — official backend decision for placement flow.
   Future<Map<String, dynamic>> getPlacementTestStatus() async {
     try {
       final response = await levelService.getPlacementTestStatus();

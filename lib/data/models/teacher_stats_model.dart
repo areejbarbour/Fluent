@@ -1,10 +1,4 @@
-/// Models matching backend TeacherStatsService exactly.
-///
-/// courseStats:
-///   avg_first_attempt_pass_rate, avg_abandonment_rate, lessons_funnel[]
-/// testStats:
-///   first_attempt_pass_rate, avg_attempts_to_pass, abandonment_rate,
-///   currently_struggling_rate, score_distribution[], questions[]
+
 
 class LessonFunnelItem {
   final int lessonId;
@@ -38,7 +32,7 @@ class LessonFunnelItem {
 }
 
 class ScoreBucket {
-  final String range; // "0-49" | "50-69" | "70-89" | "90-100"
+  final String range; 
   final int count;
 
   const ScoreBucket({required this.range, required this.count});
@@ -54,11 +48,11 @@ class ScoreBucket {
 class QuestionStatItem {
   final int questionId;
   final String title;
-  final String difficulty; // EASY | MEDIUM | HARD
+  final String difficulty; 
   final double? avgScoreRatio;
   final double? errorRate;
   final int attemptsCount;
-  final String? flag; // unexpected_high_error | unexpectedly_easy | null
+  final String? flag; 
 
   const QuestionStatItem({
     required this.questionId,

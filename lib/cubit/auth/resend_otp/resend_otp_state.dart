@@ -1,4 +1,3 @@
-// lib/presentation/cubits/auth/resend_otp/resend_otp_state.dart
 abstract class ResendOtpState {}
 
 class ResendOtpInitial extends ResendOtpState {}

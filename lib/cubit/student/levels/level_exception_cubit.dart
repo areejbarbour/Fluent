@@ -9,7 +9,6 @@ class LevelExceptionCubit extends SafeCubit<LevelExceptionState> {
 
   LevelExceptionCubit(this.repository) : super(LevelExceptionInitial());
 
-  /// Loads page 1 for every status in parallel (board view).
   Future<void> loadBoard() async {
     emit(LevelExceptionLoading());
     print(" [LevelExceptionCubit] Loading exception board (page 1)...");
@@ -57,7 +56,6 @@ class LevelExceptionCubit extends SafeCubit<LevelExceptionState> {
     }
   }
 
-  /// Loads the next page for one status and appends items.
   Future<void> loadMore(String status) async {
     final current = state;
     if (current is! LevelExceptionSuccess) return;
@@ -98,7 +96,6 @@ class LevelExceptionCubit extends SafeCubit<LevelExceptionState> {
     emit(LevelExceptionSuccess(newByStatus, metaByStatus: newMeta));
   }
 
-  /// Alias used after delete / pull-to-refresh.
   Future<void> fetchByStatus(String status) async => loadBoard();
 
   void removeLocally(int id) {

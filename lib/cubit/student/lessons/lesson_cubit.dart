@@ -14,10 +14,6 @@ class StudentLessonsCubit extends SafeCubit<StudentLessonsState> {
 
     final result = await studentLessonRepository.getStudentLessons(courseId);
 
-    // The screen that owns this cubit may have been popped/disposed while
-    // the request was in flight (e.g. user navigated back quickly). Emitting
-    // on a closed cubit throws "Bad state: Cannot emit new states after
-    // calling close", so bail out instead of crashing.
     if (isClosed) return;
 
     if (result['success'] == true) {

@@ -4,7 +4,6 @@ class WordModel {
   final String wordEn;
   final String wordAr;
 
-  /// URL from WordResource: getFirstMediaUrl('audios')
   final String? audio;
 
   WordModel({
@@ -57,7 +56,6 @@ class WordModel {
 
   bool get hasAudio => audio != null && audio!.trim().isNotEmpty;
 
-  /// Parse a list from lesson detail `words` field (WordResource collection).
   static List<WordModel> listFrom(dynamic raw) {
     if (raw == null) return const [];
     List list = const [];

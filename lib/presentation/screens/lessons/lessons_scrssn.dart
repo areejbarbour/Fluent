@@ -829,26 +829,75 @@ class _LessonsScreenState extends State<LessonsScreen>
                           ),
                         ),
                         SizedBox(height: 10.h),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.person_rounded,
-                              color: Colors.white.withOpacity(.5),
-                              size: 13.sp,
+                        // Row(
+                        //   children: [
+                        //     Icon(
+                        //       Icons.person_rounded,
+                        //       color: Colors.white.withOpacity(.5),
+                        //       size: 13.sp,
+                        //     ),
+                        //     SizedBox(width: 4.w),
+                        //     Expanded(
+                        //       child: Text(
+                        //         widget.teacherName,
+                        //         maxLines: 1,
+                        //         overflow: TextOverflow.ellipsis,
+                        //         style: GoogleFonts.poppins(
+                        //           color: Colors.white.withOpacity(.65),
+                        //           fontSize: 11.sp,
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 6.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.07),
+                            borderRadius: BorderRadius.circular(20.r),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.12),
                             ),
-                            SizedBox(width: 4.w),
-                            Expanded(
-                              child: Text(
-                                widget.teacherName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(.65),
-                                  fontSize: 11.sp,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 22.w,
+                                height: 22.w,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.sky.withOpacity(.8),
+                                      AppColors.yellow.withOpacity(.7),
+                                    ],
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: Colors.white,
+                                  size: 13.sp,
                                 ),
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 7.w),
+                              Flexible(
+                                child: Text(
+                                  widget.teacherName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withOpacity(.90),
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1356,43 +1405,75 @@ class _CourseOrbitRingState extends State<_CourseOrbitRing>
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .fade(begin: 0.4, end: 0.9, duration: 1800.ms),
 
+          // Column(
+          //   mainAxisSize: MainAxisSize.min,
+          //   children: [
+          //     Icon(
+          //           Icons.auto_awesome_rounded,
+          //           color: AppColors.yellow,
+          //           size: 18.sp,
+          //         )
+          //         .animate(onPlay: (c) => c.repeat(reverse: true))
+          //         .scale(
+          //           begin: const Offset(1, 1),
+          //           end: const Offset(1.22, 1.22),
+          //           duration: 1400.ms,
+          //           curve: Curves.easeInOut,
+          //         )
+          //         .then()
+          //         .shimmer(
+          //           duration: 2000.ms,
+          //           color: Colors.white.withOpacity(.55),
+          //         ),
+          //     SizedBox(height: 2.h),
+          //     Text(
+          //       "$pct%",
+          //       style: GoogleFonts.poppins(
+          //         color: Colors.white,
+          //         fontWeight: FontWeight.w800,
+          //         fontSize: 16.sp,
+          //         height: 1.1,
+          //       ),
+          //     ),
+          //     SizedBox(height: 1.h),
+          //     Text(
+          //       "$completed/$total",
+          //       style: GoogleFonts.poppins(
+          //         color: Colors.white.withOpacity(.55),
+          //         fontSize: 9.5.sp,
+          //         fontWeight: FontWeight.w600,
+          //       ),
+          //     ),
+          //   ],
+          // ),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                    Icons.auto_awesome_rounded,
-                    color: AppColors.yellow,
-                    size: 18.sp,
-                  )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(
-                    begin: const Offset(1, 1),
-                    end: const Offset(1.22, 1.22),
-                    duration: 1400.ms,
-                    curve: Curves.easeInOut,
-                  )
-                  .then()
-                  .shimmer(
-                    duration: 2000.ms,
-                    color: Colors.white.withOpacity(.55),
-                  ),
-              SizedBox(height: 2.h),
               Text(
                 "$pct%",
                 style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
-                  fontSize: 16.sp,
-                  height: 1.1,
+                  fontSize: 20.sp,
+                  height: 1.0,
+                  letterSpacing: -0.5,
                 ),
               ),
-              SizedBox(height: 1.h),
-              Text(
-                "$completed/$total",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(.55),
-                  fontSize: 9.5.sp,
-                  fontWeight: FontWeight.w600,
+              SizedBox(height: 3.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: Colors.white.withOpacity(.12)),
+                ),
+                child: Text(
+                  "$completed / $total",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withOpacity(.75),
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

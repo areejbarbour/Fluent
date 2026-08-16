@@ -35,18 +35,16 @@ class TeacherCourseDetailLoaded extends TeacherCourseDetailState {
     );
   }
 
-  /// كل اختبارات الكورس (مش واحد فقط)
   List<TestModel> get courseTests {
     return tests
         .where(
           (t) =>
               t.testableType.toLowerCase() == 'course' &&
-              t.testableId == course.id, // أو courseId إذا موجود
+              t.testableId == course.id, 
         )
         .toList();
   }
 
-  /// اختبار درس معيّن
   TestModel? testForLesson(int lessonId) {
     final matches = tests.where(
       (t) =>

@@ -7,7 +7,6 @@ class CourseModel {
   final String image;
   final String teacherName;
 
-  /// Published course test id (CourseResource.test_id).
   final int? testId;
 
   CourseModel({
@@ -48,7 +47,6 @@ class CourseModel {
   }
 }
 
-/// Matches backend StudentCourseService@getCourses progress block.
 class CoursesProgressModel {
   final int completedCourses;
   final int totalCourses;
@@ -74,7 +72,6 @@ class CoursesProgressModel {
     );
   }
 
-  /// 0.0 – 1.0 for UI rings / bars
   double get fraction => (progressPercentage.clamp(0, 100) / 100.0);
 }
 

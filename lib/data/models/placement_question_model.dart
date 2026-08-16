@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 enum PlacementQuestionType { vocabulary, grammar, reading }
 
 enum PlacementDifficulty {
-  beginner, // A1
-  elementary, // A2
-  preIntermediate, // B1
-  intermediate, // B2
-  upperIntermediate, // C1
-  advanced, // C2
+  beginner, 
+  elementary,
+  preIntermediate,
+  intermediate, 
+  upperIntermediate,
+  advanced, 
 }
 
 class PlacementQuestion {

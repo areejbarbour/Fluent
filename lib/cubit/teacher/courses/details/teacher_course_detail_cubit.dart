@@ -21,7 +21,6 @@ class TeacherCourseDetailCubit extends SafeCubit<TeacherCourseDetailState> {
   Future<void> loadLessons() async {
     emit(TeacherCourseDetailLoading());
     try {
-      // 1) الدروس
       final allLessons = <LessonModel>[];
       int page = 1;
       bool hasMore = true;
@@ -45,7 +44,6 @@ class TeacherCourseDetailCubit extends SafeCubit<TeacherCourseDetailState> {
 
       allLessons.sort((a, b) => a.order.compareTo(b.order));
 
-      // 2) كل الاختبارات
       List<TestModel> tests = [];
       final testsResult = await testRepository.getAllTests();
       if (testsResult['success'] == true) {

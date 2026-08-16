@@ -9,8 +9,6 @@ class WordUpdateCubit extends SafeCubit<WordUpdateState> {
   final WordRepository wordRepository;
   WordUpdateCubit(this.wordRepository) : super(WordUpdateInitial());
 
-  /// Always send wordEn + wordAr (backend service updates both).
-  /// audioFile is optional.
   Future<void> updateWord({
     required int wordId,
     required String wordEn,

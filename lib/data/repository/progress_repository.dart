@@ -6,7 +6,6 @@ class ProgressRepository {
   final ProgressService progressService;
   ProgressRepository(this.progressService);
 
-  /// Returns percentage 0–100 (backend ProgressService::calculatePercentage).
   Future<Map<String, dynamic>> getCourseProgress(int courseId) async {
     try {
       final res = await progressService.getCourseProgress(courseId);

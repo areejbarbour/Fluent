@@ -1,12 +1,4 @@
-/// Backend quiz item from StudentWordService::quizWords / buildQuestion:
-/// {
-///   "Quiz": {
-///     "word_id": 10,
-///     "question": "hello",
-///     "audio": "https://...",
-///     "options": [ { "id": 10, "text": "hello" }, ... ]
-///   }
-/// }
+
 class WordQuizOption {
   final int id;
   final String text;
@@ -37,7 +29,6 @@ class WordQuizQuestion {
   });
 
   factory WordQuizQuestion.fromJson(Map<String, dynamic> json) {
-    // Backend wraps each item under "Quiz"
     final raw = json['Quiz'] is Map
         ? Map<String, dynamic>.from(json['Quiz'] as Map)
         : json;
@@ -66,8 +57,6 @@ class WordQuizQuestion {
   bool get hasAudio => audio != null && audio!.trim().isNotEmpty;
 }
 
-/// Backend checkAnswer response:
-/// { "correct": bool, "message": "...", "correct_answer_id": int? }
 class WordQuizCheckResult {
   final bool correct;
   final String message;

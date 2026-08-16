@@ -7,8 +7,6 @@ class CertificateRepository {
   final CertificateService certificateService;
   CertificateRepository(this.certificateService);
 
-  /// GET /api/certificates → List<CertificateModel>
-  /// Backend returns a bare JSON array (not wrapped).
   Future<Map<String, dynamic>> getCertificates() async {
     try {
       final res = await certificateService.getCertificates();
@@ -33,11 +31,6 @@ class CertificateRepository {
     }
   }
 
-  /// GET /api/user-levels/{userLevel}/certificate
-  /// Backend success: { "download_url": "..." }
-  /// 422: { "error": "Level not completed yet." }
-  /// 503: { "error": "Certificate generation temporarily failed..." }
-  /// 403: forbidden (not owner)
   Future<Map<String, dynamic>> getUserLevelCertificate(int userLevelId) async {
     try {
       final res = await certificateService.getUserLevelCertificate(userLevelId);

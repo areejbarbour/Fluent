@@ -199,7 +199,10 @@ class _WordBankScreenState extends State<WordBankScreen>
     bool isSuccess = false,
   }) {
     HapticFeedback.lightImpact();
-    showAppSnackBar(context, message, type: AppSnackType.error);
+    final type = isSuccess
+        ? AppSnackType.success
+        : (isError ? AppSnackType.error : AppSnackType.info);
+    showAppSnackBar(context, message, type: type);
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:fluent/data/models/level_exception_model.dart';
 
-/// Canonical student Level Exception statuses (backend LevelExceptionStatus).
 class LevelExceptionStatuses {
   static const pending = 'pending';
   static const inReview = 'in_review';
@@ -10,7 +9,6 @@ class LevelExceptionStatuses {
   static const List<String> all = [pending, inReview, approved, rejected];
 }
 
-/// Pagination meta for one status list (Laravel paginate(10)).
 class StatusPageMeta {
   final int currentPage;
   final int lastPage;
@@ -62,12 +60,10 @@ class LevelExceptionInitial extends LevelExceptionState {}
 
 class LevelExceptionLoading extends LevelExceptionState {}
 
-/// Board-style success: all statuses grouped (Status Board pattern).
 class LevelExceptionSuccess extends LevelExceptionState {
   final Map<String, List<LevelExceptionModel>> byStatus;
   final Map<String, StatusPageMeta> metaByStatus;
 
-  /// Status currently loading the next page (null = none).
   final String? loadingMoreStatus;
 
   LevelExceptionSuccess(

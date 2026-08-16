@@ -4,10 +4,6 @@ import 'package:fluent/data/models/certificate_model.dart';
 import 'package:fluent/data/repository/certificate_repository.dart';
 import 'certificates_state.dart';
 
-/// Certificates flow aligned with backend:
-/// - List: GET /api/certificates
-/// - Issue happens server-side on level-test pass (AttemptService)
-/// - Optional re-fetch/issue: GET /api/user-levels/{userLevel}/certificate
 class CertificatesCubit extends SafeCubit<CertificatesState> {
   final CertificateRepository repository;
 
@@ -30,13 +26,10 @@ class CertificatesCubit extends SafeCubit<CertificatesState> {
         ),
       );
     } else {
-      // Keep previous list visible on silent refresh failure.
       emit(CertificatesSuccess(List.unmodifiable(_cache)));
     }
   }
 
-  /// GET /api/user-levels/{userLevel}/certificate
-  /// Backend issues the certificate if missing (idempotent) when UserLevel is completed.
   Future<void> downloadForUserLevel(int userLevelId) async {
     emit(
       CertificateDownloadLoading(
@@ -52,7 +45,6 @@ class CertificatesCubit extends SafeCubit<CertificatesState> {
           downloadUrl: result['data'] as String,
         ),
       );
-      // Refresh list in background so card download_url updates.
       await fetchCertificates(silent: true);
     } else {
       emit(

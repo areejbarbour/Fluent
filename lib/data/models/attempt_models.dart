@@ -1,10 +1,6 @@
 import 'package:fluent/data/models/question_model.dart';
 
-/// Parsed start response:
-/// {
-///   "attempt_id": 12,
-///   "test": { StudentTestResource }
-/// }
+
 class AttemptStartResult {
   final int attemptId;
   final StudentTestSnapshot test;
@@ -29,13 +25,11 @@ class AttemptStartResult {
   }
 }
 
-/// StudentTestResource shape from backend.
 class StudentTestSnapshot {
   final int id;
   final String title;
   final int passingScore;
 
-  /// e.g. "placement_test" | "lesson" | "course" | "level"
   final String type;
   final List<Question> questions;
 
@@ -78,15 +72,12 @@ class StudentTestSnapshot {
   bool get isLevel => type.contains('level') && !type.contains('placement');
 }
 
-/// submitAnswer response body is awkwardly wrapped as a JSON array:
-/// [ { "answer": {...}, "score": 2, "max_score": 2, "is_correct": true } ]
 class SubmitAnswerResult {
   final int score;
   final int maxScore;
   final bool isCorrect;
   final Map<String, dynamic>? rawAnswer;
 
-  /// Present when backend returns `correct_answer` on submit (recommended when wrong).
   final dynamic correctAnswer;
 
   const SubmitAnswerResult({
@@ -103,7 +94,6 @@ class SubmitAnswerResult {
     if (data is List && data.isNotEmpty && data.first is Map) {
       map = Map<String, dynamic>.from(data.first as Map);
     } else if (data is Map) {
-      // tolerate future keyed shape
       final inner = data['data'] ?? data;
       if (inner is Map) {
         map = Map<String, dynamic>.from(inner);
@@ -135,19 +125,7 @@ class SubmitAnswerResult {
   }
 }
 
-/// finish response (matches UserAttemptController::finish exactly):
-/// {
-///   "attempt_id": 1,
-///   "score": 80,          // percentage 0–100
-///   "passed": true,
-///   "streak": { "current": 3, "increased": true },
-///   "reward": {
-///     "points_awarded": true,
-///     "points": 50,
-///     "user_level_id": 15|null,       // set on level pass
-///     "certificate_url": "https..."|null
-///   }
-/// }
+
 class FinishAttemptResult {
   final int attemptId;
   final int scorePercent;
@@ -195,8 +173,7 @@ class FinishAttemptResult {
   }
 }
 
-/// streak sub-object from finish:
-/// { "current": 3, "increased": true }
+
 class FinishStreakResult {
   final int current;
   final bool increased;
@@ -218,26 +195,13 @@ class FinishStreakResult {
   }
 }
 
-/// reward sub-object from UserAttemptController::finish:
-/// {
-///   "points_awarded": true,
-///   "points": 50,
-///   "user_level_id": 15|null,
-///   "certificate_url": "https..."|null
-/// }
-///
-/// On level pass the backend issues the certificate in AttemptService and
-/// returns both fields. If generation failed, [certificateUrl] is null while
-/// [userLevelId] is still set — client should retry via
-/// GET /api/user-levels/{userLevelId}/certificate.
+
 class FinishRewardResult {
   final bool pointsAwarded;
   final int points;
 
-  /// Pivot id of the completed UserLevel (level tests only).
   final int? userLevelId;
 
-  /// Spatie media URL of the certificate image (may be null if generation failed).
   final String? certificateUrl;
 
   const FinishRewardResult({
@@ -279,12 +243,7 @@ class FinishRewardResult {
   }
 }
 
-/// review response (only if passed + completed):
-/// {
-///   "attempt_id": 1,
-///   "total_score": 80,
-///   "wrong_answers": [ { question_id, question_text, type, submitted_answer, correct_answer, score, max_score } ]
-/// }
+
 class ReviewAttemptResult {
   final int attemptId;
   final int totalScore;

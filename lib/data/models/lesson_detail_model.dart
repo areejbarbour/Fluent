@@ -4,10 +4,8 @@ class LessonVideoModel {
   final int xpPoints;
   final String video;
 
-  /// حالة الدرس من الباك (published / archived / closed ...) إن وُجدت
   final String? status;
 
-  /// Published lesson test id from StudentDetailLessonResource.test_id
   final int? testId;
 
   LessonVideoModel({
@@ -133,7 +131,6 @@ class LessonCommentModel {
   }
 }
 
-/// نتيجة تحليل التعليقات (قائمة عادية أو paginated من Laravel)
 class CommentsParseResult {
   final List<LessonCommentModel> comments;
   final int currentPage;
@@ -167,10 +164,8 @@ class LessonDetailModel {
 
   bool get hasMoreComments => commentsCurrentPage < commentsLastPage;
 
-  /// هل يُسمح بإنشاء تعليق حسب حالة الدرس (منطق الباك: published فقط)
   bool get canCreateComment => lesson == null || lesson!.isPublished;
 
-  /// هل يُسمح بتعديل التعليقات حسب حالة الدرس (منطق الباك: ليس archived/closed)
   bool get canUpdateComments => lesson == null || !lesson!.isArchivedOrClosed;
 
   LessonDetailModel copyWith({
@@ -189,11 +184,8 @@ class LessonDetailModel {
     );
   }
 
-  /// حجم صفحة التعليقات في الباك: CommentService::paginate(10)
   static const int backendCommentsPageSize = 10;
 
-  /// يستخرج قائمة التعليقات سواء كانت List مباشرة أو Laravel pagination.
-  /// إذا رجعت List بدون meta وطولها == 10 → نفترض احتمال وجود صفحات إضافية.
   static CommentsParseResult parseComments(
     dynamic raw, {
     int? currentUserId,
@@ -210,7 +202,6 @@ class LessonDetailModel {
       total = list.length;
     } else if (raw is Map) {
       final map = Map<String, dynamic>.from(raw);
-      // شكل Laravel ResourceCollection / LengthAwarePaginator
       if (map['data'] is List) {
         list = map['data'] as List;
       } else if (map['comments'] is List) {
@@ -227,7 +218,6 @@ class LessonDetailModel {
         total = tot ?? list.length;
       }
 
-      // meta داخل بعض الـ APIs
       final meta = map['meta'];
       if (meta is Map) {
         hasExplicitMeta = true;
@@ -250,14 +240,12 @@ class LessonDetailModel {
     if (total == 0) total = comments.length;
     if (lastPage < 1) lastPage = 1;
 
-    // الباك يرجع comments كـ List فقط (بدون meta) مع paginate(10)
-    // → إذا امتلأت الصفحة يحتمل وجود المزيد
     if (!hasExplicitMeta) {
       currentPage = requestedPage < 1 ? 1 : requestedPage;
       if (comments.length >= backendCommentsPageSize) {
-        lastPage = currentPage + 1; // صفحة إضافية محتملة (غير معروفة النهاية)
+        lastPage = currentPage + 1; 
       } else {
-        lastPage = currentPage; // آخر صفحة
+        lastPage = currentPage; 
       }
       total = comments.length;
     }

@@ -1,16 +1,11 @@
-// 📁 lib/cubit/student/chat/chat_state.dart
-
 import 'package:fluent/data/models/chat_models.dart';
 
 abstract class ChatState {}
 
-/// الحالة الابتدائية قبل أي تحميل
 class ChatInitial extends ChatState {}
 
-/// جاري فحص الجلسة الـ active / تحميل أولي
 class ChatBootstrapLoading extends ChatState {}
 
-/// مفيش جلسة active → شاشة اختيار Mode / Topic
 class ChatNoActiveSession extends ChatState {
   final List<ChatTopicModel> topics;
   final bool topicsLoading;
@@ -35,10 +30,8 @@ class ChatNoActiveSession extends ChatState {
   }
 }
 
-/// جاري إنشاء جلسة جديدة
 class ChatCreatingSession extends ChatState {}
 
-/// جلسة active مفتوحة + الرسائل
 class ChatSessionActive extends ChatState {
   final ChatSessionModel session;
   final bool isSending;
@@ -68,18 +61,13 @@ class ChatSessionActive extends ChatState {
   }
 }
 
-/// تم إنهاء الجلسة → عرض الملخص
 class ChatSessionEnded extends ChatState {
   final ChatSessionModel session;
   final ChatSessionSummaryModel summary;
 
-  ChatSessionEnded({
-    required this.session,
-    required this.summary,
-  });
+  ChatSessionEnded({required this.session, required this.summary});
 }
 
-/// قائمة التاريخ
 class ChatHistoryLoading extends ChatState {}
 
 class ChatHistoryLoaded extends ChatState {
@@ -110,7 +98,6 @@ class ChatHistoryLoaded extends ChatState {
   }
 }
 
-/// تفاصيل جلسة قديمة (من الـ history)
 class ChatHistoryDetailLoading extends ChatState {}
 
 class ChatHistoryDetailLoaded extends ChatState {
@@ -119,7 +106,6 @@ class ChatHistoryDetailLoaded extends ChatState {
   ChatHistoryDetailLoaded(this.session);
 }
 
-/// خطأ عام (bootstrap / network ...)
 class ChatFailure extends ChatState {
   final String message;
   ChatFailure(this.message);

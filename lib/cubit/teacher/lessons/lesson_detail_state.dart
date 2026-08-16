@@ -35,22 +35,18 @@ class LessonDetailLoaded extends LessonDetailState {
 
   bool get hasMoreComments => commentsCurrentPage < commentsLastPage;
 
-  /// منطق الباك: إنشاء تعليق فقط إذا الدرس published
   bool get canCreateComment {
     final status = _lessonStatus;
     return status == null || status == 'published';
   }
 
-  /// منطق الباك: لا تعديل إذا archived / closed
   bool get canUpdateComments {
     final status = _lessonStatus;
     if (status == null) return true;
     return status != 'archived' && status != 'closed';
   }
 
-  /// منطق الباك (TeacherWordService):
-  /// create / update / delete فقط عندما تكون حالة الدرس:
-  /// draft | pending | changes_requested
+  
   bool get canManageWords {
     final status = _lessonStatus;
     if (status == null) return false;

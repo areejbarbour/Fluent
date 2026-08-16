@@ -1,4 +1,3 @@
-// في ملف question_status_model.dart
 class QuestionStatus {
   final String status;
   final String message;
@@ -7,7 +6,7 @@ class QuestionStatus {
   final List<AffectedTest> affectedArchivedTests;
   final List<AffectedTest> affectedInReviewTests;
   final List<AffectedTest> affectedApprovedTests;
-  final List<AffectedTest> affectedClosedTests; // ✅ جديد
+  final List<AffectedTest> affectedClosedTests; 
 
   QuestionStatus({
     required this.status,
@@ -17,10 +16,9 @@ class QuestionStatus {
     this.affectedArchivedTests = const [],
     this.affectedInReviewTests = const [],
     this.affectedApprovedTests = const [],
-    this.affectedClosedTests = const [], // ✅ جديد
+    this.affectedClosedTests = const [], 
   });
 
-  // ... باقي الكود كما هو
 
   factory QuestionStatus.fromJson(Map<String, dynamic> json) {
     List<AffectedTest> parseList(dynamic v) {
@@ -41,7 +39,7 @@ class QuestionStatus {
       affectedArchivedTests: parseList(json['affected_archived_tests']),
       affectedInReviewTests: parseList(json['affected_in_review_tests']),
       affectedApprovedTests: parseList(json['affected_approved_tests']),
-      affectedClosedTests: parseList(json['affected_closed_tests']), // ✅ جديد
+      affectedClosedTests: parseList(json['affected_closed_tests']), 
     );
   }
 }
@@ -52,7 +50,7 @@ class AffectedTest {
   final String? titleAr;
   final String? testableType;
   final int? testableId;
-  final String? status; // ✅ ضيف هاد الـ field
+  final String? status; 
 
   AffectedTest({
     required this.id,
@@ -60,7 +58,7 @@ class AffectedTest {
     this.titleAr,
     this.testableType,
     this.testableId,
-    this.status, // ✅ وهون كمان
+    this.status, 
   });
 
   String get displayTitle {
@@ -76,12 +74,11 @@ class AffectedTest {
       titleAr: json['title_ar']?.toString(),
       testableType: json['testable_type']?.toString(),
       testableId: json['testable_id'] is int ? json['testable_id'] : null,
-      status: json['status']?.toString(), // ✅ وما تنساها هون
+      status: json['status']?.toString(), 
     );
   }
 }
 
-/// Model for GET /questions/{id}/blocking-tests
 class BlockingTests {
   final List<AffectedTest> blockingTests;
 

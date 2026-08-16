@@ -7,8 +7,6 @@ import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/helper/questions/answer_payload_helper.dart';
 import 'placement_attempt_state.dart';
 
-/// Full placement flow aligned with backend AttemptService:
-/// startPlacementTest → submit-answer (sequential) → finish → review (if passed).
 class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
   final AttemptRepository attemptRepository;
 
@@ -18,8 +16,6 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
   int? _attemptId;
   StudentTestSnapshot? _test;
   final Set<int> _answered = {};
-
-  // ── 1) Start ─────────────────────────────────────────────
 
   Future<void> startPlacement() async {
     emit(PlacementAttemptStarting());
@@ -69,9 +65,6 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
     }
   }
 
-  // ── 2) Submit current question ───────────────────────────
-
-  /// Generic entry — body already shaped by AnswerPayloadHelper.
   Future<bool> submitCurrent({required Map<String, dynamic> body}) async {
     final current = state;
     if (current is! PlacementAttemptInProgress) return false;
@@ -148,10 +141,6 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
     return submitCurrent(body: AnswerPayloadHelper.pair(matches: matches));
   }
 
-  // ── 3) Navigate (only after successful submit) ───────────
-
-  /// Move to next question. Backend requires sequential answers —
-  /// never skip ahead.
   void goNext() {
     final current = state;
     if (current is! PlacementAttemptInProgress) return;
@@ -170,8 +159,6 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
       ),
     );
   }
-
-  // ── 4) Finish ────────────────────────────────────────────
 
   Future<void> finish() async {
     final attemptId = _attemptId;
@@ -209,15 +196,12 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
           reviewRes['data'] is ReviewAttemptResult) {
         review = reviewRes['data'] as ReviewAttemptResult;
       }
-      // If review fails (edge case), still show finish result.
     }
 
     emit(
       PlacementAttemptFinished(result: finishData, test: test, review: review),
     );
   }
-
-  // ── 5) Leave (abandon) ───────────────────────────────────
 
   Future<void> leave() async {
     final attemptId = _attemptId;
@@ -234,7 +218,6 @@ class PlacementAttemptCubit extends SafeCubit<PlacementAttemptState> {
     if (result['success'] == true) {
       emit(PlacementAttemptLeft('Attempt abandoned'));
     } else {
-      // Even on failure, clear local session so user can exit UI.
       emit(
         PlacementAttemptLeft(
           result['message']?.toString() ?? 'Attempt abandoned',

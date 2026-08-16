@@ -7,7 +7,7 @@ class ProgressInitial extends ProgressState {
 }
 
 class ProgressLoading extends ProgressState {
-  final String scope; // 'course' | 'level'
+  final String scope;
   final int id;
   const ProgressLoading({required this.scope, required this.id});
 }
@@ -15,7 +15,7 @@ class ProgressLoading extends ProgressState {
 class ProgressSuccess extends ProgressState {
   final String scope;
   final int id;
-  /// 0.0 – 100.0
+
   final double percentage;
   const ProgressSuccess({
     required this.scope,

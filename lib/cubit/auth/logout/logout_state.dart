@@ -1,4 +1,3 @@
-// lib/presentation/cubits/auth/logout/logout_state.dart
 abstract class LogoutState {}
 
 class LogoutInitial extends LogoutState {}

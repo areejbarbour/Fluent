@@ -8,10 +8,6 @@ class ContentReviewRepository {
   final ContentReviewService service;
   ContentReviewRepository(this.service);
 
-  // ────────────────────────────────────────────
-  // Shared helpers (same conventions as other repositories)
-  // ────────────────────────────────────────────
-
   String _extractMessage(dynamic data, String fallback) {
     if (data is! Map) return fallback;
     final errors = data['errors'];
@@ -46,10 +42,6 @@ class ContentReviewRepository {
     return null;
   }
 
-  // ────────────────────────────────────────────
-  // 1) POST /lessons/{lesson}/submit
-  //    Success → { "lesson": LessonResource, "test": TeacherTestResource }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> submitLesson(int lessonId) async {
     try {
       final response = await service.submitLesson(lessonId);
@@ -79,10 +71,6 @@ class ContentReviewRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 2) POST /lessons/{lesson}/resubmit
-  //    Success → { "lesson": LessonResource, "review": ContentReview }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> resubmitLesson(int lessonId) async {
     try {
       final response = await service.resubmitLesson(lessonId);
@@ -117,10 +105,6 @@ class ContentReviewRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 3) POST /tests/{test}/submit
-  //    Success → { "test": TeacherTestResource }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> submitTest(int testId) async {
     try {
       final response = await service.submitTest(testId);
@@ -148,10 +132,6 @@ class ContentReviewRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 4) POST /tests/{test}/resubmit
-  //    Success → { "test": TeacherTestResource, "review": ContentReview }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> resubmitTest(int testId) async {
     try {
       final response = await service.resubmitTest(testId);
@@ -183,10 +163,6 @@ class ContentReviewRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 5) GET /lessons/{lesson}/history
-  //    Success → { "history": [ ReviewHistoryItem, ... ] }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> lessonReviewHistory(int lessonId) async {
     try {
       final response = await service.lessonReviewHistory(lessonId);
@@ -223,10 +199,6 @@ class ContentReviewRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 6) GET /tests/{test}/history
-  //    Success → { "history": [ ReviewHistoryItem, ... ] }
-  // ────────────────────────────────────────────
   Future<Map<String, dynamic>> testReviewHistory(int testId) async {
     try {
       final response = await service.testReviewHistory(testId);

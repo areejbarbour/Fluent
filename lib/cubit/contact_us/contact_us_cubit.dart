@@ -8,7 +8,6 @@ class ContactUsCubit extends SafeCubit<ContactUsState> {
 
   ContactUsCubit(this.repository) : super(const ContactUsInitial());
 
-  /// Backend: text required, min 10, max 2000.
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.length < 10) {

@@ -24,13 +24,11 @@ class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
       int totalLessons = 0;
       int totalQuestions = 0;
 
-      // 1. جلب الكورسات
       final coursesRes = await lessonRepository.getTeacherCourses();
       if (coursesRes['success'] == true) {
         final coursesList = coursesRes['data'] as List;
         totalCourses = coursesList.length;
 
-        // 2. جلب إجمالي الدروس
         for (var course in coursesList) {
           final lessonsRes = await lessonRepository.getLessonsByCourse(
             course.id,
@@ -39,7 +37,6 @@ class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
           if (lessonsRes['success'] == true) {
             final data = lessonsRes['data'];
 
-            // ✅ الحل الجذري: تحويل أي نوع رقمي (num) إلى int بشكل آمن وقاطع
             final total = data.total;
             if (total != null) {
               totalLessons += (total as num).toInt();
@@ -50,12 +47,10 @@ class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
         }
       }
 
-      // 3. جلب إجمالي الأسئلة
       final qRes = await questionRepository.getQuestions(page: 1);
       if (qRes['success'] == true) {
         final data = qRes['data'];
 
-        // ✅ نفس الحل الجذري للأسئلة
         final total = data.total;
         if (total != null) {
           totalQuestions = (total as num).toInt();
@@ -64,7 +59,6 @@ class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
         }
       }
 
-      // 4. ✅ جلب الاختبارات وتفصيلها حسب الحالة
       int totalTests = 0;
       int publishedTests = 0;
       int draftTests = 0;
@@ -111,7 +105,6 @@ class TeacherHomeCubit extends SafeCubit<TeacherHomeState> {
         }
       }
 
-      // 5. ✅ استخراج أحدث 3 اختبارات
       final sorted = [...allTests];
       sorted.sort((a, b) {
         final ad = a.updatedAt ?? a.createdAt ?? '';

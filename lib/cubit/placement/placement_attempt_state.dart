@@ -7,13 +7,10 @@ class PlacementAttemptInitial extends PlacementAttemptState {}
 
 class PlacementAttemptLoading extends PlacementAttemptState {}
 
-/// Intro ready — test not started yet (optional; we start on user confirm).
 class PlacementAttemptReady extends PlacementAttemptState {}
 
 class PlacementAttemptStarting extends PlacementAttemptState {}
 
-/// Active in-progress session. Questions MUST be answered in order
-/// (backend assertPreviousQuestionsAnswered).
 class PlacementAttemptInProgress extends PlacementAttemptState {
   final int attemptId;
   final StudentTestSnapshot test;
@@ -22,7 +19,6 @@ class PlacementAttemptInProgress extends PlacementAttemptState {
   final SubmitAnswerResult? lastSubmit;
   final String? inlineError;
 
-  /// questionIds already submitted (cannot re-submit).
   final Set<int> answeredQuestionIds;
 
   PlacementAttemptInProgress({
@@ -74,7 +70,7 @@ class PlacementAttemptFinishing extends PlacementAttemptState {
 class PlacementAttemptFinished extends PlacementAttemptState {
   final FinishAttemptResult result;
   final StudentTestSnapshot test;
-  final ReviewAttemptResult? review; // null if failed or review not loaded
+  final ReviewAttemptResult? review;
 
   PlacementAttemptFinished({
     required this.result,
@@ -93,7 +89,6 @@ class PlacementAttemptFailure extends PlacementAttemptState {
   final String message;
   final Map<String, dynamic>? errors;
 
-  /// If true, user already has levels / retake cooldown (backend rule).
   final bool isPlacementBlocked;
 
   PlacementAttemptFailure(

@@ -1,4 +1,3 @@
-// 📁 lib/data/repository/chat_repository.dart
 
 import 'package:dio/dio.dart';
 import 'package:fluent/data/models/chat_models.dart';
@@ -11,8 +10,7 @@ class ChatRepository {
 
   static const _keys = ['message', 'error', 'data', 'mode', 'topic_id'];
 
-  /// GET /chat/sessions/active
-  /// يرجع null إذا مفيش جلسة active (مطابق للباك: session: null)
+  
   Future<Map<String, dynamic>> getActiveSession() async {
     try {
       final response = await service.getActiveSession();
@@ -101,8 +99,7 @@ class ChatRepository {
     }
   }
 
-  /// POST /chat/sessions/{id}/messages
-  /// يرجع SendMessageResult { user_message, message(assistant) }
+ 
   Future<Map<String, dynamic>> sendMessage({
     required int sessionId,
     required String message,
@@ -155,7 +152,6 @@ class ChatRepository {
     }
   }
 
-  /// POST /chat/sessions/{id}/end
   Future<Map<String, dynamic>> endSession(int sessionId) async {
     try {
       final response = await service.endSession(sessionId);
@@ -197,7 +193,6 @@ class ChatRepository {
     }
   }
 
-  /// GET /chat/sessions/history
   Future<Map<String, dynamic>> getHistory({int page = 1}) async {
     try {
       final response = await service.getHistory(page: page);
@@ -261,7 +256,6 @@ class ChatRepository {
     }
   }
 
-  /// GET /chat/sessions/{id}
   Future<Map<String, dynamic>> getSessionDetails(int sessionId) async {
     try {
       final response = await service.getSessionDetails(sessionId);
@@ -303,7 +297,6 @@ class ChatRepository {
     }
   }
 
-  /// GET /chat/topics
   Future<Map<String, dynamic>> getAvailableTopics() async {
     try {
       final response = await service.getAvailableTopics();

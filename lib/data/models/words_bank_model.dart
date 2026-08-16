@@ -1,10 +1,8 @@
-
-
 class WordsBankItem {
   final int id;
   final String lessonTitle;
   final WordDetail word;
-  final String status; // learning | know
+  final String status;
   final String? addedAt;
 
   WordsBankItem({
@@ -19,9 +17,7 @@ class WordsBankItem {
     return WordsBankItem(
       id: json['id'] ?? 0,
       lessonTitle: json['lesson_title']?.toString() ?? '',
-      word: WordDetail.fromJson(
-        Map<String, dynamic>.from(json['word'] ?? {}),
-      ),
+      word: WordDetail.fromJson(Map<String, dynamic>.from(json['word'] ?? {})),
       status: json['status']?.toString() ?? 'learning',
       addedAt: json['added_at']?.toString(),
     );

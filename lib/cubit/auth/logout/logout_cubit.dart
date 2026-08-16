@@ -12,8 +12,6 @@ class LogoutCubit extends SafeCubit<LogoutState> {
 
   LogoutCubit(this.authRepository) : super(LogoutInitial());
 
-  /// Explicit logout: always wipe local session so the user cannot re-enter
-  /// the app without signing in again — even if the API call fails.
   Future<void> logout() async {
     emit(LogoutLoading());
     print('🟡 [LogoutCubit] Logging out...');
@@ -37,7 +35,6 @@ class LogoutCubit extends SafeCubit<LogoutState> {
       message = 'Logged out';
     }
 
-    // Always clear local session + FCM + Dio auth header
     try {
       await NotificationBootstrap.clearOnLogout();
     } catch (e) {
@@ -45,7 +42,7 @@ class LogoutCubit extends SafeCubit<LogoutState> {
     }
 
     await AuthSession.clear();
-    await setupDio(); // rebuild interceptors without token
+    await setupDio();
 
     print('✅ [LogoutCubit] Local session wiped — user must login');
     emit(LogoutSuccess(message));

@@ -4,12 +4,7 @@ import 'package:fluent/data/models/word_quiz_model.dart';
 import 'package:fluent/data/repository/word_quiz_repository.dart';
 import 'word_quiz_state.dart';
 
-/// Student word quiz (matches backend StudentWordService).
-///
-/// - loadQuiz: GET /api/words/quiz
-/// - selectOption: local UI selection
-/// - submitAnswer: POST /api/words/{word}/quiz_check { answer_id }
-/// - nextQuestion / finish
+
 class WordQuizCubit extends SafeCubit<WordQuizState> {
   final WordQuizRepository repository;
 
@@ -71,13 +66,11 @@ class WordQuizCubit extends SafeCubit<WordQuizState> {
       );
     } else {
       emit(s.copyWith(isChecking: false));
-      // Surface error but stay on same question
       emit(
         WordQuizFailure(
           result['message']?.toString() ?? 'Failed to check answer',
         ),
       );
-      // Restore in-progress so user can retry
       emit(s.copyWith(isChecking: false));
     }
   }

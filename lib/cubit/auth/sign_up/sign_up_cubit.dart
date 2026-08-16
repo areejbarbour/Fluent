@@ -1,4 +1,3 @@
-// lib/presentation/cubits/auth/sign_up/sign_up_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/cubit/safe_cubit.dart';
 

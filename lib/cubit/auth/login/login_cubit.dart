@@ -1,4 +1,3 @@
-// lib/presentation/cubits/auth/login/login_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,7 +79,6 @@ class LoginCubit extends SafeCubit<LoginState> {
             loginMethod: 'email',
           );
 
-          // Fallback user_id from /user if missing
           if (await AuthSession.userId() == null) {
             try {
               final me = await authRepository.getCurrentUser();

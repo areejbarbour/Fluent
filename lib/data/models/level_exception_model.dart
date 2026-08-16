@@ -1,5 +1,4 @@
-/// Single media item from LevelExceptionResource:
-/// `{ "id": 12, "url": "https://..." }`
+
 class LevelExceptionAttachment {
   final int id;
   final String url;
@@ -111,7 +110,6 @@ class LevelExceptionModel {
     return s == null || s == 'pending';
   }
 
-  /// Friendly name for UI (never empty technical placeholders).
   String? get requestedLevelName {
     final n = requestedLevel?.name.trim();
     if (n == null || n.isEmpty) return null;
@@ -169,8 +167,6 @@ class RequestedLevel {
         ? json['id'] as int
         : int.tryParse(json['id']?.toString() ?? '0') ?? 0;
 
-    // LevelSimpleResource returns translate('name') as "name".
-    // Fallback to name_en / name_ar if raw columns are exposed.
     final candidates = [
       json['name'],
       json['name_en'],

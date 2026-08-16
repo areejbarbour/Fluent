@@ -5,7 +5,7 @@ import 'package:fluent/cubit/teacher/stats/teacher_stats_state.dart';
 import 'package:fluent/data/models/course_model.dart';
 import 'package:fluent/data/models/lesson_model.dart';
 import 'package:fluent/data/models/test_model.dart';
-import 'package:fluent/data/repository/lesson_repository.dart'; // PaginatedLessons
+import 'package:fluent/data/repository/lesson_repository.dart'; 
 import 'package:fluent/data/repository/teacher_stats_repository.dart';
 import 'package:fluent/data/repository/test_repository.dart';
 
@@ -20,7 +20,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
     required this.testRepository,
   }) : super(const TeacherStatsState());
 
-  /// Load teacher's courses (entry point).
   Future<void> loadCourses() async {
     emit(
       state.copyWith(
@@ -39,7 +38,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
       final courses = (result['data'] as List)
           .whereType<CourseModel>()
           .toList();
-      // Prefer published / live courses first, then by order.
       courses.sort((a, b) {
         final aPub = a.status.toLowerCase() == 'published' ? 0 : 1;
         final bPub = b.status.toLowerCase() == 'published' ? 0 : 1;
@@ -57,7 +55,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
     }
   }
 
-  /// Select a course → load course stats + related tests.
   Future<void> selectCourse(int courseId) async {
     if (state.selectedCourseId == courseId && state.courseStats != null) {
       return;
@@ -75,7 +72,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
       ),
     );
 
-    // Parallel: course stats + lessons (for lesson ids) + all teacher tests
     final results = await Future.wait([
       statsRepository.getCourseStats(courseId),
       _loadLessonsMeta(courseId),
@@ -107,7 +103,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
         if (t.isLessonTest && lessonIds.contains(t.testableId)) return true;
         return false;
       }).toList();
-      // Prefer published first
       relatedTests.sort((a, b) {
         final aPub = a.normalizedStatus == 'published' ? 0 : 1;
         final bPub = b.normalizedStatus == 'published' ? 0 : 1;
@@ -127,7 +122,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
     );
   }
 
-  /// Load detailed stats for a specific test.
   Future<void> selectTest(int testId) async {
     if (state.selectedTestId == testId && state.testStats != null) {
       return;
@@ -143,7 +137,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
       ),
     );
 
-    // Parallel: stats + test detail (for English question titles)
     final results = await Future.wait([
       statsRepository.getTestStats(testId),
       testRepository.getTestById(testId),
@@ -204,7 +197,6 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
     );
   }
 
-  /// Fetch lesson ids + English titles for a course (handles pagination).
   Future<({Set<int> ids, Map<int, String> titlesEn})> _loadLessonsMeta(
     int courseId,
   ) async {
@@ -243,7 +235,7 @@ class TeacherStatsCubit extends SafeCubit<TeacherStatsState> {
         break;
       }
       page++;
-    } while (page <= lastPage && page <= 20); // safety cap
+    } while (page <= lastPage && page <= 20); 
 
     return (ids: ids, titlesEn: titlesEn);
   }

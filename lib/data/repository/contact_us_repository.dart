@@ -6,7 +6,6 @@ class ContactUsRepository {
   final ContactUsService contactUsService;
   ContactUsRepository(this.contactUsService);
 
-  /// POST /api/contact-us
   Future<Map<String, dynamic>> sendMessage(String text) async {
     try {
       final res = await contactUsService.store(text);

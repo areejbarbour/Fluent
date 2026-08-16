@@ -1,5 +1,4 @@
-/// Models for Content Review responses from the backend.
-/// Matches ContentReviewService + ContentReviewController shapes.
+
 
 class ContentReviewNote {
   final int id;
@@ -8,9 +7,7 @@ class ContentReviewNote {
   final String? updatedAt;
   final int? contentReviewId;
 
-  /// Backend: is_system_generated
-  /// false → admin/reviewer note
-  /// true  → system-generated (e.g. returned from approved / cascade)
+ 
   final bool isSystemGenerated;
 
   ContentReviewNote({
@@ -22,14 +19,11 @@ class ContentReviewNote {
     this.isSystemGenerated = false,
   });
 
-  /// Human-readable source label for UI.
   String get sourceLabel => isSystemGenerated ? 'System' : 'Admin';
 
-  /// True when there is non-empty note text.
   bool get hasText => note != null && note!.trim().isNotEmpty;
 
   factory ContentReviewNote.fromJson(Map<String, dynamic> json) {
-    // Backend ContentReviewNote uses `message` (primary field).
     final text =
         json['message']?.toString() ??
         json['note']?.toString() ??
@@ -55,10 +49,7 @@ class ContentReviewNote {
     );
   }
 
-  /// Parse a heterogeneous `review_notes` payload from list APIs.
-  /// Accepts:
-  /// - List of maps (full note objects with is_system_generated)
-  /// - List of plain strings (legacy / fallback)
+  
   static List<ContentReviewNote> parseList(dynamic raw) {
     final notes = <ContentReviewNote>[];
     if (raw is! List) return notes;
@@ -83,7 +74,6 @@ class ContentReviewSession {
   final int? reviewerId;
   final String? reviewerName;
 
-  /// Backend timestamps — display only when non-null from API.
   final String? claimedAt;
   final String? completedAt;
   final String? createdAt;
@@ -133,12 +123,9 @@ class ContentReviewSession {
   }
 }
 
-/// Single item in the history list returned by reviewHistory().
-/// Backend returns mixed list of:
-///   { "type": "review_session", "timestamp": ..., "data": ContentReview }
-///   { "type": "system_note",    "timestamp": ..., "data": ContentReviewNote }
+
 class ReviewHistoryItem {
-  final String type; // review_session | system_note
+  final String type; 
   final String? timestamp;
   final ContentReviewSession? reviewSession;
   final ContentReviewNote? systemNote;
@@ -178,7 +165,6 @@ class ReviewHistoryItem {
   }
 }
 
-/// Result of submitLesson / resubmitLesson / submitTest / resubmitTest
 class ContentReviewActionResult {
   final bool success;
   final String? message;

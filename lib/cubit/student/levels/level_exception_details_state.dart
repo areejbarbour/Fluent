@@ -9,7 +9,6 @@ class LevelExceptionDetailsLoading extends LevelExceptionDetailsState {}
 class LevelExceptionDetailsSuccess extends LevelExceptionDetailsState {
   final LevelExceptionModel details;
 
-  /// Media id currently being deleted (for per-row loading indicator).
   final int? deletingMediaId;
 
   LevelExceptionDetailsSuccess(this.details, {this.deletingMediaId});

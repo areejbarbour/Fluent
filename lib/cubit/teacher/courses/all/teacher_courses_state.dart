@@ -8,7 +8,7 @@ class TeacherCoursesLoading extends TeacherCoursesState {}
 class TeacherCoursesLoaded extends TeacherCoursesState {
   final List<CourseModel> allCourses;
   final List<CourseModel> filteredCourses;
-  final String currentFilter; // 'all', 'published', 'pending', etc.
+  final String currentFilter; 
   final String searchQuery;
 
   TeacherCoursesLoaded({

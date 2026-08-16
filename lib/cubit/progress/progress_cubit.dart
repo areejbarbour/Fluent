@@ -8,7 +8,6 @@ class ProgressCubit extends SafeCubit<ProgressState> {
 
   ProgressCubit(this.repository) : super(const ProgressInitial());
 
-  /// GET /api/courses/{course}/progress
   Future<void> loadCourseProgress(int courseId) async {
     emit(ProgressLoading(scope: 'course', id: courseId));
     final result = await repository.getCourseProgress(courseId);
@@ -31,7 +30,6 @@ class ProgressCubit extends SafeCubit<ProgressState> {
     }
   }
 
-  /// GET /api/levels/{level}/progress
   Future<void> loadLevelProgress(int levelId) async {
     emit(ProgressLoading(scope: 'level', id: levelId));
     final result = await repository.getLevelProgress(levelId);

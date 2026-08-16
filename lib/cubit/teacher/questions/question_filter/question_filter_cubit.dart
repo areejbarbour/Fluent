@@ -6,7 +6,6 @@ import 'question_filter_state.dart';
 class QuestionFilterCubit extends SafeCubit<QuestionFilterState> {
   final QuestionRepository questionRepository;
 
-  // متغيرات لتخزين حالة الفلتر الحالية لدعم الـ Pagination
   String? _type;
   String? _difficulty;
   int? _minScore;
@@ -28,7 +27,6 @@ class QuestionFilterCubit extends SafeCubit<QuestionFilterState> {
       _courseId != null ||
       _sort != null;
 
-  // تطبيق الفلاتر (يعيد الصفحة إلى 1)
   Future<void> applyFilters({
     String? type,
     String? difficulty,
@@ -53,7 +51,6 @@ class QuestionFilterCubit extends SafeCubit<QuestionFilterState> {
     await _fetch();
   }
 
-  // تحميل الصفحة التالية (Infinite Scroll)
   Future<void> loadMore() async {
     final current = state;
     if (current is! QuestionFilterLoaded) return;
@@ -91,7 +88,6 @@ class QuestionFilterCubit extends SafeCubit<QuestionFilterState> {
     }
   }
 
-  // مسح جميع الفلاتر والعودة للقائمة الأصلية
   Future<void> clearFilters() async {
     _type = null;
     _difficulty = null;

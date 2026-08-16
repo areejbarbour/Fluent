@@ -7,7 +7,6 @@ class QuestionUpdateInitial extends QuestionUpdateState {}
 class QuestionUpdateLoading extends QuestionUpdateState {}
 
 class QuestionUpdateSuccess extends QuestionUpdateState {
-  /// 'versioned' | 'updated'
   final String status;
   final String message;
   final Question? question;

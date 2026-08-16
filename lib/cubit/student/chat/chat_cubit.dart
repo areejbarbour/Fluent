@@ -1,13 +1,3 @@
-// 📁 lib/cubit/student/chat/chat_cubit.dart
-// Flow مطابق 100% للباك:
-// 1) bootstrap → GET /active
-// 2) لو null → اختيار mode/topic → POST /sessions
-// 3) إرسال رسائل → POST /sessions/{id}/messages
-// 4) إنهاء → POST /sessions/{id}/end → ملخص + XP
-// 5) history + تفاصيل جلسة قديمة
-// 6) يمنع الإرسال إذا status ≠ active
-// 7) يمنع إنشاء جلسة جديدة إذا فيه active (حماية فرونت)
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/cubit/safe_cubit.dart';
 import 'package:fluent/data/models/chat_models.dart';
@@ -19,9 +9,6 @@ class ChatCubit extends SafeCubit<ChatState> {
 
   ChatCubit(this.repository) : super(ChatInitial());
 
-  // ─────────────────────────────────────────────
-  // Bootstrap: أول ما يفتح شاشة الشات
-  // ─────────────────────────────────────────────
   Future<void> bootstrap() async {
     emit(ChatBootstrapLoading());
     print("🔍 [ChatCubit] Bootstrap — checking active session...");
@@ -41,14 +28,10 @@ class ChatCubit extends SafeCubit<ChatState> {
     } else {
       print("ℹ️ [ChatCubit] No active session — show mode picker");
       emit(ChatNoActiveSession());
-      // حمّل المواضيع في الخلفية
       loadTopics();
     }
   }
 
-  // ─────────────────────────────────────────────
-  // تحميل المواضيع المتاحة (لمستويات الطالب)
-  // ─────────────────────────────────────────────
   Future<void> loadTopics() async {
     final current = state;
     if (current is ChatNoActiveSession) {
@@ -57,7 +40,7 @@ class ChatCubit extends SafeCubit<ChatState> {
 
     final result = await repository.getAvailableTopics();
 
-    if (state is! ChatNoActiveSession) return; // state تغيّر أثناء الانتظار
+    if (state is! ChatNoActiveSession) return;
 
     final noActive = state as ChatNoActiveSession;
 
@@ -74,10 +57,6 @@ class ChatCubit extends SafeCubit<ChatState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // إنشاء جلسة جديدة
-  // mode: free_talk | topics
-  // ─────────────────────────────────────────────
   Future<void> startSession({required String mode, int? topicId}) async {
     if (state is ChatSessionActive) {
       print("⚠️ [ChatCubit] Already has active session — ignore start");
@@ -100,16 +79,11 @@ class ChatCubit extends SafeCubit<ChatState> {
       emit(ChatSessionActive(session: session));
     } else {
       emit(ChatFailure(result['message'] ?? 'Failed to create session'));
-      // رجّع لشاشة الاختيار
       emit(ChatNoActiveSession());
       loadTopics();
     }
   }
 
-  // ─────────────────────────────────────────────
-  // إرسال رسالة — Optimistic UI:
-  // الرسالة تظهر فوراً، وبعدين ينضاف رد الـ AI
-  // ─────────────────────────────────────────────
   Future<void> sendMessage(String text) async {
     final current = state;
     if (current is! ChatSessionActive) return;
@@ -128,7 +102,6 @@ class ChatCubit extends SafeCubit<ChatState> {
 
     if (current.isSending) return;
 
-    // رسالة مؤقتة تظهر فوراً في الشات
     final tempId = -DateTime.now().millisecondsSinceEpoch;
     final optimisticUser = ChatMessageModel(
       id: tempId,
@@ -157,7 +130,6 @@ class ChatCubit extends SafeCubit<ChatState> {
     if (state is! ChatSessionActive) return;
     final active = state as ChatSessionActive;
 
-    // شيل الرسالة المؤقتة من القائمة الحالية
     final withoutTemp = active.session.messages
         .where((m) => m.id != tempId)
         .toList();
@@ -179,7 +151,6 @@ class ChatCubit extends SafeCubit<ChatState> {
         ),
       );
     } else {
-      // فشل الإرسال → رجّع القائمة بدون الرسالة المؤقتة
       emit(
         active.copyWith(
           session: active.session.copyWith(messages: withoutTemp),
@@ -190,9 +161,6 @@ class ChatCubit extends SafeCubit<ChatState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // إنهاء الجلسة
-  // ─────────────────────────────────────────────
   Future<void> endSession() async {
     final current = state;
     if (current is! ChatSessionActive) return;
@@ -212,7 +180,6 @@ class ChatCubit extends SafeCubit<ChatState> {
       print("✅ [ChatCubit] Session ended — XP=${summary.xpAwarded}");
       emit(ChatSessionEnded(session: endedSession, summary: summary));
     } else {
-      // رجّع للحالة النشطة مع خطأ
       if (state is ChatSessionActive) {
         emit(
           (state as ChatSessionActive).copyWith(
@@ -224,17 +191,11 @@ class ChatCubit extends SafeCubit<ChatState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // الرجوع لشاشة البداية بعد الملخص (جلسة جديدة)
-  // ─────────────────────────────────────────────
   void startNewAfterSummary() {
     emit(ChatNoActiveSession());
     loadTopics();
   }
 
-  // ─────────────────────────────────────────────
-  // History
-  // ─────────────────────────────────────────────
   Future<void> loadHistory({bool refresh = true}) async {
     if (refresh) {
       emit(ChatHistoryLoading());
@@ -284,9 +245,6 @@ class ChatCubit extends SafeCubit<ChatState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // تفاصيل جلسة قديمة
-  // ─────────────────────────────────────────────
   Future<void> openHistorySession(int sessionId) async {
     emit(ChatHistoryDetailLoading());
 
@@ -300,7 +258,6 @@ class ChatCubit extends SafeCubit<ChatState> {
     }
   }
 
-  /// الرجوع من تفاصيل جلسة قديمة لقائمة الـ history
   Future<void> backToHistory() async {
     await loadHistory(refresh: true);
   }

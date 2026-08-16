@@ -9,7 +9,6 @@ class WordCreateCubit extends SafeCubit<WordCreateState> {
   final WordRepository wordRepository;
   WordCreateCubit(this.wordRepository) : super(WordCreateInitial());
 
-  /// Backend StoreWordRequest requires audio file.
   Future<void> createWord({
     required int lessonId,
     required String wordEn,

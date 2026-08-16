@@ -1662,12 +1662,24 @@ class _WordFormSheetState extends State<_WordFormSheet> {
 
   Future<void> _pickAudio() async {
     final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['mp3', 'wav', 'ogg', 'm4a'],
+      type: FileType.audio,
       withData: false,
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
+
+    const allowedExts = ['mp3', 'wav', 'ogg', 'm4a'];
+    final ext = (file.extension ?? file.name.split('.').last).toLowerCase();
+    if (!allowedExts.contains(ext)) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        'Only mp3, wav, ogg, or m4a files are allowed.',
+        type: AppSnackType.error,
+      );
+      return;
+    }
+
     final size = file.size;
     if (size > _maxAudioBytes) {
       if (!mounted) return;

@@ -7,11 +7,7 @@ class LessonRepository {
   final LessonService lessonService;
   LessonRepository(this.lessonService);
 
-  // ────────────────────────────────────────────
-  // Shared helpers (same conventions as QuestionRepository)
-  // ────────────────────────────────────────────
-
-  // Laravel wraps a single JsonResource in a top-level "data" key by default.
+  
   Map<String, dynamic> _unwrapResource(Map<String, dynamic> raw) {
     final inner = raw['data'];
     if (inner is Map<String, dynamic> && (inner['id'] != null)) {
@@ -48,10 +44,7 @@ class LessonRepository {
     };
   }
 
-  // ────────────────────────────────────────────
-  // 1) GET /getTeacherCourses
-  //    CourseResource::collection() -> wrapped in { "data": [...] }
-  // ────────────────────────────────────────────
+ 
   Future<Map<String, dynamic>> getTeacherCourses() async {
     try {
       final response = await lessonService.getTeacherCourses();
@@ -75,11 +68,7 @@ class LessonRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 2) GET /lessons/{course}
-  //    LessonResource::collection() over a paginator -> top-level
-  //    { "data": [...], "links": {...}, "meta": {...} }
-  // ────────────────────────────────────────────
+  
   Future<Map<String, dynamic>> getLessonsByCourse(
     int courseId, {
     int page = 1,
@@ -122,9 +111,7 @@ class LessonRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 3) POST /lessons/{course}  (store)
-  // ────────────────────────────────────────────
+  
   Future<Map<String, dynamic>> createLesson(
     int courseId,
     FormData formData,
@@ -151,9 +138,7 @@ class LessonRepository {
     }
   }
 
-  // ────────────────────────────────────────────
-  // 4) POST /lessons/{lesson}/update
-  // ────────────────────────────────────────────
+ 
   Future<Map<String, dynamic>> updateLesson(
     int lessonId,
     FormData formData,
@@ -180,7 +165,6 @@ class LessonRepository {
     }
   }
 
-  // ✅ إضافة دالة الحذف في الـ Repository
   Future<Map<String, dynamic>> deleteLesson(int lessonId) async {
     try {
       final response = await lessonService.deleteLesson(lessonId);
@@ -206,12 +190,10 @@ class LessonRepository {
       final response = await lessonService.getLessonDetails(lessonId);
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
-        // Backend shape:
-        // { "lesson": {...}, "words": [WordResource...], "comments": [...] }
-        // words are at ROOT, not nested inside lesson.
+       
         return {
           'success': true,
-          'lesson': data['lesson'], // DetailLessonResource
+          'lesson': data['lesson'], 
           'words': data['words'] ?? [],
           'comments': data['comments'] ?? [],
           'raw': data,

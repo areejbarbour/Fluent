@@ -22,7 +22,6 @@ class TeacherStatusBoardCubit extends SafeCubit<TeacherStatusBoardState> {
     ContentStatus.closed.value,
   };
 
-  /// Lessons & tests: exclude published/closed from the status board
   final Set<String> _hiddenLessonAndTestStatuses = {
     ContentStatus.published.value,
     ContentStatus.closed.value,

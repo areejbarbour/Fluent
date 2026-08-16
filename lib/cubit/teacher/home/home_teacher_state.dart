@@ -1,4 +1,3 @@
-// teacher_home_state.dart
 
 import 'package:fluent/data/models/test_model.dart';
 
@@ -17,7 +16,6 @@ class TeacherHomeLoaded extends TeacherHomeState {
   final int totalQuestions;
   final int totalTests;
 
-  // ✅ تفصيل حالات الاختبارات
   final int publishedTests;
   final int draftTests;
   final int pendingTests;
@@ -27,7 +25,6 @@ class TeacherHomeLoaded extends TeacherHomeState {
   final int closedTests;
   final int changesRequestedTests;
 
-  // ✅ أحدث الاختبارات (حتى 3)
   final List<TestModel> recentTests;
 
   TeacherHomeLoaded({

@@ -19,7 +19,6 @@ class QuestionAnswer {
     this.rightText,
   });
 
-  /// Backend often returns MySQL bool as 0/1 (int), not true/false.
   static bool? _parseBool(dynamic value) {
     if (value == null) return null;
     if (value is bool) return value;
@@ -128,7 +127,6 @@ class Question {
       }
     }
 
-    // media can be: string url, array of {url, ...}, or null
     String? audioUrl = json['audio_url']?.toString();
     String? imageUrl = json['image_url']?.toString();
     if (audioUrl == null && json['audio'] is String) {

@@ -30,7 +30,7 @@ class UserModel {
       emailVerifiedAt: json['email_verified_at']?.toString(),
       googleId: json['google_id']?.toString(),
       fcmToken: json['fcm_token']?.toString(),
-      roles: json['roles'] ?? json['role'] ?? [], // ✅ ذكي
+      roles: json['roles'] ?? json['role'] ?? [], 
     );
   }
 

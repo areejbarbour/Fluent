@@ -11,14 +11,12 @@ class QuestionListCubit extends SafeCubit<QuestionListState> {
   bool _showingDeprecated = false;
   bool get isShowingDeprecated => _showingDeprecated;
 
-  /// Loads the first page (active or deprecated based on flag)
   Future<void> loadInitial({bool deprecated = false}) async {
     _showingDeprecated = deprecated;
     emit(QuestionListLoading());
     await _fetch(page: 1, deprecated: deprecated);
   }
 
-  /// Switches between Active ↔ Deprecated tabs
   Future<void> switchTab({required bool deprecated}) async {
     if (_showingDeprecated == deprecated && state is QuestionListLoaded) {
       return;
@@ -26,7 +24,6 @@ class QuestionListCubit extends SafeCubit<QuestionListState> {
     await loadInitial(deprecated: deprecated);
   }
 
-  /// Loads next page (if available)
   Future<void> loadMore() async {
     final s = state;
     if (s is! QuestionListLoaded) return;
@@ -40,7 +37,6 @@ class QuestionListCubit extends SafeCubit<QuestionListState> {
     );
   }
 
-  /// Pull-to-refresh
   Future<void> refresh() async {
     await _fetch(page: 1, deprecated: _showingDeprecated);
   }
@@ -93,7 +89,6 @@ class QuestionListCubit extends SafeCubit<QuestionListState> {
     }
   }
 
-  /// Removes a deleted question from the list (used after delete)
   void removeQuestion(int id) {
     final s = state;
     if (s is QuestionListLoaded) {

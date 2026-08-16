@@ -8,7 +8,7 @@ class LessonWordsLoading extends LessonWordsState {}
 
 class LessonWordsSuccess extends LessonWordsState {
   final List<LessonWordModel> words;
-  final int? busyWordId; // الكلمة اللي عم تنقل حالياً
+  final int? busyWordId;
 
   LessonWordsSuccess(this.words, {this.busyWordId});
 }

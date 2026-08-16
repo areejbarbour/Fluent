@@ -1,4 +1,3 @@
-// lib/cubit/teacher/courses/form/lesson_delete_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluent/data/repository/lesson_repository.dart';
 

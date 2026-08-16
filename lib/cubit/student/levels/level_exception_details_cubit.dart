@@ -46,7 +46,6 @@ class LevelExceptionDetailsCubit extends SafeCubit<LevelExceptionDetailsState> {
     return api.copyWith(
       requestedLevel: api.requestedLevel ?? seed.requestedLevel,
       recommendedLevel: api.recommendedLevel ?? seed.recommendedLevel,
-      // Keep richer reason/status from API when present
       reason: (api.reason != null && api.reason!.isNotEmpty)
           ? api.reason
           : seed.reason,

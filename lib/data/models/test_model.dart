@@ -7,7 +7,7 @@ class TestModel {
   final String titleAr;
   final int passingScore;
   final String status;
-  final String testableType; // course / lesson
+  final String testableType; 
   final int testableId;
   final String? createdAt;
   final String? updatedAt;

@@ -5,9 +5,6 @@ import 'package:fluent/data/models/attempt_models.dart';
 import 'package:fluent/data/repository/attempt_repository.dart';
 import 'package:fluent/helper/questions/answer_payload_helper.dart';
 
-/// Full placement flow aligned with backend AttemptService:
-/// POST /tests/{id}/start → submit-answer (sequential) → finish → review (if passed).
-/// Immediate feedback: lastSubmit.isCorrect after each submit.
 class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
   final AttemptRepository attemptRepository;
 
@@ -17,10 +14,6 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
   StudentTestSnapshot? _test;
   final Set<int> _answered = {};
 
-  // ── 1) Start ─────────────────────────────────────────────
-
-  /// Start a published test by id (lesson / course / …).
-  /// Backend: POST /api/tests/{test}/start
   Future<void> start(int testId) async {
     emit(StudentAttemptStarting());
     print('🟡 [StudentAttemptCubit] Starting test $testId...');
@@ -58,9 +51,6 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
     );
   }
 
-  // ── 2) Submit current question ───────────────────────────
-
-  /// Generic entry — body already shaped by AnswerPayloadHelper.
   Future<bool> submitCurrent({required Map<String, dynamic> body}) async {
     final current = state;
     if (current is! StudentAttemptInProgress) return false;
@@ -137,10 +127,6 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
     return submitCurrent(body: AnswerPayloadHelper.pair(matches: matches));
   }
 
-  // ── 3) Navigate (only after successful submit) ───────────
-
-  /// Move to next question. Backend requires sequential answers —
-  /// never skip ahead.
   void goNext() {
     final current = state;
     if (current is! StudentAttemptInProgress) return;
@@ -159,8 +145,6 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
       ),
     );
   }
-
-  // ── 4) Finish ────────────────────────────────────────────
 
   Future<void> finish() async {
     final attemptId = _attemptId;
@@ -198,15 +182,12 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
           reviewRes['data'] is ReviewAttemptResult) {
         review = reviewRes['data'] as ReviewAttemptResult;
       }
-      // If review fails (edge case), still show finish result.
     }
 
     emit(
       StudentAttemptFinished(result: finishData, test: test, review: review),
     );
   }
-
-  // ── 5) Leave (abandon) ───────────────────────────────────
 
   Future<void> leave() async {
     final attemptId = _attemptId;
@@ -220,7 +201,6 @@ class StudentAttemptCubit extends SafeCubit<StudentAttemptState> {
     _test = null;
     _answered.clear();
 
-    // UI may have already popped and closed this cubit — never emit after close.
     if (isClosed) return;
 
     if (result['success'] == true) {

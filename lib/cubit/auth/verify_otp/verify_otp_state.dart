@@ -1,4 +1,3 @@
-// lib/presentation/cubits/auth/verify_otp/verify_otp_state.dart
 abstract class VerifyOtpState {}
 
 class VerifyOtpInitial extends VerifyOtpState {}
@@ -15,7 +14,7 @@ class VerifyOtpSuccess extends VerifyOtpState {
 
 class VerifyOtpFailure extends VerifyOtpState {
   final String error;
-  final Map<String, dynamic>? errors; // ✅ غيرنا النوع
+  final Map<String, dynamic>? errors; 
 
   VerifyOtpFailure(this.error, {this.errors});
 }

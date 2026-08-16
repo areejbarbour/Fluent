@@ -41,7 +41,6 @@ class LevelModel {
   final String status;
   final LevelCreatorModel? creator;
 
-  /// Published level final test (LevelResource.test_id).
   final int? testId;
 
   LevelModel({
@@ -117,14 +116,10 @@ class StudentLevelsModel {
   }
 }
 
-/// Backend: GET /api/placement-test/status
-/// StudentLevelService@getStatus
 class PlacementTestStatusModel {
-  /// "take_placement_test" | "show_levels"
   final String action;
   final bool canRetakePlacement;
 
-  /// ISO / Carbon string when canRetakePlacement == false, else null
   final String? retakeAvailableAt;
 
   const PlacementTestStatusModel({

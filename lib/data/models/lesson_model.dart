@@ -11,8 +11,6 @@ class LessonModel {
   final String? updatedAt;
   final String? courseName;
 
-  /// Latest review notes when status == changes_requested (from list API).
-  /// Never null at runtime — defaults to empty list.
   final List<String> reviewNotes;
 
   LessonModel({

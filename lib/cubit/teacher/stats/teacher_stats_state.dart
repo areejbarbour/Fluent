@@ -8,26 +8,19 @@ class TeacherStatsState {
   final TeacherStatsStatus status;
   final String? message;
 
-  /// All courses owned by the teacher (from getTeacherCourses).
   final List<CourseModel> courses;
 
-  /// Currently selected course id (null = none).
   final int? selectedCourseId;
 
-  /// Course-level stats for [selectedCourseId].
   final CourseStats? courseStats;
   final bool courseStatsLoading;
 
-  /// Tests belonging to the selected course (or its lessons).
   final List<TestModel> courseTests;
 
-  /// lesson_id → English title (from lessons list API).
   final Map<int, String> lessonTitlesEn;
 
-  /// question_id → English title (from test detail API).
   final Map<int, String> questionTitlesEn;
 
-  /// Currently selected test for detailed stats.
   final int? selectedTestId;
   final TestStats? testStats;
   final bool testStatsLoading;

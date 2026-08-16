@@ -9,9 +9,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
 
   NotificationCubit(this.repository) : super(const NotificationState());
 
-  // ────────────────────────────────────────────
-  // Load all notifications
-  // ────────────────────────────────────────────
   Future<void> loadNotifications() async {
     emit(state.copyWith(loading: true, error: null));
     final result = await repository.getNotifications();
@@ -38,9 +35,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     }
   }
 
-  // ────────────────────────────────────────────
-  // Refresh unread count only
-  // ────────────────────────────────────────────
   Future<void> loadUnreadCount() async {
     final result = await repository.getUnreadCount();
     if (result['success'] == true) {
@@ -48,9 +42,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     }
   }
 
-  // ────────────────────────────────────────────
-  // Register FCM token
-  // ────────────────────────────────────────────
   Future<void> registerFirebaseToken({
     required String token,
     String? deviceType,
@@ -63,13 +54,9 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     );
   }
 
-  // ────────────────────────────────────────────
-  // Mark single as read — تحديث UI فوري
-  // ────────────────────────────────────────────
   Future<void> markAsRead(String id) async {
     if (id.trim().isEmpty) return;
 
-    // تحديث تفاؤلي فوري قبل رد السيرفر
     final optimistic = state.notifications.map((n) {
       if (n.id == id && !n.isRead) {
         return n.copyWith(
@@ -102,7 +89,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
         ),
       );
     } else {
-      // رجوع للحالة السابقة عند الفشل
       await loadNotifications();
       emit(
         state.copyWith(
@@ -114,9 +100,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     }
   }
 
-  // ────────────────────────────────────────────
-  // Mark all as read — تحديث UI فوري
-  // ────────────────────────────────────────────
   Future<void> markAllAsRead() async {
     final optimistic = state.notifications
         .map(
@@ -159,9 +142,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     }
   }
 
-  // ────────────────────────────────────────────
-  // Delete — تحديث UI فوري
-  // ────────────────────────────────────────────
   Future<void> deleteNotification(String id) async {
     if (id.trim().isEmpty) return;
 
@@ -204,7 +184,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     }
   }
 
-  /// Bulk delete — sequential API calls (backend has single-delete only).
   Future<void> deleteMultiple(List<String> ids) async {
     final clean = ids.where((id) => id.trim().isNotEmpty).toSet().toList();
     if (clean.isEmpty) return;
@@ -261,7 +240,6 @@ class NotificationCubit extends SafeCubit<NotificationState> {
     emit(state.copyWith(actionSuccess: false, error: null, message: null));
   }
 
-  /// Reset notification state on logout.
   void clearSession() {
     emit(const NotificationState());
   }

@@ -1,6 +1,3 @@
-// 📁 lib/data/models/chat_models.dart
-// مطابق 100% لهيكل الباك (ChatSession, ChatMessage, ChatCorrection, ChatSessionSummary, ChatTopic)
-
 class ChatTopicModel {
   final int id;
   final String title;
@@ -52,7 +49,7 @@ class ChatCorrectionModel {
 
 class ChatMessageModel {
   final int id;
-  final String role; // user | assistant
+  final String role;
   final String content;
   final String? correctedContent;
   final Map<String, dynamic>? metadata;
@@ -84,7 +81,9 @@ class ChatMessageModel {
     if (correctionsRaw is List) {
       corrections = correctionsRaw
           .whereType<Map>()
-          .map((e) => ChatCorrectionModel.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => ChatCorrectionModel.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList();
     }
 
@@ -142,7 +141,9 @@ class ChatSessionSummaryModel {
         final m = Map<String, dynamic>.from(e);
         return ChatWeaknessItem(
           errorType: (m['error_type'] ?? '').toString(),
-          count: (m['count'] is int) ? m['count'] as int : int.tryParse('${m['count']}') ?? 0,
+          count: (m['count'] is int)
+              ? m['count'] as int
+              : int.tryParse('${m['count']}') ?? 0,
         );
       }).toList();
     }
@@ -171,8 +172,8 @@ class ChatSessionModel {
   final int id;
   final int? userId;
   final int? topicId;
-  final String mode; // free_talk | topics
-  final String status; // active | ended
+  final String mode;
+  final String status;
   final int? levelIdSnapshot;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -213,7 +214,6 @@ class ChatSessionModel {
           .whereType<Map>()
           .map((e) => ChatMessageModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
-      // ترتيب زمني تصاعدي (أقدم → أحدث) للعرض
       messages.sort((a, b) {
         if (a.createdAt != null && b.createdAt != null) {
           return a.createdAt!.compareTo(b.createdAt!);
@@ -276,7 +276,6 @@ class ChatSessionModel {
   }
 }
 
-/// نتيجة إرسال رسالة (مطابق لرد الباك)
 class SendMessageResult {
   final ChatMessageModel userMessage;
   final ChatMessageModel assistantMessage;
@@ -287,7 +286,6 @@ class SendMessageResult {
   });
 }
 
-/// عنصر في قائمة الـ history (جلسة منتهية بدون رسائل كاملة)
 class ChatHistoryItem {
   final ChatSessionModel session;
 
@@ -301,7 +299,6 @@ class ChatHistoryItem {
   String? get overallFeedback => session.summary?.overallFeedback;
 }
 
-/// Pagination للـ history (Laravel paginate)
 class ChatHistoryPage {
   final List<ChatHistoryItem> items;
   final int currentPage;

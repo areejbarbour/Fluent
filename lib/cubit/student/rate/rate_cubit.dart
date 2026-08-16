@@ -7,7 +7,6 @@ import 'rate_state.dart';
 class RateCubit extends SafeCubit<RateState> {
   final RateRepository rateRepository;
 
-  /// Local cache: courseId → last known RateModel for this session.
   final Map<int, RateModel> _ratesByCourse = {};
 
   RateCubit(this.rateRepository) : super(const RateInitial());
@@ -18,7 +17,6 @@ class RateCubit extends SafeCubit<RateState> {
 
   bool hasRated(int courseId) => _ratesByCourse.containsKey(courseId);
 
-  /// Seed cache if you already know a rate (e.g. from a future API field).
   void seedRate(int courseId, RateModel rate) {
     _ratesByCourse[courseId] = rate;
   }

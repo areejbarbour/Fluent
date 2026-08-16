@@ -20,7 +20,6 @@ class StreakLoaded extends StreakState {
 
 class StreakFailure extends StreakState {
   final String message;
-  /// Partial data if profile loaded but weekly failed (or vice versa).
   final int? streak;
   final WeeklyActivityModel? weeklyActivity;
 

@@ -20,7 +20,6 @@ class NotificationState {
     this.unreadCount = 0,
   });
 
-  /// Unread items only (client-side filter).
   List<AppNotificationModel> get unreadNotifications =>
       notifications.where((n) => !n.isRead).toList();
 

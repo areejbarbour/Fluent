@@ -4,10 +4,6 @@ import 'package:fluent/cubit/student/streak/streak_state.dart';
 import 'package:fluent/data/models/profile_model.dart';
 import 'package:fluent/data/repository/profile_repository.dart';
 
-/// Loads real streak + weekly lesson activity for the Streak screen.
-/// Matches backend:
-/// - GET /api/student/profile → streak, last_activate_date
-/// - GET /api/student/weeklyActivity → weekly_activity map (Sun→Sat)
 class StreakCubit extends SafeCubit<StreakState> {
   final ProfileRepository profileRepository;
 
@@ -17,7 +13,6 @@ class StreakCubit extends SafeCubit<StreakState> {
     emit(StreakLoading());
 
     try {
-      // Fire both requests in parallel — independent endpoints.
       final results = await Future.wait([
         profileRepository.getStudentProfile(),
         profileRepository.getWeeklyActivity(),
@@ -42,7 +37,6 @@ class StreakCubit extends SafeCubit<StreakState> {
         weekly = weeklyResult['data'] as WeeklyActivityModel;
       }
 
-      // Prefer showing something useful even if one call fails.
       if (weekly != null) {
         emit(
           StreakLoaded(
@@ -54,7 +48,6 @@ class StreakCubit extends SafeCubit<StreakState> {
         return;
       }
 
-      // Weekly failed — still show streak with empty week if profile ok.
       if (profileResult['success'] == true) {
         emit(
           StreakLoaded(

@@ -63,7 +63,6 @@ class VerifyOtpCubit extends SafeCubit<VerifyOtpState> {
           await setupDio();
           print("⚙️ [VerifyOtpCubit] Dio re-initialized");
 
-          // Register FCM token immediately after successful registration
           await NotificationBootstrap.registerAfterAuth();
         }
 

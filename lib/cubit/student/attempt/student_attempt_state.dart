@@ -7,13 +7,10 @@ class StudentAttemptInitial extends StudentAttemptState {}
 
 class StudentAttemptLoading extends StudentAttemptState {}
 
-/// Intro ready — test not started yet (optional; we start on user confirm).
 class StudentAttemptReady extends StudentAttemptState {}
 
 class StudentAttemptStarting extends StudentAttemptState {}
 
-/// Active in-progress session. Questions MUST be answered in order
-/// (backend assertPreviousQuestionsAnswered).
 class StudentAttemptInProgress extends StudentAttemptState {
   final int attemptId;
   final StudentTestSnapshot test;
@@ -22,7 +19,6 @@ class StudentAttemptInProgress extends StudentAttemptState {
   final SubmitAnswerResult? lastSubmit;
   final String? inlineError;
 
-  /// questionIds already submitted (cannot re-submit).
   final Set<int> answeredQuestionIds;
 
   StudentAttemptInProgress({
@@ -74,7 +70,7 @@ class StudentAttemptFinishing extends StudentAttemptState {
 class StudentAttemptFinished extends StudentAttemptState {
   final FinishAttemptResult result;
   final StudentTestSnapshot test;
-  final ReviewAttemptResult? review; // null if failed or review not loaded
+  final ReviewAttemptResult? review; 
 
   StudentAttemptFinished({
     required this.result,
@@ -93,7 +89,6 @@ class StudentAttemptFailure extends StudentAttemptState {
   final String message;
   final Map<String, dynamic>? errors;
 
-  /// If true, user already has levels / retake cooldown (backend rule).
   final bool isPlacementBlocked;
 
   StudentAttemptFailure(

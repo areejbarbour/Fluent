@@ -1,4 +1,3 @@
-// lib/data/models/content_status.dart
 enum ContentStatus {
   draft('draft', 'Draft'),
   pending('pending', 'Pending'),
@@ -21,7 +20,6 @@ enum ContentStatus {
     );
   }
 
-  // ✅ User-friendly labels for Courses
   String get courseLabel {
     switch (this) {
       case ContentStatus.pending: return 'In Preparation';
@@ -32,7 +30,6 @@ enum ContentStatus {
     }
   }
 
-  // ✅ User-friendly labels for Lessons
   String get lessonLabel {
     switch (this) {
       case ContentStatus.draft: return 'Draft';

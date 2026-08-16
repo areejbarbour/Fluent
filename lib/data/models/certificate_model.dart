@@ -1,19 +1,6 @@
 import 'package:fluent/constants/strings.dart';
 
-/// Single item from GET /api/certificates
-/// Backend shape (CertificateService::getStudentCertificates):
-/// {
-///   "id": int,
-///   "certificate_number": string,
-///   "level_name": string,   // level name_en
-///   "issued_at": "Y-m-d",
-///   "download_url": string|null  // Spatie media URL
-/// }
-///
-/// Certificate is issued server-side in AttemptService::finishAttempt when a
-/// level test is passed. Finish API returns reward.certificate_url +
-/// reward.user_level_id. If the URL is null, clients retry via
-/// GET /api/user-levels/{id}/certificate (or load GET /api/certificates).
+
 class CertificateModel {
   final int id;
   final String certificateNumber;
@@ -47,7 +34,6 @@ class CertificateModel {
     );
   }
 
-  /// Spatie may return absolute URL or a relative path like `/storage/...`.
   static String? normalizeMediaUrl(String? url) {
     if (url == null) return null;
     final trimmed = url.trim();

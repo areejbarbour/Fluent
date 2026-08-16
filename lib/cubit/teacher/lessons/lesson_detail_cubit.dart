@@ -14,7 +14,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
   final TestRepository testRepository;
   final LessonDetailRepository lessonDetailRepository;
 
-  /// مطابق لـ validation الباك: max:1000
   static const int maxCommentLength = 1000;
 
   int? _currentUserId;
@@ -39,7 +38,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     return null;
   }
 
-  // ✅ جلب تفاصيل الدرس مع الاختبارات + كل صفحات التعليقات
   Future<void> loadLessonDetails(int lessonId) async {
     _lessonId = lessonId;
     emit(LessonDetailLoading());
@@ -47,7 +45,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     try {
       final userId = await _resolveCurrentUserId();
 
-      // 1) تفاصيل الدرس + الصفحة الأولى للتعليقات (مسار المعلّم)
       final detailResult = await lessonDetailRepository.getLessonDetail(
         lessonId,
         page: 1,
@@ -56,7 +53,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
       );
 
       if (detailResult['success'] != true) {
-        // fallback على lessonRepository القديم إن فشل
         final lessonResult = await lessonRepository.getLessonDetails(lessonId);
         if (!lessonResult['success']) {
           emit(
@@ -74,7 +70,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
         );
         final tests = await _loadLessonTests(lessonId);
         final lessonMap = lessonResult['lesson'];
-        // words are at response root (sibling of lesson), not inside lesson.
         final words = _extractWordsFromResponse(
           lessonResult['words'] ?? lessonResult['raw'] ?? lessonMap,
         );
@@ -95,17 +90,14 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
       final pageData = detailResult['data'] as LessonDetailModel;
       final lessonMap = detailResult['rawLesson'] ?? pageData.lesson;
 
-      // 2) تحميل باقي صفحات التعليقات
       final allComments = await _loadAllCommentPages(
         lessonId,
         pageData,
         userId,
       );
 
-      // 3) الاختبارات
       final tests = await _loadLessonTests(lessonId);
 
-      // words at response root: { lesson, words, comments }
       final words = _extractWordsFromResponse(
         detailResult['raw'] ?? detailResult['words'] ?? lessonMap,
       );
@@ -133,9 +125,7 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     return testRepository.testsForLesson(allTests, lessonId);
   }
 
-  /// Backend returns words as a top-level array next to `lesson`:
-  /// { "lesson": {...}, "words": [...], "comments": [...] }
-  /// Accepts: the full response map, a words list, or (legacy) a lesson map.
+  
   List<WordModel> _extractWordsFromResponse(dynamic source) {
     if (source == null) return const [];
     if (source is List) {
@@ -146,7 +136,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
       if (map['words'] != null) {
         return WordModel.listFrom(map['words']);
       }
-      // legacy / mistaken nesting
       return WordModel.listFrom(map);
     }
     return const [];
@@ -157,7 +146,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     return _extractWordsFromResponse(lessonMap);
   }
 
-  /// تحديث محلي للقائمة بعد إنشاء/تعديل/حذف كلمة (بدون إعادة تحميل كاملة)
   void setWords(List<WordModel> words) {
     final current = state;
     if (current is! LessonDetailLoaded) return;
@@ -403,8 +391,7 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     if (current is! LessonDetailLoaded) return null;
 
     final target = current.comments.where((c) => c.id == commentId);
-    // الطالب: own فقط | المعلّم: own أو صلاحية archive lesson من الباك
-    // في UI نسمح بـ own؛ الباك يرفض غير المصرّح
+    
     if (target.isEmpty || !target.first.isOwn) {
       return 'You can only delete your own comments.';
     }
@@ -431,7 +418,6 @@ class LessonDetailCubit extends SafeCubit<LessonDetailState> {
     return result['message'] ?? 'Failed to delete comment';
   }
 
-  // ✅ حذف اختبار
   Future<void> deleteTest(int testId) async {
     emit(DeletingTest());
 

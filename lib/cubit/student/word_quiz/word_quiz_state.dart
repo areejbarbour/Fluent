@@ -12,20 +12,16 @@ class WordQuizLoading extends WordQuizState {
   const WordQuizLoading();
 }
 
-/// Quiz loaded — user is answering questions.
 class WordQuizInProgress extends WordQuizState {
   final List<WordQuizQuestion> questions;
   final int currentIndex;
   final int correctCount;
   final int wrongCount;
 
-  /// Selected option id for current question (before confirm / after check)
   final int? selectedOptionId;
 
-  /// Result of last check for current question (null = not checked yet)
   final WordQuizCheckResult? lastResult;
 
-  /// True while waiting for checkAnswer API
   final bool isChecking;
 
   const WordQuizInProgress({

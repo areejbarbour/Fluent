@@ -1,4 +1,3 @@
-// lib/data/models/question_type.dart
 
 enum QuestionType {
   mcq('MCQ', 'Multiple Choice'),

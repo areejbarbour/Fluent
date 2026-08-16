@@ -21,8 +21,6 @@ class StudentLessonModel {
   }
 }
 
-/// Mirrors the `progress` object returned by the backend:
-/// { "completed_lessons": 1, "total_lessons": 3, "progress_percentage": 33 }
 class LessonsProgressSummary {
   final int completedLessons;
   final int totalLessons;
@@ -43,8 +41,11 @@ class LessonsProgressSummary {
     );
   }
 
-  static const empty =
-      LessonsProgressSummary(completedLessons: 0, totalLessons: 0, progressPercentage: 0);
+  static const empty = LessonsProgressSummary(
+    completedLessons: 0,
+    totalLessons: 0,
+    progressPercentage: 0,
+  );
 }
 
 class StudentLessonsModel {
@@ -65,21 +66,22 @@ class StudentLessonsModel {
       if (list is! List) return [];
       return list
           .whereType<Map>()
-          .map((e) =>
-              StudentLessonModel.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => StudentLessonModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     }
 
     return StudentLessonsModel(
       currentLesson: json['current_lesson'] != null
           ? StudentLessonModel.fromJson(
-              Map<String, dynamic>.from(json['current_lesson']))
+              Map<String, dynamic>.from(json['current_lesson']),
+            )
           : null,
       completedLessons: parseList(json['completed_lessons']),
       lockedLessons: parseList(json['locked_lessons']),
       progress: json['progress'] is Map
           ? LessonsProgressSummary.fromJson(
-              Map<String, dynamic>.from(json['progress']))
+              Map<String, dynamic>.from(json['progress']),
+            )
           : LessonsProgressSummary.empty,
     );
   }

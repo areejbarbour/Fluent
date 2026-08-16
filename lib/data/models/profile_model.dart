@@ -1,4 +1,3 @@
-/// Student profile — matches `StudentProfileResource` from the backend.
 class StudentProfileModel {
   final String? bio;
   final int points;
@@ -55,7 +54,6 @@ class StudentProfileModel {
   }
 }
 
-/// Teacher profile — matches `TeacherProfileResource` from the backend.
 class TeacherProfileModel {
   final String? bio;
   final String? imageUrl;
@@ -77,7 +75,6 @@ class TeacherProfileModel {
   }
 }
 
-/// Unified view-model used by the Profile screen for both roles.
 class ProfileViewData {
   final bool isTeacher;
   final String name;
@@ -126,7 +123,6 @@ class ProfileViewData {
   }
 }
 
-/// One day in the weekly activity chart.
 class WeeklyActivityDay {
   final DateTime date;
   final int completedLessons;
@@ -141,7 +137,6 @@ class WeeklyActivityDay {
   }
 }
 
-/// Parsed weekly activity for the current week (Sunday → Saturday).
 class WeeklyActivityModel {
   final List<WeeklyActivityDay> days;
 

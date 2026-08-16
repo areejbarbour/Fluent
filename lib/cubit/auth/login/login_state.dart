@@ -14,7 +14,7 @@ class LoginSuccess extends LoginState {
 
 class LoginFailure extends LoginState {
   final String error;
-  final Map<String, dynamic>? errors; // ✅ غيرنا النوع
+  final Map<String, dynamic>? errors;
 
   LoginFailure(this.error, {this.errors});
 }
